@@ -1,14 +1,15 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { Flock, DailyRecord, Expense, Sale } from '../types';
 
 export const getAIInsight = async (question: string, flocks: Flock[], records: DailyRecord[], expenses: Expense[], sales: Sale[]): Promise<string> => {
-  if (!process.env.API_KEY) {
-    return "Chave de API não configurada. Por favor, configure a variável de ambiente API_KEY.";
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
+
+  if (!apiKey) {
+    return "Chave de API não configurada. Por favor, configure a variável de ambiente VITE_GEMINI_API_KEY.";
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
 
     const prompt = `
       Você é um especialista em avicultura e consultor de gerenciamento de granjas de galinhas poedeiras.

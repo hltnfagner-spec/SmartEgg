@@ -16,39 +16,64 @@ import Inventory from './components/Inventory';
 import LandingPage from './components/LandingPage';
 import Register from './components/Register';
 import Login from './components/Login';
+import EmailConfirm from './components/EmailConfirm';
 import { useFarm } from './context/FarmContext';
+import { supabase } from './services/supabaseClient';
 
 type AuthState = 'landing' | 'login' | 'register' | 'app';
 
 const App: FC = () => {
   const [authState, setAuthState] = useState<AuthState>('landing');
+  console.log('[App] authState =', authState);
+  
+  // Verificar se é rota de confirmação de email
+  const urlParams = new URLSearchParams(window.location.search);
+  const isConfirmRoute = urlParams.has('token_hash') && urlParams.has('type');
+  
+  if (isConfirmRoute) {
+    return <EmailConfirm />;
+  }
+  
   // Navigation state is now managed in FarmContext
   const { currentView, navigate, clearData } = useFarm();
 
-  // Verifica se existe uma sessão ativa ao carregar a página
+  // Verifica se existe uma sessão ativa ao carregar a página e escuta mudanças de auth
   useEffect(() => {
-      const savedSession = localStorage.getItem('smart_egg_session_active');
-      if (savedSession === 'true') {
-          setAuthState('app');
+    const checkSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (!error && data.session) {
+        setAuthState('app');
       }
+    };
+
+    checkSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setAuthState('app');
+      } else {
+        setAuthState('landing');
+        navigate('dashboard');
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   const handleLoginSuccess = () => {
-      localStorage.setItem('smart_egg_session_active', 'true');
       setAuthState('app');
   };
 
   const handleRegisterSuccess = () => {
       // Limpa os dados do banco (localStorage e memória) para o novo usuário
       clearData();
-      localStorage.setItem('smart_egg_session_active', 'true');
       setAuthState('app');
   };
 
   const handleLogout = () => {
-      localStorage.removeItem('smart_egg_session_active');
-      setAuthState('landing');
-      navigate('dashboard');
+      supabase.auth.signOut();
   };
 
   const renderView = () => {

@@ -1,5 +1,6 @@
 
 import { useState, FC, FormEvent } from 'react';
+import { supabase } from '../services/supabaseClient';
 
 interface RegisterProps {
   onRegister: () => void;
@@ -11,6 +12,7 @@ const Register: FC<RegisterProps> = ({ onRegister, onSwitchToLogin, onBack }) =>
   const [formData, setFormData] = useState({
     name: '',
     farmName: '',
+    phone: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -19,7 +21,50 @@ const Register: FC<RegisterProps> = ({ onRegister, onSwitchToLogin, onBack }) =>
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: FormEvent) => {
+  const validatePhone = (phone: string): boolean => {
+  // Remove todos os caracteres não numéricos
+  const cleanPhone = phone.replace(/\D/g, '');
+  
+  // Valida se tem 10 ou 11 dígitos (com ou sem DDD)
+  if (cleanPhone.length !== 10 && cleanPhone.length !== 11) {
+    return false;
+  }
+  
+  // Valida se começa com DDD válido (11 a 99)
+  const ddd = cleanPhone.substring(0, 2);
+  if (parseInt(ddd) < 11 || parseInt(ddd) > 99) {
+    return false;
+  }
+  
+  // Valida se o número não começa com 0 ou 1
+  const firstDigit = cleanPhone.length === 11 ? cleanPhone[2] : cleanPhone[2];
+  if (firstDigit === '0' || firstDigit === '1') {
+    return false;
+  }
+  
+  return true;
+};
+
+const formatPhone = (value: string): string => {
+  // Remove todos os caracteres não numéricos
+  const cleanValue = value.replace(/\D/g, '');
+  
+  // Limita a 11 dígitos
+  const limitedValue = cleanValue.slice(0, 11);
+  
+  // Aplica formatação
+  if (limitedValue.length <= 2) {
+    return limitedValue;
+  } else if (limitedValue.length <= 6) {
+    return `(${limitedValue.slice(0, 2)}) ${limitedValue.slice(2)}`;
+  } else if (limitedValue.length <= 10) {
+    return `(${limitedValue.slice(0, 2)}) ${limitedValue.slice(2, 6)}-${limitedValue.slice(6)}`;
+  } else {
+    return `(${limitedValue.slice(0, 2)}) ${limitedValue.slice(2, 7)}-${limitedValue.slice(7)}`;
+  }
+};
+
+const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -27,50 +72,66 @@ const Register: FC<RegisterProps> = ({ onRegister, onSwitchToLogin, onBack }) =>
         setError("As senhas não coincidem.");
         return;
     }
+    if (formData.password.length < 6) {
+        setError("A senha deve ter pelo menos 6 caracteres.");
+        return;
+    }
     if (!formData.agreeTerms) {
         setError("Você precisa aceitar os Termos de Uso.");
         return;
     }
+    if (!formData.phone) {
+        setError("O telefone é obrigatório.");
+        return;
+    }
+    if (!validatePhone(formData.phone)) {
+        setError("Digite um telefone brasileiro válido.");
+        return;
+    }
 
     setIsLoading(true);
-    
-    // Simulação de processamento e salvamento
-    setTimeout(() => {
-        try {
-            // Obter usuários existentes
-            const usersStr = localStorage.getItem('smart_egg_users');
-            const users = usersStr ? JSON.parse(usersStr) : [];
-            
-            // Verificar se email já existe
-            const userExists = users.some((u: any) => u.email === formData.email);
-            
-            if (userExists) {
-                setError("Este e-mail já está cadastrado. Tente fazer login.");
-                setIsLoading(false);
-                return;
-            }
 
-            // Criar novo usuário
-            const newUser = {
-                id: Date.now().toString(),
-                name: formData.name,
-                farmName: formData.farmName,
-                email: formData.email,
-                password: formData.password // Nota: Em produção, senhas devem ser hash
-            };
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            name: formData.name,
+            farmName: formData.farmName,
+            phone: formData.phone,
+          },
+          emailRedirectTo: window.location.origin,
+        },
+      });
 
-            // Salvar
-            users.push(newUser);
-            localStorage.setItem('smart_egg_users', JSON.stringify(users));
-            
-            setIsLoading(false);
-            onRegister(); // Isso aciona a limpeza do BD no App.tsx
-        } catch (err) {
-            console.error(err);
-            setError("Erro ao criar conta. Tente novamente.");
-            setIsLoading(false);
-        }
-    }, 1000);
+      if (signUpError) {
+        setError(signUpError.message || 'Erro ao criar conta. Tente novamente.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Após signup, tentar fazer login automático
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (signInError) {
+        // Se login falhar, mostrar mensagem para verificar email
+        setError('Conta criada! Verifique seu email para confirmar ou tente fazer login.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Login automático bem sucedido
+      setIsLoading(false);
+      onRegister();
+    } catch (err) {
+      console.error(err);
+      setError('Erro ao criar conta. Tente novamente.');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -129,6 +190,19 @@ const Register: FC<RegisterProps> = ({ onRegister, onSwitchToLogin, onBack }) =>
                 placeholder="seu@email.com"
                 value={formData.email}
                 onChange={e => setFormData({...formData, email: e.target.value})}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Telefone *</label>
+              <input 
+                type="tel" 
+                required 
+                maxLength={15}
+                className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#0f172a]"
+                placeholder="(00) 00000-0000"
+                value={formData.phone}
+                onChange={e => setFormData({...formData, phone: formatPhone(e.target.value)})}
               />
             </div>
 

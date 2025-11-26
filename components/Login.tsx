@@ -1,5 +1,6 @@
 
 import { useState, FC, FormEvent } from 'react';
+import { supabase } from '../services/supabaseClient';
 
 interface LoginProps {
   onLogin: () => void;
@@ -15,33 +16,30 @@ const Login: FC<LoginProps> = ({ onLogin, onSwitchToRegister, onBack }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-    
-    setTimeout(() => {
-        try {
-            // Obter usuários cadastrados
-            const usersStr = localStorage.getItem('smart_egg_users');
-            const users = usersStr ? JSON.parse(usersStr) : [];
-            
-            // Verificar credenciais
-            const user = users.find((u: any) => u.email === formData.email && u.password === formData.password);
-            
-            if (user) {
-                setIsLoading(false);
-                onLogin();
-            } else {
-                setIsLoading(false);
-                setError("Email ou senha incorretos. Verifique suas credenciais ou cadastre-se.");
-            }
-        } catch (err) {
-            console.error(err);
-            setIsLoading(false);
-            setError("Erro ao tentar fazer login.");
-        }
-    }, 1000);
+
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (signInError) {
+        setError('Email ou senha incorretos. Verifique suas credenciais ou tente novamente.');
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(false);
+      onLogin();
+    } catch (err) {
+      console.error(err);
+      setIsLoading(false);
+      setError('Erro ao tentar fazer login. Tente novamente mais tarde.');
+    }
   };
 
   return (

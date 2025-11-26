@@ -58,7 +58,10 @@ const LandingPage: FC<LandingPageProps> = ({ onLogin, onRegister }) => {
               <a href="#testimonials" className="hover:text-amber-600 transition-colors">Depoimentos</a>
             </div>
             <button 
-              onClick={onLogin}
+              onClick={() => {
+                console.log('[LandingPage] Botão Acessar Sistema clicado');
+                onLogin();
+              }}
               className="px-6 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-full hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
             >
               Acessar Sistema

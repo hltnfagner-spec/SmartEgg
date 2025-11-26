@@ -5,7 +5,12 @@ import StatCard from './StatCard';
 import { EggIcon, FlockIcon, ExpenseIcon, SalesIcon, ArrowUpIcon, ArrowDownIcon, InventoryIcon, TrendUpIcon, TrendDownIcon, ChickenIcon } from './icons';
 import NotificationBell from './NotificationBell';
 
-const getLocalYMD = (date: Date) => {
+const getLocalYMD = (date: Date | string) => {
+    // Se for string, assume que já está no formato YYYY-MM-DD ou ISO
+    if (typeof date === 'string') {
+        return date.slice(0, 10);
+    }
+    // Se for Date, converte para o formato local YYYY-MM-DD
     const offset = date.getTimezoneOffset() * 60000;
     return new Date(date.getTime() - offset).toISOString().slice(0, 10);
 };
@@ -18,7 +23,7 @@ const Dashboard: FC = () => {
   const todayProduction = useMemo(() => {
     const todayStr = getLocalYMD(new Date());
     return records
-        .filter(r => getLocalYMD(new Date(r.date)) === todayStr)
+        .filter(r => getLocalYMD(r.date) === todayStr)
         .reduce((sum, r) => sum + r.eggsCollected, 0);
   }, [records]);
   
