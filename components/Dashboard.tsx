@@ -168,7 +168,7 @@ const Dashboard: FC = () => {
         const profitability = totalRevenue - totalCost;
         const costPerEgg = totalProduction > 0 ? totalCost / totalProduction : 0;
 
-        // Cálculo da porcentagem de postura
+// Calcular porcentagem de postura
         const today = new Date();
         const currentHensCount = getHensCountOnDate(flock.id, today);
         const layingRatePercentage = currentHensCount > 0 
@@ -514,6 +514,7 @@ const Dashboard: FC = () => {
                     <tr>
                         <th scope="col" className="px-6 py-3 rounded-l-lg">Lote</th>
                         <th scope="col" className="px-6 py-3 text-right">Produção</th>
+                        <th scope="col" className="px-6 py-3 text-right">% Postura</th>
                         <th scope="col" className="px-6 py-3 text-right">Custo Total</th>
                         <th scope="col" className="px-6 py-3 text-right">Custo/Ovo</th>
                         <th scope="col" className="px-6 py-3 text-right">Receita (Ovos)</th>
@@ -526,6 +527,20 @@ const Dashboard: FC = () => {
                         <tr key={flock.id} className="bg-white border-b border-slate-100 hover:bg-slate-50 transition-colors">
                             <td className="px-6 py-4 font-medium text-slate-900">{flock.name}</td>
                             <td className="px-6 py-4 text-right">{flock.totalProduction.toLocaleString('pt-BR')}</td>
+                            <td className="px-6 py-4 text-right">
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                    parseFloat(flock.layingRatePercentage) >= 85 
+                                        ? 'bg-green-100 text-green-800'
+                                        : parseFloat(flock.layingRatePercentage) >= 70
+                                        ? 'bg-yellow-100 text-yellow-800'
+                                        : 'bg-red-100 text-red-800'
+                                }`}>
+                                    {flock.layingRatePercentage}%
+                                </span>
+                                <div className="text-xs text-slate-400 mt-1">
+                                    {flock.totalProduction}/{flock.currentHensCount} aves
+                                </div>
+                            </td>
                             <td className="px-6 py-4 text-right text-red-600">{flock.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                             <td className="px-6 py-4 text-right text-slate-600">{flock.costPerEgg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 3 })}</td>
                             <td className="px-6 py-4 text-right text-green-600">{flock.totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
