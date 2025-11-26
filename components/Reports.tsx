@@ -35,26 +35,16 @@ const Reports: FC = () => {
                 const flockName = selectedFlockId === 'all' 
                     ? 'Todos os Lotes' 
                     : flocks.find(f => f.id === selectedFlockId)?.name || 'Desconhecido';
-                
-                // AJUSTE CRÍTICO DE DATAS:
-                // Criamos objetos Date baseados nas strings do input (YYYY-MM-DD).
-                // Adicionamos o tempo para garantir que cobrimos o dia inteiro.
-                
-                // Data Inicial: 00:00:00
-                // Usamos replace para garantir compatibilidade de timezone local ao criar o Date
-                const startObj = new Date(`${startDate}T00:00:00`);
-                
-                // Data Final: 23:59:59
-                const endObj = new Date(`${endDate}T23:59:59.999`);
 
                 if (reportType === 'production') {
                     const filteredRecords = records.filter(r => {
-                        const recordDate = new Date(r.date);
-                        const isAfterStart = recordDate.getTime() >= startObj.getTime();
-                        const isBeforeEnd = recordDate.getTime() <= endObj.getTime();
+                        // Comparar diretamente as strings de data YYYY-MM-DD
+                        const recordDate = r.date;
+                        const isAfterStart = recordDate >= startDate;
+                        const isBeforeEnd = recordDate <= endDate;
                         const isCorrectFlock = selectedFlockId === 'all' || r.flockId === selectedFlockId;
                         return isAfterStart && isBeforeEnd && isCorrectFlock;
-                    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                    }).sort((a, b) => a.date.localeCompare(b.date));
 
                     if (filteredRecords.length === 0) {
                         setMessage('Nenhum dado de produção encontrado para o período selecionado.');
@@ -65,20 +55,22 @@ const Reports: FC = () => {
                     setMessage('Relatório de Produção gerado com sucesso!');
                 } else { // Financial Report
                     const filteredExpenses = expenses.filter(e => {
-                        const expenseDate = new Date(e.date);
-                        const isAfterStart = expenseDate.getTime() >= startObj.getTime();
-                        const isBeforeEnd = expenseDate.getTime() <= endObj.getTime();
+                        // Comparar diretamente as strings de data YYYY-MM-DD
+                        const expenseDate = e.date;
+                        const isAfterStart = expenseDate >= startDate;
+                        const isBeforeEnd = expenseDate <= endDate;
                         const isCorrectFlock = selectedFlockId === 'all' || e.flockId === selectedFlockId;
                         return isAfterStart && isBeforeEnd && isCorrectFlock;
-                    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                    }).sort((a, b) => a.date.localeCompare(b.date));
 
                     const filteredSales = sales.filter(s => {
-                        const saleDate = new Date(s.date);
-                        const isAfterStart = saleDate.getTime() >= startObj.getTime();
-                        const isBeforeEnd = saleDate.getTime() <= endObj.getTime();
+                        // Comparar diretamente as strings de data YYYY-MM-DD
+                        const saleDate = s.date;
+                        const isAfterStart = saleDate >= startDate;
+                        const isBeforeEnd = saleDate <= endDate;
                         const isCorrectFlock = selectedFlockId === 'all' || s.flockId === selectedFlockId;
                         return isAfterStart && isBeforeEnd && isCorrectFlock;
-                    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                    }).sort((a, b) => a.date.localeCompare(b.date));
 
                     if (filteredExpenses.length === 0 && filteredSales.length === 0) {
                         setMessage('Nenhuma movimentação financeira encontrada para o período selecionado.');
