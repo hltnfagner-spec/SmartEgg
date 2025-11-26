@@ -364,6 +364,40 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   }, []);
 
+  // Garante que o usuário esteja na tabela user_contacts
+  const ensureUserInContacts = useCallback(async (userId: string) => {
+    try {
+      // Verificar se usuário já existe na tabela
+      const { data: existingContact, error: checkError } = await supabase
+        .from('user_contacts')
+        .select('id')
+        .eq('user_id', userId)
+        .single();
+
+      if (checkError && checkError.code === 'PGRST116') {
+        // Usuário não existe, vamos buscar os dados e inserir
+        const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
+        
+        if (!userError && userData.user) {
+          const metadata = userData.user.user_metadata || {};
+          
+          await supabase
+            .from('user_contacts')
+            .insert({
+              user_id: userId,
+              email: userData.user.email || '',
+              name: metadata.name || '',
+              phone: metadata.phone || '',
+              farm_name: metadata.farmName || '',
+              contact_type: 'user'
+            });
+        }
+      }
+    } catch (error) {
+      console.error('[FarmContext] Erro ao verificar/inserir usuário em user_contacts:', error);
+    }
+  }, []);
+
   // Carrega dados iniciais e reage a mudanças de autenticação do Supabase
   useEffect(() => {
     const init = async () => {
@@ -371,16 +405,23 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       if (!sessionError && sessionData.session) {
         const currentUserId = sessionData.session.user.id;
         setUserId(currentUserId);
+        await ensureUserInContacts(currentUserId);
         await loadDataForUser(currentUserId);
       }
     };
 
     init();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
         const currentUserId = session.user.id;
         setUserId(currentUserId);
+        
+        // Garantir que usuário este salvo em user_contacts
+        if (event === 'SIGNED_IN') {
+          await ensureUserInContacts(currentUserId);
+        }
+        
         await loadDataForUser(currentUserId);
       } else {
         setUserId(null);
@@ -399,7 +440,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [loadDataForUser]);
+  }, [loadDataForUser, ensureUserInContacts]);
 
   useEffect(() => {
     localStorage.setItem('farm_sheds', JSON.stringify(sheds));

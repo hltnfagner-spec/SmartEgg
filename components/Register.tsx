@@ -126,6 +126,25 @@ const handleSubmit = async (e: FormEvent) => {
 
       // Login automático bem sucedido
       setIsLoading(false);
+      
+      // Salvar dados na tabela user_contacts
+      if (data.user) {
+        try {
+          await supabase
+            .from('user_contacts')
+            .insert({
+              user_id: data.user.id,
+              email: formData.email,
+              phone: formData.phone,
+              name: formData.name,
+              farm_name: formData.farmName,
+              contact_type: 'user'
+            });
+        } catch (err) {
+          console.error('Erro ao salvar contato:', err);
+        }
+      }
+      
       onRegister();
     } catch (err) {
       console.error(err);
