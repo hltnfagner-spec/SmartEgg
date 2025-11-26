@@ -21,6 +21,7 @@ interface FarmContextType {
 
   addShed: (shed: Omit<Shed, 'id'>) => void;
   updateShed: (shedId: string, data: Omit<Shed, 'id'>) => void;
+  deleteShed: (shedId: string) => void;
   addFlock: (flock: Omit<Flock, 'id' | 'status'>) => void;
   updateFlock: (flockId: string, data: Omit<Flock, 'id' | 'status'>) => void;
   disposeFlock: (flockId: string) => void;
@@ -666,6 +667,29 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         ));
       } catch (err) {
         console.error('[FarmContext] Erro inesperado ao atualizar shed:', err);
+      }
+    })();
+  };
+
+  const deleteShed = (shedId: string) => {
+    if (!userId) return;
+
+    (async () => {
+      try {
+        const { error } = await supabase
+          .from('sheds')
+          .delete()
+          .eq('id', shedId)
+          .eq('user_id', userId);
+
+        if (error) {
+          console.error('[FarmContext] Erro ao excluir shed no Supabase:', error);
+          return;
+        }
+
+        setSheds(prev => prev.filter(shed => shed.id !== shedId));
+      } catch (err) {
+        console.error('[FarmContext] Erro inesperado ao excluir shed:', err);
       }
     })();
   };
@@ -1761,7 +1785,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     <FarmContext.Provider value={{ 
         sheds, flocks, records, expenses, sales, tasks, clients, inventory, feedFormulations,
         currentView, viewParams, navigate,
-        addShed, updateShed, addFlock, updateFlock, disposeFlock, 
+        addShed, updateShed, deleteShed, addFlock, updateFlock, disposeFlock, 
         addRecord, updateRecord, deleteRecord, 
         addExpense, updateExpense, addSale, updateSale, 
         addTask, toggleTaskCompletion, deleteTask, 

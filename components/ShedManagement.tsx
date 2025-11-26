@@ -2,7 +2,7 @@
 import { useState, useMemo, FC, ChangeEvent, FormEvent, FocusEvent } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { Shed } from '../types';
-import { EditIcon, ShedIcon } from './icons';
+import { EditIcon, ShedIcon, TrashIcon } from './icons';
 
 interface ShedFormProps {
     onClose: () => void;
@@ -87,7 +87,7 @@ const ShedForm: FC<ShedFormProps> = ({ onClose, shedToEdit }) => {
 };
 
 const ShedManagement: FC = () => {
-    const { sheds, flocks } = useFarm();
+    const { sheds, flocks, deleteShed } = useFarm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [shedToEdit, setShedToEdit] = useState<Shed | null>(null);
 
@@ -99,6 +99,17 @@ const ShedManagement: FC = () => {
     const handleOpenEditModal = (shed: Shed) => {
         setShedToEdit(shed);
         setIsModalOpen(true);
+    };
+
+    const handleDeleteShed = (shed: Shed) => {
+        if (shed.isOccupied) {
+            alert('Não é possível excluir um galpão ocupado. Primeiro remova ou descarte o lote associado.');
+            return;
+        }
+
+        if (confirm(`Tem certeza que deseja excluir o galpão "${shed.name}"? Esta ação não pode ser desfeita.`)) {
+            deleteShed(shed.id);
+        }
     };
 
     const handleCloseModal = () => {
@@ -138,9 +149,28 @@ const ShedManagement: FC = () => {
                                     <p className="text-sm text-stone-500">Capacidade: {shed.capacity} aves</p>
                                 </div>
                             </div>
-                            <button onClick={() => handleOpenEditModal(shed)} className="p-1 text-stone-500 hover:text-amber-600 transition-colors" aria-label="Editar Galpão">
-                                <EditIcon />
-                            </button>
+                            <div className="flex space-x-1">
+                                <button 
+                                    onClick={() => handleOpenEditModal(shed)} 
+                                    className="p-1 text-stone-500 hover:text-amber-600 transition-colors" 
+                                    aria-label="Editar Galpão"
+                                >
+                                    <EditIcon />
+                                </button>
+                                <button 
+                                    onClick={() => handleDeleteShed(shed)} 
+                                    className={`p-1 transition-colors ${
+                                        shed.isOccupied 
+                                            ? 'text-stone-300 cursor-not-allowed' 
+                                            : 'text-stone-500 hover:text-red-600'
+                                    }`} 
+                                    aria-label="Excluir Galpão"
+                                    disabled={shed.isOccupied}
+                                    title={shed.isOccupied ? 'Galpão ocupado - não pode ser excluído' : 'Excluir Galpão'}
+                                >
+                                    <TrashIcon />
+                                </button>
+                            </div>
                         </div>
                         
                         <div className="flex-grow space-y-2 text-sm">
