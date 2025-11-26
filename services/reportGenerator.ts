@@ -85,6 +85,7 @@ const addFooter = (doc: any) => {
 export const generateProductionReport = (
     records: DailyRecord[], 
     flocks: Flock[],
+    expenses: Expense[],
     flockName: string,
     startDate: string,
     endDate: string
@@ -101,6 +102,13 @@ export const generateProductionReport = (
     const totalGood = totalEggs - totalBroken;
     const totalMortality = records.reduce((sum, r) => sum + r.mortality, 0);
     const totalFeed = records.reduce((sum, r) => sum + r.feedConsumedKg, 0);
+    
+    // Cálculo das despesas totais do período
+    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    
+    // Cálculos de custo por ovo
+    const costPerEggExpenses = totalEggs > 0 ? totalExpenses / totalEggs : 0;
+    const costPerEggFeed = totalEggs > 0 ? (totalFeed * 5) / totalEggs : 0; // Assuming R$5/kg feed price
     
     // Conversão Alimentar (gramas de ração por ovo produzido)
     // Formula: (Total Ração kg * 1000) / Total Ovos
@@ -165,36 +173,98 @@ export const generateProductionReport = (
     drawCenteredMetric('Média Diária', Math.round(avgEggsPerDay).toLocaleString('pt-BR'), col2X, row1Y);
     drawCenteredMetric('Perda (Quebrados)', `${totalBroken} (${lossPercentage.toFixed(1)}%)`, col3X, row1Y, COLORS.danger);
 
-    // Linha 2
-    drawCenteredMetric('Consumo Ração', `${totalFeed.toFixed(1)} kg`, col1X, row2Y);
-    drawCenteredMetric('Conversão Alimentar', `${feedConversion.toFixed(1)} g/ovo`, col2X, row2Y, [37, 99, 235]); // Blue
-    drawCenteredMetric('Mortalidade', `${totalMortality} aves`, col3X, row2Y, COLORS.textDark);
+    // Linha 2 - CUSTOS DO OVO
+    drawCenteredMetric('Custo/Ovo (Despesas)', formatCurrency(costPerEggExpenses), col1X, row2Y, COLORS.danger);
+    drawCenteredMetric('Custo/Ovo (Ração)', formatCurrency(costPerEggFeed), col2X, row2Y, [251, 191, 36]); // Amber
+    drawCenteredMetric('Conversão Alimentar', `${feedConversion.toFixed(1)} g/ovo`, col3X, row2Y, [37, 99, 235]); // Blue
 
     yPos += boxHeight + 10;
 
-    // Tabela de Dados
-    const tableData = records.map(r => {
-        const dailyConversion = r.eggsCollected > 0 ? (r.feedConsumedKg * 1000) / r.eggsCollected : 0;
-        const dailyLoss = r.eggsCollected > 0 ? (r.brokenEggs || 0) / r.eggsCollected * 100 : 0;
-        const flock = flocks.find(f => f.id === r.flockId);
+    // Agrupa registros por data e mostra cada lote em linha separada com cores
+    const recordsByDate = records.reduce((acc: any, record) => {
+        const date = record.date.split('T')[0]; // Pega apenas a data YYYY-MM-DD
         
-        return [
-            formatDate(r.date),
-            flock ? flock.name : 'N/A',
-            r.eggsCollected.toLocaleString('pt-BR'),
-            r.brokenEggs || 0,
-            `${dailyLoss.toFixed(1)}%`,
-            r.feedConsumedKg.toFixed(2),
-            dailyConversion.toFixed(1),
-            r.mortality
-        ];
+        if (!acc[date]) {
+            acc[date] = [];
+        }
+        acc[date].push(record);
+        return acc;
+    }, {});
+
+    // Converte para array e ordena por data
+    const sortedDates = Object.keys(recordsByDate).sort();
+
+    // Cores para diferenciar lotes (com melhor contraste)
+    const flockColors: { [key: string]: number[] } = {};
+    const availableColors = [
+        [59, 130, 246],   // Blue
+        [34, 197, 94],    // Green
+        [251, 146, 60],   // Orange
+        [168, 85, 247],   // Purple
+        [236, 72, 153],   // Pink
+        [20, 184, 166],   // Teal
+        [251, 191, 36],   // Amber
+        [239, 68, 68]     // Red
+    ];
+    
+    // Atribui cores aos lotes
+    const uniqueFlocks = [...new Set(records.map(r => r.flockId))];
+    uniqueFlocks.forEach((flockId, index) => {
+        flockColors[flockId] = availableColors[index % availableColors.length];
     });
 
+    // Tabela de Dados com cada lote em linha separada
+    const tableData = [];
+    
+    sortedDates.forEach(date => {
+        const dayRecords = recordsByDate[date];
+        
+        // Agrupa por lote dentro da data
+        const recordsByFlock = dayRecords.reduce((flockAcc: any, record: any) => {
+            if (!flockAcc[record.flockId]) {
+                flockAcc[record.flockId] = {
+                    flockId: record.flockId,
+                    totalEggs: 0,
+                    totalBroken: 0,
+                    totalMortality: 0,
+                    totalFeed: 0
+                };
+            }
+            flockAcc[record.flockId].totalEggs += record.eggsCollected;
+            flockAcc[record.flockId].totalBroken += (record.brokenEggs || 0);
+            flockAcc[record.flockId].totalMortality += record.mortality;
+            flockAcc[record.flockId].totalFeed += record.feedConsumedKg;
+            return flockAcc;
+        }, {});
+        
+        // Adiciona cada lote da data como linha separada
+        Object.values(recordsByFlock).forEach((flockData: any) => {
+            const flock = flocks.find(f => f.id === flockData.flockId);
+            const flockName = flock ? flock.name : 'Desconhecido';
+            const flockColor = flockColors[flockData.flockId];
+            
+            const dailyConversion = flockData.totalEggs > 0 ? (flockData.totalFeed * 1000) / flockData.totalEggs : 0;
+            const dailyLoss = flockData.totalEggs > 0 ? (flockData.totalBroken / flockData.totalEggs) * 100 : 0;
+            
+            tableData.push([
+                formatDate(date),
+                flockName,
+                flockData.totalEggs.toLocaleString('pt-BR'),
+                flockData.totalBroken,
+                `${dailyLoss.toFixed(1)}%`,
+                flockData.totalFeed.toFixed(2),
+                dailyConversion.toFixed(1),
+                flockData.totalMortality,
+                flockColor // Cor do lote para estilização
+            ]);
+        });
+    });
+    
     doc.autoTable({
         startY: yPos,
         // Cabeçalhos Completos e Descritivos
         head: [['Data', 'Lote', 'Ovos Coletados', 'Ovos Quebrados', '% Perda', 'Ração (kg)', 'Conversão', 'Mortalidade']],
-        body: tableData,
+        body: tableData.map(row => row.slice(0, 8)), // Remove a cor do body
         theme: 'grid', 
         headStyles: { 
             fillColor: COLORS.primary, 
@@ -205,7 +275,6 @@ export const generateProductionReport = (
             fontSize: 8 // Fonte ajustada para caber os títulos maiores
         },
         columnStyles: {
-            // Centralizando TODAS as colunas conforme solicitado
             0: { halign: 'center' }, // Data
             1: { halign: 'center' }, // Lote
             2: { halign: 'center' }, // Ovos
@@ -220,6 +289,32 @@ export const generateProductionReport = (
             fontSize: 8, 
             cellPadding: 3,
             valign: 'middle'
+        },
+        // Aplica cores diferenciadas por lote
+        didParseCell: (data: any) => {
+            const rowIndex = data.row.index;
+            const flockColor = tableData[rowIndex][8]; // Cor está na 9ª posição
+            
+            if (flockColor && data.section === 'body') {
+                // Aplica cor de fundo MUITO suave na célula do lote
+                if (data.column.index === 1) { // Coluna do lote
+                    data.cell.styles.fillColor = [245, 245, 245]; // Fundo cinza muito claro
+                    data.cell.styles.fontStyle = 'bold';
+                    data.cell.styles.textColor = COLORS.textDark; // Texto escuro para melhor legibilidade
+                }
+            }
+        },
+        didDrawCell: (data: any) => {
+            const rowIndex = data.row.index;
+            const flockColor = tableData[rowIndex][8];
+            
+            if (flockColor && data.section === 'body' && data.column.index === 1) {
+                // Desenha uma barra lateral colorida para identificar o lote
+                const doc = data.doc;
+                const cell = data.cell;
+                doc.setFillColor(...flockColor);
+                doc.rect(cell.x, cell.y, 3, cell.height, 'F'); // Barra um pouco mais larga
+            }
         },
     });
 

@@ -27,6 +27,7 @@ export interface DailyRecord {
   waterConsumedLiters: number;
   mortality: number;
   notes?: string;
+  createdAt?: string; // Timestamp de criação para ordenação
 }
 
 export type ExpenseCategory = 'Ração' | 'Medicamentos' | 'Mão de Obra' | 'Manutenção' | 'Outros';

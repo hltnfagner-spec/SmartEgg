@@ -29,63 +29,61 @@ const Reports: FC = () => {
         setIsLoading(true);
         setMessage('');
 
-        // Timeout para permitir que a UI atualize o estado de "Loading" antes de travar no processo síncrono do PDF
-        setTimeout(() => {
-            try {
-                const flockName = selectedFlockId === 'all' 
-                    ? 'Todos os Lotes' 
-                    : flocks.find(f => f.id === selectedFlockId)?.name || 'Desconhecido';
+        try {
+            if (reportType === 'production') {
+                // Filtra registros por data e lote
+                const filteredRecords = records.filter(r => {
+                    // Comparar diretamente as strings de data YYYY-MM-DD
+                    const recordDate = r.date;
+                    const isAfterStart = recordDate >= startDate;
+                    const isBeforeEnd = recordDate <= endDate;
+                    const isCorrectFlock = selectedFlockId === 'all' || r.flockId === selectedFlockId;
+                    return isAfterStart && isBeforeEnd && isCorrectFlock;
+                }).sort((a, b) => a.date.localeCompare(b.date));
 
-                if (reportType === 'production') {
-                    const filteredRecords = records.filter(r => {
-                        // Comparar diretamente as strings de data YYYY-MM-DD
-                        const recordDate = r.date;
-                        const isAfterStart = recordDate >= startDate;
-                        const isBeforeEnd = recordDate <= endDate;
-                        const isCorrectFlock = selectedFlockId === 'all' || r.flockId === selectedFlockId;
-                        return isAfterStart && isBeforeEnd && isCorrectFlock;
-                    }).sort((a, b) => a.date.localeCompare(b.date));
-
-                    if (filteredRecords.length === 0) {
-                        setMessage('Nenhum dado de produção encontrado para o período selecionado.');
-                        setIsLoading(false);
-                        return;
-                    }
-                    generateProductionReport(filteredRecords, flocks, flockName, startDate, endDate);
-                    setMessage('Relatório de Produção gerado com sucesso!');
-                } else { // Financial Report
-                    const filteredExpenses = expenses.filter(e => {
-                        // Comparar diretamente as strings de data YYYY-MM-DD
-                        const expenseDate = e.date;
-                        const isAfterStart = expenseDate >= startDate;
-                        const isBeforeEnd = expenseDate <= endDate;
-                        const isCorrectFlock = selectedFlockId === 'all' || e.flockId === selectedFlockId;
-                        return isAfterStart && isBeforeEnd && isCorrectFlock;
-                    }).sort((a, b) => a.date.localeCompare(b.date));
-
-                    const filteredSales = sales.filter(s => {
-                        // Comparar diretamente as strings de data YYYY-MM-DD
-                        const saleDate = s.date;
-                        const isAfterStart = saleDate >= startDate;
-                        const isBeforeEnd = saleDate <= endDate;
-                        const isCorrectFlock = selectedFlockId === 'all' || s.flockId === selectedFlockId;
-                        return isAfterStart && isBeforeEnd && isCorrectFlock;
-                    }).sort((a, b) => a.date.localeCompare(b.date));
-
-                    if (filteredExpenses.length === 0 && filteredSales.length === 0) {
-                        setMessage('Nenhuma movimentação financeira encontrada para o período selecionado.');
-                        setIsLoading(false);
-                        return;
-                    }
-                    generateFinancialReport(filteredExpenses, filteredSales, flocks, flockName, startDate, endDate);
-                    setMessage('Relatório Financeiro gerado com sucesso!');
+                if (filteredRecords.length === 0) {
+                    setMessage('Nenhum dado de produção encontrado para o período selecionado.');
+                    setIsLoading(false);
+                    return;
                 }
-            } catch (error) {
-                console.error("Failed to generate report:", error);
-                setMessage("Ocorreu um erro técnico ao gerar o PDF. Verifique o console.");
+
+                generateProductionReport(filteredRecords, flocks, expenses, selectedFlockId === 'all' ? 'Todos os Lotes' : flocks.find(f => f.id === selectedFlockId)?.name || 'Desconhecido', startDate, endDate);
+                setMessage('Relatório de Produção gerado com sucesso!');
+            } else { // Financial Report
+                const filteredExpenses = expenses.filter(e => {
+                    // Comparar diretamente as strings de data YYYY-MM-DD
+                    const expenseDate = e.date;
+                    const isAfterStart = expenseDate >= startDate;
+                    const isBeforeEnd = expenseDate <= endDate;
+                    const isCorrectFlock = selectedFlockId === 'all' || e.flockId === selectedFlockId;
+                    return isAfterStart && isBeforeEnd && isCorrectFlock;
+                }).sort((a, b) => a.date.localeCompare(b.date));
+
+                const filteredSales = sales.filter(s => {
+                    // Comparar diretamente as strings de data YYYY-MM-DD
+                    const saleDate = s.date;
+                    const isAfterStart = saleDate >= startDate;
+                    const isBeforeEnd = saleDate <= endDate;
+                    const isCorrectFlock = selectedFlockId === 'all' || s.flockId === selectedFlockId;
+                    return isAfterStart && isBeforeEnd && isCorrectFlock;
+                }).sort((a, b) => a.date.localeCompare(b.date));
+
+                if (filteredExpenses.length === 0 && filteredSales.length === 0) {
+                    setMessage('Nenhum dado financeiro encontrado para o período selecionado.');
+                    setIsLoading(false);
+                    return;
+                }
+
+                generateFinancialReport(filteredExpenses, filteredSales, flocks, selectedFlockId === 'all' ? 'Todos os Lotes' : flocks.find(f => f.id === selectedFlockId)?.name || 'Desconhecido', startDate, endDate);
+                setMessage('Relatório Financeiro gerado com sucesso!');
             }
+        } catch (error) {
+            console.error(' Erro ao gerar relatório:', error);
+            console.error(' Stack trace:', error.stack);
+            setMessage(`Ocorreu um erro técnico ao gerar o PDF: ${error.message}`);
+        } finally {
             setIsLoading(false);
-        }, 100);
+        }
     };
 
     return (

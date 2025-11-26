@@ -210,6 +210,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           waterConsumedLiters: parseFloat(r.water_consumed_liters),
           mortality: r.mortality,
           notes: r.notes ?? undefined,
+          createdAt: r.created_at ?? undefined, // Timestamp de criação do Supabase
         }));
         setRecords(mappedRecords);
       } else if (recordsError) {
@@ -508,6 +509,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Helper function to manage egg stock automatically (Used for Sales)
   const adjustEggStock = (amount: number) => {
        if (!userId) return;
+       
+       console.log('🔍 adjustEggStock chamado:', { amount, userId });
 
        (async () => {
          try {
@@ -525,13 +528,20 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
            }
 
            const eggItem = eggItems && eggItems.length > 0 ? eggItems[0] : null;
+           console.log('🥚 Item de ovos encontrado:', eggItem);
            
            if (eggItem) {
              // Atualizar item existente
-             const newQuantity = Math.max(0, parseFloat(eggItem.quantity) + amount);
+             const currentQty = parseFloat(eggItem.quantity);
+             const newQuantity = Math.max(0, currentQty + amount);
+             console.log('📊 Atualizando estoque:', { currentQty, amount, newQuantity });
+             
              const { error: updateError } = await supabase
                .from('inventory')
-               .update({ quantity: newQuantity })
+               .update({ 
+                 quantity: newQuantity,
+                 last_updated: new Date().toISOString()
+               })
                .eq('id', eggItem.id);
 
              if (updateError) {
@@ -539,13 +549,20 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
                return;
              }
 
+             console.log('✅ Estoque atualizado no Supabase');
+
              // Atualizar estado local
-             setInventory(prev => prev.map(i => 
-               i.id === eggItem.id 
-               ? { ...i, quantity: newQuantity, lastUpdated: new Date().toISOString() } 
-               : i
-             ));
+             setInventory(prev => {
+               const updated = prev.map(i => 
+                 i.id === eggItem.id 
+                 ? { ...i, quantity: newQuantity, lastUpdated: new Date().toISOString() } 
+                 : i
+               );
+               console.log('✅ Estado local atualizado');
+               return updated;
+             });
            } else if (amount > 0) {
+             console.log('⚠️ Item de ovos não existe, criando novo');
              // Criar novo item de ovos se não existe
              const { data: newItem, error: insertError } = await supabase
                .from('inventory')
@@ -579,6 +596,9 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
              };
 
              setInventory(prev => [...prev, mappedItem]);
+             console.log('✅ Novo item de ovos criado');
+           } else {
+             console.log('⚠️ Item de ovos não existe e amount <= 0, nada a fazer');
            }
          } catch (err) {
            console.error('[FarmContext] Erro inesperado ao ajustar estoque de ovos:', err);
@@ -789,6 +809,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           waterConsumedLiters: parseFloat(data.water_consumed_liters),
           mortality: data.mortality,
           notes: data.notes ?? undefined,
+          createdAt: data.created_at ?? undefined,
         };
 
         setRecords(prev => [...prev, newRecord].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
@@ -989,37 +1010,91 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
     (async () => {
       try {
-        // Primeiro, restaurar estoque antes de deletar (mantido do código original)
+        // Primeiro, buscar o registro que será deletado
         const recordToDelete = records.find(r => r.id === recordId);
         
         if (recordToDelete) {
+          // Buscar itens de estoque no Supabase
+          const { data: inventoryData, error: inventoryError } = await supabase
+            .from('inventory')
+            .select('*')
+            .eq('user_id', userId);
+
+          if (inventoryError) {
+            console.error('[FarmContext] Erro ao buscar estoque:', inventoryError);
+            return;
+          }
+
+          const feedItem = inventoryData?.find((i: any) => i.category === 'Ração');
+          const eggItem = inventoryData?.find((i: any) => 
+            i.category === 'Produto Final' && i.name.toLowerCase().includes('ovos')
+          );
+          
+          const feedPrice = feedItem ? parseFloat(feedItem.cost_per_unit) : 0;
+          const recordValue = recordToDelete.feedConsumedKg * feedPrice;
+          const netEggs = recordToDelete.eggsCollected - (recordToDelete.brokenEggs || 0);
+
+          // 1. Restaurar Ração no Supabase
+          if (feedItem && recordToDelete.feedConsumedKg > 0) {
+            const newFeedQty = parseFloat(feedItem.quantity) + recordToDelete.feedConsumedKg;
+            
+            await supabase
+              .from('inventory')
+              .update({ 
+                quantity: newFeedQty,
+                last_updated: new Date().toISOString()
+              })
+              .eq('id', feedItem.id);
+          }
+
+          // 2. Remover Ovos do Estoque no Supabase
+          if (eggItem && netEggs > 0) {
+            const currentQty = parseFloat(eggItem.quantity);
+            const currentCost = parseFloat(eggItem.cost_per_unit);
+            const currentTotalValue = currentQty * currentCost;
+            
+            const newTotalValue = Math.max(0, currentTotalValue - recordValue);
+            const newTotalQty = Math.max(0, currentQty - netEggs);
+            const newCostPerUnit = newTotalQty > 0 ? newTotalValue / newTotalQty : currentCost;
+
+            await supabase
+              .from('inventory')
+              .update({ 
+                quantity: newTotalQty,
+                cost_per_unit: parseFloat(newCostPerUnit.toFixed(4)),
+                last_updated: new Date().toISOString()
+              })
+              .eq('id', eggItem.id);
+          }
+
+          // 3. Atualizar estado local
           setInventory(invPrev => {
             let newInventory = [...invPrev];
-            const feedItem = newInventory.find(i => i.category === 'Ração');
-            const feedPrice = feedItem ? feedItem.costPerUnit : 0;
             
-            const recordValue = recordToDelete.feedConsumedKg * feedPrice;
-
-            // 1. Restaurar Ração
+            // Restaurar ração
             if (feedItem && recordToDelete.feedConsumedKg > 0) {
               newInventory = newInventory.map(item => 
                 item.id === feedItem.id 
-                ? { ...item, quantity: item.quantity + recordToDelete.feedConsumedKg, lastUpdated: new Date().toISOString() }
+                ? { 
+                    ...item, 
+                    quantity: item.quantity + recordToDelete.feedConsumedKg, 
+                    lastUpdated: new Date().toISOString() 
+                  }
                 : item
               );
             }
 
-            // 2. Remover Ovos e Ajustar Custo
-            const netEggs = recordToDelete.eggsCollected - (recordToDelete.brokenEggs || 0);
+            // Remover ovos
             if (netEggs > 0) {
-              const eggItemIndex = newInventory.findIndex(i => i.category === 'Produto Final' && i.name.toLowerCase().includes('ovos'));
+              const eggItemIndex = newInventory.findIndex(i => 
+                i.category === 'Produto Final' && i.name.toLowerCase().includes('ovos')
+              );
+              
               if (eggItemIndex >= 0) {
                 const currentItem = newInventory[eggItemIndex];
                 const currentTotalValue = currentItem.quantity * currentItem.costPerUnit;
-                
                 const newTotalValue = Math.max(0, currentTotalValue - recordValue);
                 const newTotalQty = Math.max(0, currentItem.quantity - netEggs);
-                
                 const newCostPerUnit = newTotalQty > 0 ? newTotalValue / newTotalQty : currentItem.costPerUnit;
 
                 newInventory[eggItemIndex] = {
@@ -1030,11 +1105,12 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
                 };
               }
             }
+            
             return newInventory;
           });
         }
 
-        // Deletar do Supabase
+        // 4. Deletar registro do Supabase
         const { error } = await supabase
           .from('daily_records')
           .delete()
@@ -1046,8 +1122,10 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           return;
         }
 
-        // Remover do estado local
+        // 5. Remover do estado local
         setRecords(prev => prev.filter(rec => rec.id !== recordId));
+        
+        console.log('✅ Registro deletado e estoque ajustado com sucesso');
       } catch (err) {
         console.error('[FarmContext] Erro inesperado ao deletar registro diário:', err);
       }

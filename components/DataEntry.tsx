@@ -1,14 +1,14 @@
 
-import { useState, useEffect, FC, ChangeEvent, FormEvent, FocusEvent, MouseEvent } from 'react';
+import { useState, useEffect, FC, ChangeEvent, FormEvent, FocusEvent, MouseEvent, useMemo } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { DailyRecord } from '../types';
 import { EditIcon, TrashIcon } from './icons';
 import { ConfirmationModal } from './ConfirmationModal';
 
-// Helper para formatar data para o input datetime-local (YYYY-MM-DDThh:mm)
-const toLocalISOString = (date: Date) => {
-    const offset = date.getTimezoneOffset() * 60000; // offset em milissegundos
-    return (new Date(date.getTime() - offset)).toISOString().slice(0, 16);
+// Helper para formatar data para o input date (YYYY-MM-DD)
+const toLocalDateString = (date: Date) => {
+    const offset = date.getTimezoneOffset() * 60000;
+    return (new Date(date.getTime() - offset)).toISOString().split('T')[0];
 };
 
 const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}> = ({ onClose, recordToEdit }) => {
@@ -16,9 +16,9 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
     const activeFlocks = flocks.filter(f => f.status === 'Ativo');
     
     const [formData, setFormData] = useState<any>({
-        date: toLocalISOString(new Date()),
+        date: toLocalDateString(new Date()),
         flockId: activeFlocks.length > 0 ? activeFlocks[0].id : '',
-        eggsCollected: 0,
+        eggsCollected: '',
         brokenEggs: 0,
         feedConsumedKg: 0,
         waterConsumedLiters: 0,
@@ -31,7 +31,7 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
         if (recordToEdit) {
             setFormData({
                 ...recordToEdit,
-                date: toLocalISOString(new Date(recordToEdit.date)),
+                date: toLocalDateString(new Date(recordToEdit.date)),
                 brokenEggs: recordToEdit.brokenEggs ?? 0,
             });
         }
@@ -64,11 +64,19 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
             return;
         }
         
+        // Validação: não aceitar 0 ovos coletados
+        if (!formData.eggsCollected || Number(formData.eggsCollected) <= 0) {
+            setMessage({type: 'error', text: 'O total de ovos coletados deve ser maior que zero.'});
+            return;
+        }
+        
+        // Salva a data como string ISO (YYYY-MM-DD) + hora zerada UTC
+        // new Date('2025-11-26') cria 2025-11-26T00:00:00.000Z
         const recordDate = new Date(formData.date);
         
         const payload = {
             ...formData,
-            eggsCollected: Number(formData.eggsCollected) || 0,
+            eggsCollected: Number(formData.eggsCollected),
             brokenEggs: Number(formData.brokenEggs) || 0,
             feedConsumedKg: Number(formData.feedConsumedKg) || 0,
             waterConsumedLiters: Number(formData.waterConsumedLiters) || 0,
@@ -96,9 +104,9 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
             {/* Cabeçalho do Registro */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-stone-50 p-4 rounded-lg border border-stone-200">
                 <div>
-                    <label htmlFor="date" className="block text-sm font-medium text-stone-700">Data e Hora da Coleta</label>
+                    <label htmlFor="date" className="block text-sm font-medium text-stone-700">Data da Coleta</label>
                     <input 
-                        type="datetime-local" 
+                        type="date" 
                         id="date" 
                         name="date" 
                         value={formData.date} 
@@ -121,7 +129,7 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label htmlFor="eggsCollected" className="block text-sm font-medium text-stone-600">Total Ovos Coletados</label>
-                        <input type="number" id="eggsCollected" name="eggsCollected" min="0" value={formData.eggsCollected} onChange={handleChange} onFocus={handleFocus} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" />
+                        <input type="number" id="eggsCollected" name="eggsCollected" min="1" value={formData.eggsCollected} onChange={handleChange} onFocus={handleFocus} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" />
                     </div>
                     <div>
                         <label htmlFor="brokenEggs" className="block text-sm font-medium text-red-600">Ovos Quebrados/Trincados</label>
@@ -172,7 +180,28 @@ const DataEntry: FC = () => {
     const [recordToEdit, setRecordToEdit] = useState<DailyRecord | null>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
-    const sortedRecords = [...records].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Ordena registros com mais recentes no topo (usa useMemo para recalcular quando records mudar)
+    const sortedRecords = useMemo(() => {
+        return [...records].sort((a, b) => {
+            const dateA = new Date(a.date).getTime();
+            const dateB = new Date(b.date).getTime();
+            
+            // Primeiro ordena por data (mais recente primeiro)
+            if (dateB !== dateA) {
+                return dateB - dateA;
+            }
+            
+            // Se as datas são iguais, ordena por timestamp de criação (mais recente primeiro)
+            if (a.createdAt && b.createdAt) {
+                const createdA = new Date(a.createdAt).getTime();
+                const createdB = new Date(b.createdAt).getTime();
+                return createdB - createdA;
+            }
+            
+            // Fallback: mantém ordem original
+            return 0;
+        });
+    }, [records]);
 
     const handleOpenEditModal = (record: DailyRecord) => {
         setRecordToEdit(record);
@@ -217,7 +246,7 @@ const DataEntry: FC = () => {
                     <table className="w-full text-sm text-left text-stone-500 min-w-[800px] border-collapse">
                         <thead className="text-xs text-stone-700 uppercase bg-stone-50">
                             <tr>
-                                <th scope="col" className="px-6 py-3">Data e Hora</th>
+                                <th scope="col" className="px-6 py-3">Data</th>
                                 <th scope="col" className="px-6 py-3">Lote</th>
                                 <th scope="col" className="px-6 py-3 text-right">Ovos Totais</th>
                                 <th scope="col" className="px-6 py-3 text-right text-red-600">Quebrados</th>
@@ -229,8 +258,7 @@ const DataEntry: FC = () => {
                             {sortedRecords.length > 0 ? sortedRecords.map(record => (
                                 <tr key={record.id} className="bg-white border-b hover:bg-stone-50 transition-colors group">
                                     <td className="px-6 py-4">
-                                        <div className="font-medium">{new Date(record.date).toLocaleDateString('pt-BR')}</div>
-                                        <div className="text-xs text-stone-400">{new Date(record.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</div>
+                                        <div className="font-medium">{new Date(record.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</div>
                                     </td>
                                     <td className="px-6 py-4 font-medium text-stone-900">{getFlockById(record.flockId)?.name || 'N/A'}</td>
                                     <td className="px-6 py-4 text-right">{record.eggsCollected}</td>
