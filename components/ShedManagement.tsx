@@ -9,11 +9,16 @@ interface ShedFormProps {
     shedToEdit?: Shed | null;
 }
 
+interface ShedFormData {
+    name: string;
+    capacity: string | number;
+    notes: string;
+}
+
 const ShedForm: FC<ShedFormProps> = ({ onClose, shedToEdit }) => {
     const { addShed, updateShed } = useFarm();
     
-    // Usando 'any' para permitir string vazia
-    const [formData, setFormData] = useState<any>({
+    const [formData, setFormData] = useState<ShedFormData>({
         name: shedToEdit?.name || '',
         capacity: shedToEdit?.capacity || 0,
         notes: shedToEdit?.notes || '',
@@ -27,7 +32,7 @@ const ShedForm: FC<ShedFormProps> = ({ onClose, shedToEdit }) => {
             val = value === '' ? '' : parseInt(value, 10);
         }
 
-        setFormData(prev => ({
+        setFormData((prev: ShedFormData) => ({
             ...prev,
             [name]: val
         }));
@@ -36,7 +41,7 @@ const ShedForm: FC<ShedFormProps> = ({ onClose, shedToEdit }) => {
     const handleFocus = (e: FocusEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         if (Number(value) === 0) {
-            setFormData(prev => ({ ...prev, [name]: '' }));
+            setFormData((prev: ShedFormData) => ({ ...prev, [name]: '' }));
         }
     };
 
