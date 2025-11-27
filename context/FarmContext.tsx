@@ -371,20 +371,50 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const ensureUserInContacts = useCallback(async (user: any) => {
     try {
       console.log('[FarmContext] Verificando se usuário já existe em user_contacts:', user.email);
-      // Verificar se usuário já existe na tabela
-      const { data: existingContact, error: checkError } = await supabase
-        .from('user_contacts')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle(); // Usar maybeSingle em vez de single para evitar erro 406
-
-      if (checkError) {
-        console.error('[FarmContext] Erro ao verificar usuário existente:', checkError);
-        return;
+      
+      // Tentar diferentes abordagens para verificar se usuário existe
+      let existingContact = null;
+      
+      // Abordagem 1: maybeSingle
+      try {
+        const { data: contact1, error: error1 } = await supabase
+          .from('user_contacts')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (!error1) {
+          existingContact = contact1;
+          console.log('[FarmContext] Abordagem 1 (maybeSingle):', existingContact ? 'encontrado' : 'não encontrado');
+        } else {
+          console.log('[FarmContext] Abordagem 1 falhou:', error1.message);
+        }
+      } catch (e) {
+        console.log('[FarmContext] Erro na abordagem 1:', e);
+      }
+      
+      // Abordagem 2: limit(1) se maybeSingle falhar
+      if (!existingContact) {
+        try {
+          const { data: contact2, error: error2 } = await supabase
+            .from('user_contacts')
+            .select('id')
+            .eq('user_id', user.id)
+            .limit(1);
+          
+          if (!error2 && contact2 && contact2.length > 0) {
+            existingContact = contact2[0];
+            console.log('[FarmContext] Abordagem 2 (limit): encontrado');
+          } else {
+            console.log('[FarmContext] Abordagem 2:', error2?.message || 'não encontrado');
+          }
+        } catch (e) {
+          console.log('[FarmContext] Erro na abordagem 2:', e);
+        }
       }
 
       if (!existingContact) {
-        console.log('[FarmContext] Usuário não encontrado, inserindo em user_contacts...');
+        console.log('[FarmContext] Usuário não encontrado em nenhuma abordagem, inserindo em user_contacts...');
         // Usuário não existe, vamos inserir usando os dados do session
         const metadata = user.user_metadata || {};
         
