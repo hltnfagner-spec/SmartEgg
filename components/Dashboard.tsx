@@ -518,7 +518,6 @@ const Dashboard: FC = () => {
                         <th scope="col" className="px-6 py-3 text-right">Custo Total</th>
                         <th scope="col" className="px-6 py-3 text-right">Custo/Ovo</th>
                         <th scope="col" className="px-6 py-3 text-right">Receita (Ovos)</th>
-                        <th scope="col" className="px-6 py-3 text-right">% Postura</th>
                         <th scope="col" className="px-6 py-3 text-right rounded-r-lg">Lucro/Prejuízo</th>
                     </tr>
                 </thead>
@@ -544,27 +543,13 @@ const Dashboard: FC = () => {
                             <td className="px-6 py-4 text-right text-red-600">{flock.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                             <td className="px-6 py-4 text-right text-slate-600">{flock.costPerEgg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 3 })}</td>
                             <td className="px-6 py-4 text-right text-green-600">{flock.totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                            <td className="px-6 py-4 text-right">
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                    parseFloat(flock.layingRatePercentage) >= 85 
-                                        ? 'bg-green-100 text-green-800'
-                                        : parseFloat(flock.layingRatePercentage) >= 70
-                                        ? 'bg-yellow-100 text-yellow-800'
-                                        : 'bg-red-100 text-red-800'
-                                }`}>
-                                    {flock.layingRatePercentage}%
-                                </span>
-                                <div className="text-xs text-slate-400 mt-1">
-                                    {flock.totalProduction}/{flock.currentHensCount} aves
-                                </div>
-                            </td>
                             <td className={`px-6 py-4 text-right font-bold ${flock.profitability >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 {flock.profitability.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </td>
                         </tr>
                     )) : (
                         <tr>
-                            <td colSpan={7} className="text-center py-10 text-slate-500">Nenhum lote ativo para exibir.</td>
+                            <td colSpan={6} className="text-center py-10 text-slate-500">Nenhum lote ativo para exibir.</td>
                         </tr>
                     )}
                 </tbody>
