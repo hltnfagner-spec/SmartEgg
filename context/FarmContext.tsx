@@ -370,6 +370,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Garante que o usuário esteja na tabela user_contacts
   const ensureUserInContacts = useCallback(async (user: any) => {
     try {
+      console.log('[FarmContext] Verificando se usuário já existe em user_contacts:', user.email);
       // Verificar se usuário já existe na tabela
       const { data: existingContact, error: checkError } = await supabase
         .from('user_contacts')
@@ -377,7 +378,13 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .eq('user_id', user.id)
         .maybeSingle(); // Usar maybeSingle em vez de single para evitar erro 406
 
+      if (checkError) {
+        console.error('[FarmContext] Erro ao verificar usuário existente:', checkError);
+        return;
+      }
+
       if (!existingContact) {
+        console.log('[FarmContext] Usuário não encontrado, inserindo em user_contacts...');
         // Usuário não existe, vamos inserir usando os dados do session
         const metadata = user.user_metadata || {};
         
@@ -397,6 +404,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         } else {
           console.log('[FarmContext] Usuário salvo em user_contacts com sucesso');
         }
+      } else {
+        console.log('[FarmContext] Usuário já existe em user_contacts, ignorando inserção');
       }
     } catch (error) {
       console.error('[FarmContext] Erro ao verificar/inserir usuário em user_contacts:', error);
@@ -418,12 +427,15 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     init();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[FarmContext] Evento de auth:', event, session?.user?.email);
+      
       if (session) {
         const currentUserId = session.user.id;
         setUserId(currentUserId);
         
         // Garantir que usuário este salvo em user_contacts (apenas no primeiro cadastro)
         if (event === 'SIGNED_IN') {
+          console.log('[FarmContext] SIGNED_IN detectado, verificando user_contacts...');
           await ensureUserInContacts(session.user);
           // Garantir que a URL esteja limpa e no dashboard após login
           const url = new URL(window.location.href);
