@@ -198,10 +198,11 @@ const FlockForm: FC<FlockFormProps> = ({ onClose, flockToEdit }) => {
 };
 
 const FlockManagement: FC = () => {
-    const { flocks, getHensCountOnDate, getShedById, getExpensesByFlockId, getRecordsByFlockId, getSalesByFlockId, getTasksByFlockId, toggleTaskCompletion, deleteTask, disposeFlock } = useFarm();
+    const { flocks, sheds, addFlock, updateFlock, disposeFlock, deleteFlock, addTask, deleteTask } = useFarm();
     const [isFlockModalOpen, setIsFlockModalOpen] = useState(false);
     const [flockToEdit, setFlockToEdit] = useState<Flock | null>(null);
     const [taskModalState, setTaskModalState] = useState<{isOpen: boolean, flockId: string | null}>({isOpen: false, flockId: null});
+    const [deleteDialog, setDeleteDialog] = useState<{isOpen: boolean, flockId: string | null, flockName: string}>({isOpen: false, flockId: null, flockName: ''});
 
     const handleOpenAddModal = () => {
         setFlockToEdit(null);
@@ -223,10 +224,23 @@ const FlockManagement: FC = () => {
         setTaskModalState({isOpen: false, flockId: null});
     };
 
-    const handleDispose = (flockId: string) => {
-        if (window.confirm('Tem certeza que deseja marcar este lote como descartado? Esta ação tornará o galpão disponível novamente.')) {
-            disposeFlock(flockId);
+    const handleDispose = (flockId: string, flockName: string) => {
+        setDeleteDialog({
+            isOpen: true,
+            flockId,
+            flockName
+        });
+    };
+
+    const confirmDispose = () => {
+        if (deleteDialog.flockId) {
+            disposeFlock(deleteDialog.flockId);
+            setDeleteDialog({isOpen: false, flockId: null, flockName: ''});
         }
+    };
+
+    const cancelDelete = () => {
+        setDeleteDialog({isOpen: false, flockId: null, flockName: ''});
     };
 
     const calculateAge = (birthDate: string) => {
@@ -293,7 +307,7 @@ const FlockManagement: FC = () => {
                                 {flock.status === 'Ativo' ? (
                                     <>
                                         <button onClick={() => handleOpenEditModal(flock)} className="p-1 text-stone-500 hover:text-amber-600 transition-colors" aria-label="Editar Lote"><EditIcon /></button>
-                                        <button onClick={() => handleDispose(flock.id)} className="p-1 text-stone-500 hover:text-red-600 transition-colors" aria-label="Descartar Lote"><TrashIcon /></button>
+                                        <button onClick={() => handleDispose(flock.id, flock.name)} className="p-1 text-stone-500 hover:text-red-600 transition-colors" aria-label="Descartar Lote"><TrashIcon /></button>
                                     </>
                                 ) : (
                                     <span className="text-xs font-semibold bg-stone-200 text-stone-600 px-2 py-1 rounded-full">Descartado</span>
@@ -389,6 +403,42 @@ const FlockManagement: FC = () => {
                         <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-lg relative">
                             <h2 className="text-2xl font-bold text-stone-800 mb-4">Agendar Nova Tarefa</h2>
                             <TaskForm flockId={taskModalState.flockId} onClose={handleCloseModals} />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Diálogo de Confirmação de Exclusão */}
+            {deleteDialog.isOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md relative">
+                            <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
+                                <TrashIcon className="w-6 h-6 text-red-600" />
+                            </div>
+                            <h3 className="text-lg font-bold text-stone-800 text-center mb-2">
+                                Confirmar Exclusão do Lote
+                            </h3>
+                            <p className="text-stone-600 text-center mb-6">
+                                Tem certeza que deseja descartar o lote <strong>"{deleteDialog.flockName}"</strong>?
+                            </p>
+                            <p className="text-sm text-stone-500 text-center mb-6">
+                                Esta ação irá marcar o lote como descartado e tornará o galpão disponível para novos lotes.
+                            </p>
+                            <div className="flex justify-center space-x-3">
+                                <button
+                                    onClick={cancelDelete}
+                                    className="px-4 py-2 text-sm font-medium text-stone-700 bg-stone-100 border border-stone-300 rounded-md hover:bg-stone-200 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={confirmDispose}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+                                >
+                                    Confirmar Exclusão
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
