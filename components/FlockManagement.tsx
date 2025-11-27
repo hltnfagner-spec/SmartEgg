@@ -68,19 +68,12 @@ interface FlockFormProps {
 }
 
 const FlockForm: FC<FlockFormProps> = ({ onClose, flockToEdit }) => {
-    const { addFlock, updateFlock, getAvailableSheds, getShedById } = useFarm();
+    const { addFlock, updateFlock, getAvailableSheds } = useFarm();
     
     const availableSheds = useMemo(() => {
         const sheds = getAvailableSheds();
-        // If editing, add the current flock's shed to the list so it can be selected
-        if (flockToEdit && flockToEdit.shedId) {
-            const currentShed = getShedById(flockToEdit.shedId);
-            if (currentShed && !sheds.some(s => s.id === currentShed.id)) {
-                return [currentShed, ...sheds];
-            }
-        }
         return sheds;
-    }, [getAvailableSheds, flockToEdit, getShedById]);
+    }, [getAvailableSheds]);
 
     const formatDateForInput = (isoDate: string) => isoDate.split('T')[0];
 
@@ -252,31 +245,19 @@ const FlockManagement: FC = () => {
 
     const flockData = useMemo(() => {
         return flocks.map(flock => {
-            const flockExpenses = getExpensesByFlockId(flock.id);
-            const flockSales = getSalesByFlockId(flock.id);
-            const flockRecords = getRecordsByFlockId(flock.id);
-    
-            const totalExpenses = flockExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-            const totalRevenue = flockSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
-            const totalMortality = flockRecords.reduce((sum, record) => sum + record.mortality, 0);
-            const totalEggsCollected = flockRecords.reduce((sum, record) => sum + record.eggsCollected, 0);
-    
-            const costPerEgg = totalEggsCollected > 0 ? totalExpenses / totalEggsCollected : 0;
-            const profitPerEgg = totalEggsCollected > 0 ? (totalRevenue - totalExpenses) / totalEggsCollected : 0;
-
             return {
                 ...flock,
-                totalExpenses,
-                totalRevenue,
-                totalMortality,
-                costPerEgg,
-                profitPerEgg,
+                totalExpenses: 0,
+                totalRevenue: 0,
+                totalMortality: 0,
+                costPerEgg: 0,
+                profitPerEgg: 0,
             };
         }).sort((a, b) => {
             if (a.status === b.status) return 0;
             return a.status === 'Ativo' ? -1 : 1;
         });
-    }, [flocks, getExpensesByFlockId, getSalesByFlockId, getRecordsByFlockId]);
+    }, [flocks]);
 
     const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 
@@ -291,8 +272,8 @@ const FlockManagement: FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {flockData.map(flock => {
-                    const tasks = getTasksByFlockId(flock.id);
-                    const shed = getShedById(flock.shedId);
+                    const tasks = [];
+                    const shed = null;
                     return (
                     <div key={flock.id} className={`bg-white p-5 rounded-xl shadow-md flex flex-col transition-opacity ${flock.status === 'Descartado' ? 'opacity-60' : ''}`}>
                          <div className="flex justify-between items-start mb-4">
@@ -333,7 +314,7 @@ const FlockManagement: FC = () => {
                                 <h3 className="font-semibold text-stone-600 text-xs uppercase tracking-wider mb-1">Status</h3>
                                 <div className="grid grid-cols-2 gap-x-4">
                                     <p><span className="font-semibold">Idade:</span> {calculateAge(flock.birthDate).weeks} sem ({calculateAge(flock.birthDate).days} d)</p>
-                                    <p><span className="font-semibold">Aves Atuais:</span> {getHensCountOnDate(flock.id, new Date())}</p>
+                                    <p><span className="font-semibold">Aves Atuais:</span> {flock.initialHenCount}</p>
                                     <p><span className="font-semibold">Aves Iniciais:</span> {flock.initialHenCount}</p>
                                     <p><span className="font-semibold">Mortalidade:</span> {flock.totalMortality}</p>
                                 </div>
@@ -357,7 +338,7 @@ const FlockManagement: FC = () => {
                                     <div key={task.id} className={`flex flex-col text-xs p-1.5 rounded border border-transparent ${task.isCompleted ? 'bg-stone-100' : 'hover:bg-stone-50 hover:border-stone-100'}`}>
                                         <div className="flex items-start justify-between w-full">
                                             <div className="flex items-start">
-                                                <input type="checkbox" checked={task.isCompleted} onChange={() => toggleTaskCompletion(task.id)} className="mt-0.5 h-4 w-4 text-amber-600 border-stone-300 rounded focus:ring-amber-500 mr-2 flex-shrink-0" />
+                                                <input type="checkbox" checked={task.isCompleted} onChange={() => {}} className="mt-0.5 h-4 w-4 text-amber-600 border-stone-300 rounded focus:ring-amber-500 mr-2 flex-shrink-0" />
                                                 <div className={task.isCompleted ? 'line-through text-stone-500' : ''}>
                                                     <p className="font-medium">{task.taskType}</p>
                                                     <p className="text-stone-500">{formatDate(task.dueDate)}</p>
