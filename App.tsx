@@ -69,11 +69,11 @@ const App: FC = () => {
       } else if (event === 'SIGNED_OUT') {
         console.log('[App] Usuário deslogado via listener');
         setAuthState('landing');
-        navigate('dashboard');
+        // Não chamar navigate aqui para evitar loop
       } else if (!session) {
         console.log('[App] Sessão nula, voltando para landing');
         setAuthState('landing');
-        navigate('dashboard');
+        // Não chamar navigate aqui para evitar loop
       }
     });
 
