@@ -25,6 +25,7 @@ interface FarmContextType {
   addFlock: (flock: Omit<Flock, 'id' | 'status'>) => void;
   updateFlock: (flockId: string, data: Omit<Flock, 'id' | 'status'>) => void;
   disposeFlock: (flockId: string) => void;
+  deleteFlock: (flockId: string) => void;
   addRecord: (record: Omit<DailyRecord, 'id'>) => void;
   updateRecord: (recordId: string, data: Omit<DailyRecord, 'id'>) => void;
   deleteRecord: (recordId: string) => void;
@@ -793,8 +794,89 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setFlocks(prev => prev.map(flock => 
           flock.id === flockId ? { ...flock, status: 'Descartado' } : flock
         ));
+        
+        // Recarregar dados para garantir consistência
+        await loadDataForUser(userId);
       } catch (err) {
         console.error('[FarmContext] Erro inesperado ao descartar flock:', err);
+      }
+    })();
+  };
+
+  const deleteFlock = (flockId: string) => {
+    if (!userId) return;
+
+    (async () => {
+      try {
+        // Primeiro, deletar todos os registros relacionados ao lote
+        const { error: recordsError } = await supabase
+          .from('daily_records')
+          .delete()
+          .eq('flock_id', flockId)
+          .eq('user_id', userId);
+
+        if (recordsError) {
+          console.error('[FarmContext] Erro ao deletar registros do lote:', recordsError);
+          return;
+        }
+
+        // Deletar tarefas relacionadas
+        const { error: tasksError } = await supabase
+          .from('tasks')
+          .delete()
+          .eq('flock_id', flockId)
+          .eq('user_id', userId);
+
+        if (tasksError) {
+          console.error('[FarmContext] Erro ao deletar tarefas do lote:', tasksError);
+          return;
+        }
+
+        // Deletar despesas relacionadas
+        const { error: expensesError } = await supabase
+          .from('expenses')
+          .delete()
+          .eq('flock_id', flockId)
+          .eq('user_id', userId);
+
+        if (expensesError) {
+          console.error('[FarmContext] Erro ao deletar despesas do lote:', expensesError);
+          return;
+        }
+
+        // Deletar vendas relacionadas
+        const { error: salesError } = await supabase
+          .from('sales')
+          .delete()
+          .eq('flock_id', flockId)
+          .eq('user_id', userId);
+
+        if (salesError) {
+          console.error('[FarmContext] Erro ao deletar vendas do lote:', salesError);
+          return;
+        }
+
+        // Por fim, deletar o lote
+        const { error: flockError } = await supabase
+          .from('flocks')
+          .delete()
+          .eq('id', flockId)
+          .eq('user_id', userId);
+
+        if (flockError) {
+          console.error('[FarmContext] Erro ao deletar lote no Supabase:', flockError);
+          return;
+        }
+
+        // Remover o lote do estado local
+        setFlocks(prev => prev.filter(flock => flock.id !== flockId));
+        
+        // Recarregar todos os dados para garantir consistência
+        await loadDataForUser(userId);
+        
+        console.log('[FarmContext] Lote e todos os dados relacionados deletados com sucesso');
+      } catch (err) {
+        console.error('[FarmContext] Erro inesperado ao deletar lote:', err);
       }
     })();
   };
@@ -1787,7 +1869,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     <FarmContext.Provider value={{ 
         sheds, flocks, records, expenses, sales, tasks, clients, inventory, feedFormulations,
         currentView, viewParams, navigate,
-        addShed, updateShed, deleteShed, addFlock, updateFlock, disposeFlock, 
+        addShed, updateShed, deleteShed, addFlock, updateFlock, disposeFlock, deleteFlock, 
         addRecord, updateRecord, deleteRecord, 
         addExpense, updateExpense, addSale, updateSale, 
         addTask, toggleTaskCompletion, deleteTask, 

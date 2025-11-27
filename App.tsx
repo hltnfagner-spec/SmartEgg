@@ -72,8 +72,10 @@ const App: FC = () => {
       setAuthState('app');
   };
 
-  const handleLogout = () => {
-      supabase.auth.signOut();
+  const handleLogout = async () => {
+      clearData(); // Limpa todos os dados locais
+      await supabase.auth.signOut(); // Faz logout do Supabase
+      setAuthState('landing'); // Volta para a tela inicial
   };
 
   const renderView = () => {
