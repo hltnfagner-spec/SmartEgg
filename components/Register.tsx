@@ -177,8 +177,10 @@ const handleSubmit = async (e: FormEvent) => {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Nome Completo</label>
+              <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-1">Nome Completo</label>
               <input 
+                id="name"
+                name="name"
                 type="text" 
                 required 
                 className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#0f172a]"
@@ -189,8 +191,10 @@ const handleSubmit = async (e: FormEvent) => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Nome da Granja</label>
+              <label htmlFor="farmName" className="block text-sm font-medium text-slate-700 mb-1">Nome da Granja</label>
               <input 
+                id="farmName"
+                name="farmName"
                 type="text" 
                 required 
                 className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#0f172a]"
@@ -201,8 +205,10 @@ const handleSubmit = async (e: FormEvent) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">Email</label>
               <input 
+                id="email"
+                name="email"
                 type="email" 
                 required 
                 className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#0f172a]"
@@ -213,8 +219,10 @@ const handleSubmit = async (e: FormEvent) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Telefone *</label>
+              <label htmlFor="phone" className="block text-sm font-medium text-slate-700 mb-1">Telefone *</label>
               <input 
+                id="phone"
+                name="phone"
                 type="tel" 
                 required 
                 maxLength={15}
@@ -227,8 +235,10 @@ const handleSubmit = async (e: FormEvent) => {
 
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Senha</label>
+                <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1">Senha</label>
                 <input 
+                    id="password"
+                    name="password"
                     type="password" 
                     required 
                     className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#0f172a]"
@@ -239,8 +249,10 @@ const handleSubmit = async (e: FormEvent) => {
                 </div>
                 
                 <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Confirmar</label>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 mb-1">Confirmar</label>
                 <input 
+                    id="confirmPassword"
+                    name="confirmPassword"
                     type="password" 
                     required 
                     className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#0f172a]"

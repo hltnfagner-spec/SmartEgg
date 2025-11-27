@@ -66,8 +66,10 @@ const Login: FC<LoginProps> = ({ onLogin, onSwitchToRegister, onBack }) => {
             )}
             
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">Email</label>
               <input 
+                id="email"
+                name="email"
                 type="email" 
                 required 
                 className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#0f172a]"
@@ -78,8 +80,10 @@ const Login: FC<LoginProps> = ({ onLogin, onSwitchToRegister, onBack }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Senha</label>
+              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1">Senha</label>
               <input 
+                id="password"
+                name="password"
                 type="password" 
                 required 
                 className="w-full px-4 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#0f172a]"
