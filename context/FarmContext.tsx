@@ -367,32 +367,34 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }, []);
 
   // Garante que o usuário esteja na tabela user_contacts
-  const ensureUserInContacts = useCallback(async (userId: string) => {
+  const ensureUserInContacts = useCallback(async (user: any) => {
     try {
       // Verificar se usuário já existe na tabela
       const { data: existingContact, error: checkError } = await supabase
         .from('user_contacts')
         .select('id')
-        .eq('user_id', userId)
-        .single();
+        .eq('user_id', user.id)
+        .maybeSingle(); // Usar maybeSingle em vez de single para evitar erro 406
 
-      if (checkError && checkError.code === 'PGRST116') {
-        // Usuário não existe, vamos buscar os dados e inserir
-        const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
+      if (!existingContact) {
+        // Usuário não existe, vamos inserir usando os dados do session
+        const metadata = user.user_metadata || {};
         
-        if (!userError && userData.user) {
-          const metadata = userData.user.user_metadata || {};
+        const { error: insertError } = await supabase
+          .from('user_contacts')
+          .insert({
+            user_id: user.id,
+            email: user.email || '',
+            name: metadata.name || '',
+            phone: metadata.phone || '',
+            farm_name: metadata.farmName || '',
+            contact_type: 'user'
+          });
           
-          await supabase
-            .from('user_contacts')
-            .insert({
-              user_id: userId,
-              email: userData.user.email || '',
-              name: metadata.name || '',
-              phone: metadata.phone || '',
-              farm_name: metadata.farmName || '',
-              contact_type: 'user'
-            });
+        if (insertError) {
+          console.error('[FarmContext] Erro ao inserir usuário em user_contacts:', insertError);
+        } else {
+          console.log('[FarmContext] Usuário salvo em user_contacts com sucesso');
         }
       }
     } catch (error) {
@@ -407,7 +409,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       if (!sessionError && sessionData.session) {
         const currentUserId = sessionData.session.user.id;
         setUserId(currentUserId);
-        await ensureUserInContacts(currentUserId);
+        await ensureUserInContacts(sessionData.session.user);
         await loadDataForUser(currentUserId);
       }
     };
@@ -421,7 +423,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         
         // Garantir que usuário este salvo em user_contacts
         if (event === 'SIGNED_IN') {
-          await ensureUserInContacts(currentUserId);
+          await ensureUserInContacts(session.user);
         }
         
         await loadDataForUser(currentUserId);
