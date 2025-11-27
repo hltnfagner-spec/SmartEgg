@@ -897,80 +897,104 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     })();
   };
 
-  const deleteFlock = (flockId: string) => {
+  const deleteFlock = async (flockId: string) => {
+    // Deletar registros primeiro (dependências)
+    const { error: recordsError } = await supabase
+      .from('production_records')
+      .delete()
+      .eq('flock_id', flockId);
+
+    if (recordsError) {
+      console.error('Erro ao deletar registros do lote:', recordsError);
+      return;
+    }
+
+    // Deletar despesas relacionadas
+    const { error: expensesError } = await supabase
+      .from('expenses')
+      .delete()
+      .eq('flock_id', flockId)
+      .eq('user_id', userId);
+
+    if (expensesError) {
+      console.error('Erro ao deletar despesas do lote:', expensesError);
+      return;
+    }
+
+    // Deletar vendas relacionadas
+    const { error: salesError } = await supabase
+      .from('sales')
+      .delete()
+      .eq('flock_id', flockId)
+      .eq('user_id', userId);
+
+    if (salesError) {
+      console.error('Erro ao deletar vendas do lote:', salesError);
+      return;
+    }
+
+    // Deletar o lote
+    const { error: flockError } = await supabase
+      .from('flocks')
+      .delete()
+      .eq('id', flockId);
+
+    if (flockError) {
+      console.error('Erro ao deletar lote:', flockError);
+      return;
+    }
+
+    // Recarregar dados
+    await loadDataForUser(userId);
+  };
+
+  // Funções de relatórios
+  const generateWeeklyReport = () => {
     if (!userId) return;
 
     (async () => {
       try {
-        // Primeiro, deletar todos os registros relacionados ao lote
-        const { error: recordsError } = await supabase
+        const { data, error } = await supabase
           .from('daily_records')
-          .delete()
-          .eq('flock_id', flockId)
+          .select('*')
           .eq('user_id', userId);
 
-        if (recordsError) {
-          console.error('[FarmContext] Erro ao deletar registros do lote:', recordsError);
+        if (error || !data) {
+          console.error('[FarmContext] Erro ao buscar registros diários no Supabase:', error);
           return;
         }
 
-        // Deletar tarefas relacionadas
-        const { error: tasksError } = await supabase
-          .from('tasks')
-          .delete()
-          .eq('flock_id', flockId)
-          .eq('user_id', userId);
+        const records = data.map(record => ({
+          id: record.id,
+          flockId: record.flock_id,
+          date: record.date,
+          eggsCollected: record.eggs_collected,
+          brokenEggs: record.broken_eggs,
+          feedConsumedKg: record.feed_consumed_kg,
+          waterConsumedLiters: record.water_consumed_liters,
+          mortality: record.mortality,
+          notes: record.notes,
+        }));
 
-        if (tasksError) {
-          console.error('[FarmContext] Erro ao deletar tarefas do lote:', tasksError);
-          return;
-        }
-
-        // Deletar despesas relacionadas
-        const { error: expensesError } = await supabase
-          .from('expenses')
-          .delete()
-          .eq('flock_id', flockId)
-          .eq('user_id', userId);
-
-        if (expensesError) {
-          console.error('[FarmContext] Erro ao deletar despesas do lote:', expensesError);
-          return;
-        }
-
-        // Deletar vendas relacionadas
-        const { error: salesError } = await supabase
-          .from('sales')
-          .delete()
-          .eq('flock_id', flockId)
-          .eq('user_id', userId);
-
-        if (salesError) {
-          console.error('[FarmContext] Erro ao deletar vendas do lote:', salesError);
-          return;
-        }
-
-        // Por fim, deletar o lote
-        const { error: flockError } = await supabase
-          .from('flocks')
-          .delete()
-          .eq('id', flockId)
-          .eq('user_id', userId);
-
-        if (flockError) {
-          console.error('[FarmContext] Erro ao deletar lote no Supabase:', flockError);
-          return;
-        }
-
-        // Remover o lote do estado local
-        setFlocks(prev => prev.filter(flock => flock.id !== flockId));
-        
-        // Recarregar todos os dados para garantir consistência
-        await loadDataForUser(userId);
-        
-        console.log('[FarmContext] Lote e todos os dados relacionados deletados com sucesso');
+        // Lógica de geração de relatório semanal
+        const weeklyReport = records.reduce((acc, record) => {
+          const weekNumber = getWeekNumber(record.date);
+          if (!acc[weekNumber]) {
+            acc[weekNumber] = {
+              totalEggs: 0,
+              totalFeed: 0,
+              totalWater: 0,
+              totalMortality: 0,
+            };
+          }
+          acc[weekNumber].totalEggs += record.eggsCollected;
+          acc[weekNumber].totalFeed += record.feedConsumedKg;
+          acc[weekNumber].totalWater += record.waterConsumedLiters;
+          acc[weekNumber].totalMortality += record.mortality;
+          return acc;
+        }, {});
       } catch (err) {
-        console.error('[FarmContext] Erro inesperado ao deletar lote:', err);
+        console.error('[FarmContext] Erro inesperado ao gerar relatório semanal:', err);
       }
     })();
   };
