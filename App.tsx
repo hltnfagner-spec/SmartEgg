@@ -22,9 +22,8 @@ import { supabase } from './services/supabaseClient';
 
 type AuthState = 'landing' | 'login' | 'register' | 'app';
 
-const App: FC = () => {
-  const [authState, setAuthState] = useState<AuthState>('landing');
-  console.log('[App] authState =', authState);
+function App() {
+  const [authState, setAuthState] = useState<'landing' | 'login' | 'register' | 'app'>('landing');
   
   // Verificar se é rota de confirmação de email
   const urlParams = new URLSearchParams(window.location.search);
@@ -40,7 +39,6 @@ const App: FC = () => {
   // Verifica se existe uma sessão ativa ao carregar a página e escuta mudanças de auth
   useEffect(() => {
     const checkSession = async () => {
-      console.log('[App] Verificando sessão atual...');
       const { data, error } = await supabase.auth.getSession();
       
       if (error) {
@@ -50,10 +48,8 @@ const App: FC = () => {
       }
       
       if (data.session) {
-        console.log('[App] Sessão encontrada, usuário:', data.session.user.email);
         setAuthState('app');
       } else {
-        console.log('[App] Nenhuma sessão encontrada');
         setAuthState('landing');
       }
     };
@@ -61,19 +57,12 @@ const App: FC = () => {
     checkSession();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[App] Mudança de auth detectada:', event, session?.user?.email);
-      
       if (event === 'SIGNED_IN' && session) {
-        console.log('[App] Usuário logado/confirmado, mudando para app');
         setAuthState('app');
       } else if (event === 'SIGNED_OUT') {
-        console.log('[App] Usuário deslogado via listener');
         setAuthState('landing');
-        // Não chamar navigate aqui para evitar loop
       } else if (!session) {
-        console.log('[App] Sessão nula, voltando para landing');
         setAuthState('landing');
-        // Não chamar navigate aqui para evitar loop
       }
     });
 
@@ -93,7 +82,6 @@ const App: FC = () => {
   };
 
   const handleLogout = async () => {
-      console.log('[App] Iniciando logout...');
       clearData(); // Limpa todos os dados locais
       
       try {
@@ -104,11 +92,8 @@ const App: FC = () => {
         Object.keys(localStorage).forEach(key => {
           if (key.startsWith('supabase.auth.')) {
             localStorage.removeItem(key);
-            console.log('[App] Removido:', key);
           }
         });
-        
-        console.log('[App] Logout concluído');
         
         // Forçar mudança de estado imediatamente
         setAuthState('landing');
@@ -122,7 +107,7 @@ const App: FC = () => {
         }, 100);
         
       } catch (error) {
-        console.error('[App] Erro no logout:', error);
+        console.error('Erro no logout:', error);
         // Mesmo com erro, forçar logout e reload
         setAuthState('landing');
         window.history.replaceState(null, '', '/');

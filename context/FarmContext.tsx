@@ -370,8 +370,6 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Garante que o usuário esteja na tabela user_contacts
   const ensureUserInContacts = useCallback(async (user: any) => {
     try {
-      console.log('[FarmContext] Verificando se usuário já existe em user_contacts:', user.email);
-      
       // Tentar diferentes abordagens para verificar se usuário existe
       let existingContact = null;
       
@@ -385,12 +383,9 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         
         if (!error1) {
           existingContact = contact1;
-          console.log('[FarmContext] Abordagem 1 (maybeSingle):', existingContact ? 'encontrado' : 'não encontrado');
-        } else {
-          console.log('[FarmContext] Abordagem 1 falhou:', error1.message);
         }
       } catch (e) {
-        console.log('[FarmContext] Erro na abordagem 1:', e);
+        console.error('Erro na verificação de contato:', e);
       }
       
       // Abordagem 2: limit(1) se maybeSingle falhar
@@ -404,17 +399,13 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           
           if (!error2 && contact2 && contact2.length > 0) {
             existingContact = contact2[0];
-            console.log('[FarmContext] Abordagem 2 (limit): encontrado');
-          } else {
-            console.log('[FarmContext] Abordagem 2:', error2?.message || 'não encontrado');
           }
         } catch (e) {
-          console.log('[FarmContext] Erro na abordagem 2:', e);
+          console.error('Erro na verificação de contato (fallback):', e);
         }
       }
 
       if (!existingContact) {
-        console.log('[FarmContext] Usuário não encontrado em nenhuma abordagem, inserindo em user_contacts...');
         // Usuário não existe, vamos inserir usando os dados do session
         const metadata = user.user_metadata || {};
         
@@ -430,15 +421,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           });
           
         if (insertError) {
-          console.error('[FarmContext] Erro ao inserir usuário em user_contacts:', insertError);
-        } else {
-          console.log('[FarmContext] Usuário salvo em user_contacts com sucesso');
+          console.error('Erro ao inserir usuário em user_contacts:', insertError);
         }
-      } else {
-        console.log('[FarmContext] Usuário já existe em user_contacts, ignorando inserção');
       }
     } catch (error) {
-      console.error('[FarmContext] Erro ao verificar/inserir usuário em user_contacts:', error);
+      console.error('Erro ao verificar/inserir usuário em user_contacts:', error);
     }
   }, []);
 
@@ -457,15 +444,12 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     init();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[FarmContext] Evento de auth:', event, session?.user?.email);
-      
       if (session) {
         const currentUserId = session.user.id;
         setUserId(currentUserId);
         
         // Garantir que usuário este salvo em user_contacts (apenas no primeiro cadastro)
         if (event === 'SIGNED_IN') {
-          console.log('[FarmContext] SIGNED_IN detectado, verificando user_contacts...');
           await ensureUserInContacts(session.user);
           // Garantir que a URL esteja limpa e no dashboard após login
           const url = new URL(window.location.href);
@@ -497,7 +481,6 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Sincronizar navegação com mudanças na URL
   useEffect(() => {
     const handlePopState = () => {
-      console.log('[FarmContext] Popstate detectado, URL atual:', window.location.href);
       const urlParams = new URLSearchParams(window.location.search);
       const view = urlParams.get('view');
       const params: Record<string, any> = {};
@@ -514,12 +497,10 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       
       // Navegar para a view correspondente
       if (view && validViews.includes(view as View)) {
-        console.log('[FarmContext] Navegando para view da URL:', view);
         setCurrentView(view as View);
         setViewParams(params);
       } else {
         // Se não houver view válida, voltar para dashboard
-        console.log('[FarmContext] View inválido, voltando para dashboard');
         setCurrentView('dashboard');
         setViewParams({});
         const url = new URL(window.location.href);
@@ -529,7 +510,6 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     };
 
     // Configurar estado inicial baseado na URL atual
-    console.log('[FarmContext] Configurando navegação inicial');
     handlePopState();
     
     // Adicionar listener para navegação do browser
@@ -577,7 +557,6 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }, [feedFormulations]);
 
   const navigate = (view: View, params: Record<string, any> = {}) => {
-      console.log('[FarmContext] Navegando para:', view, params);
       setCurrentView(view);
       setViewParams(params);
       
@@ -600,7 +579,6 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       // Remover hash se existir
       url.hash = '';
       
-      console.log('[FarmContext] Nova URL:', url.toString());
       window.history.pushState(null, '', url.toString());
   };
 
