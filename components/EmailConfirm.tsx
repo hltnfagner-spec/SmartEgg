@@ -6,6 +6,9 @@ const EmailConfirm = () => {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  const [errorCode, setErrorCode] = useState('');
 
   useEffect(() => {
     const handleEmailConfirmation = async () => {
@@ -13,14 +16,35 @@ const EmailConfirm = () => {
         const urlParams = new URLSearchParams(window.location.search);
         const token_hash = urlParams.get('token_hash');
         const type = urlParams.get('type') as EmailOtpType;
+        const error = urlParams.get('error');
+        const error_code = urlParams.get('error_code');
+        const error_description = urlParams.get('error_description');
+
+        // Tratar erros do Supabase
+        if (error) {
+          setErrorCode(error_code || '');
+          switch (error_code) {
+            case 'otp_expired':
+              setMessage('O link de confirmação expirou. Por favor, solicite um novo email de confirmação.');
+              break;
+            case 'access_denied':
+              setMessage('Acesso negado. O link é inválido ou já foi utilizado.');
+              break;
+            default:
+              setMessage(error_description?.replace(/\+/g, ' ') || 'Erro ao confirmar email. Tente novamente.');
+          }
+          setIsSuccess(false);
+          setLoading(false);
+          return;
+        }
 
         if (token_hash && type) {
-          const { error } = await supabase.auth.verifyOtp({
+          const { error: verifyError } = await supabase.auth.verifyOtp({
             type,
             token_hash,
           });
 
-          if (error) {
+          if (verifyError) {
             setMessage('Erro ao confirmar email. O link pode ter expirado.');
             setIsSuccess(false);
           } else {
@@ -84,12 +108,23 @@ const EmailConfirm = () => {
         <p className="text-slate-600 mb-6">{message}</p>
         
         {!isSuccess && (
-          <button
-            onClick={() => window.location.href = '/'}
-            className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-lg transition-all"
-          >
-            Voltar para o login
-          </button>
+          <div className="space-y-3">
+            <button
+              onClick={() => window.location.href = '/'}
+              className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-lg transition-all"
+            >
+              Voltar para o login
+            </button>
+            {(errorCode === 'otp_expired' || errorCode === 'access_denied') && (
+              <button
+                onClick={() => window.location.href = '/?resend_confirmation=true'}
+                className="w-full py-3 bg-slate-600 hover:bg-slate-700 text-white font-bold rounded-lg shadow-lg transition-all"
+                disabled={resending}
+              >
+                {resending ? 'Enviando...' : 'Reenviar email de confirmação'}
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

@@ -422,13 +422,16 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         const currentUserId = session.user.id;
         setUserId(currentUserId);
         
-        // Garantir que usuário este salvo em user_contacts
+        // Garantir que usuário este salvo em user_contacts (apenas no primeiro cadastro)
         if (event === 'SIGNED_IN') {
           await ensureUserInContacts(session.user);
+          // Garantir que a URL esteja limpa e no dashboard após login
+          window.history.replaceState(null, '', '#dashboard');
         }
         
         await loadDataForUser(currentUserId);
       } else {
+        // Usuário fez logout - limpar todos os dados
         setUserId(null);
         setSheds([]);
         setFlocks([]);
@@ -446,6 +449,44 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       authListener.subscription.unsubscribe();
     };
   }, [loadDataForUser, ensureUserInContacts]);
+
+  // Sincronizar navegação com mudanças na URL
+  useEffect(() => {
+    const handlePopState = () => {
+      const hash = window.location.hash.slice(1); // Remove o #
+      const urlParams = new URLSearchParams(window.location.search);
+      const params: Record<string, any> = {};
+      
+      // Converter parâmetros URL para objeto
+      urlParams.forEach((value, key) => {
+        params[key] = value;
+      });
+      
+      // Lista de views válidas
+      const validViews: View[] = ['dashboard', 'data-entry', 'flocks', 'sheds', 'expenses', 'sales', 'reports', 'ai-assistant', 'calculator', 'clients', 'contacts', 'inventory'];
+      
+      // Navegar para a view correspondente
+      if (hash && validViews.includes(hash as View)) {
+        setCurrentView(hash as View);
+        setViewParams(params);
+      } else {
+        // Se não houver hash válido, voltar para dashboard
+        setCurrentView('dashboard');
+        setViewParams({});
+        window.history.replaceState(null, '', '#dashboard');
+      }
+    };
+
+    // Configurar estado inicial baseado na URL atual
+    handlePopState();
+    
+    // Adicionar listener para navegação do browser
+    window.addEventListener('popstate', handlePopState);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('farm_sheds', JSON.stringify(sheds));
@@ -486,6 +527,19 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const navigate = (view: View, params: Record<string, any> = {}) => {
       setCurrentView(view);
       setViewParams(params);
+      
+      // Atualizar URL sem recarregar a página
+      const url = new URL(window.location.href);
+      url.hash = view;
+      
+      // Adicionar parâmetros se houver
+      Object.keys(params).forEach(key => {
+        if (params[key]) {
+          url.searchParams.set(key, params[key]);
+        }
+      });
+      
+      window.history.pushState(null, '', url.toString());
   };
 
   const clearData = () => {

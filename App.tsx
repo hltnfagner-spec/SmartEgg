@@ -74,8 +74,7 @@ const App: FC = () => {
 
   const handleLogout = async () => {
       clearData(); // Limpa todos os dados locais
-      await supabase.auth.signOut(); // Faz logout do Supabase
-      setAuthState('landing'); // Volta para a tela inicial
+      await supabase.auth.signOut(); // Faz logout do Supabase - o listener vai mudar authState automaticamente
   };
 
   const renderView = () => {

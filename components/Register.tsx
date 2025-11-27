@@ -127,19 +127,29 @@ const handleSubmit = async (e: FormEvent) => {
       // Login automático bem sucedido
       setIsLoading(false);
       
-      // Salvar dados na tabela user_contacts
+      // Salvar dados na tabela user_contacts (apenas se não existir)
       if (data.user) {
         try {
-          await supabase
+          // Verificar se usuário já existe
+          const { data: existingContact } = await supabase
             .from('user_contacts')
-            .insert({
-              user_id: data.user.id,
-              email: formData.email,
-              phone: formData.phone,
-              name: formData.name,
-              farm_name: formData.farmName,
-              contact_type: 'user'
-            });
+            .select('id')
+            .eq('user_id', data.user.id)
+            .maybeSingle();
+
+          if (!existingContact) {
+            // Usuário não existe, vamos inserir
+            await supabase
+              .from('user_contacts')
+              .insert({
+                user_id: data.user.id,
+                email: formData.email,
+                phone: formData.phone,
+                name: formData.name,
+                farm_name: formData.farmName,
+                contact_type: 'user'
+              });
+          }
         } catch (err) {
           console.error('Erro ao salvar contato:', err);
         }
