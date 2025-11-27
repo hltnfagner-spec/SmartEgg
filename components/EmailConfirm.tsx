@@ -13,12 +13,59 @@ const EmailConfirm = () => {
   useEffect(() => {
     const handleEmailConfirmation = async () => {
       try {
-        const urlParams = new URLSearchParams(window.location.search);
+        console.log('[EmailConfirm] URL completa:', window.location.href);
+        console.log('[EmailConfirm] Search:', window.location.search);
+        console.log('[EmailConfirm] Hash:', window.location.hash);
+        
+        // Safari pode ter problemas com URLSearchParams, tentar abordagem alternativa
+        let urlParams;
+        let searchSource = window.location.search;
+        
+        // Tentar obter parâmetros do hash também (alguns clientes de email podem fazer isso)
+        if (!searchSource && window.location.hash && window.location.hash.includes('?')) {
+          searchSource = window.location.hash.split('?')[1];
+          console.log('[EmailConfirm] Usando parâmetros do hash:', searchSource);
+        }
+        
+        try {
+          urlParams = new URLSearchParams(searchSource);
+        } catch (e) {
+          console.error('[EmailConfirm] Erro ao criar URLSearchParams:', e);
+          // Fallback manual para Safari
+          urlParams = new URLSearchParams();
+          if (searchSource) {
+            const search = searchSource.startsWith('?') ? searchSource.substring(1) : searchSource;
+            const pairs = search.split('&');
+            pairs.forEach(pair => {
+              const [key, value] = pair.split('=');
+              if (key && value) {
+                urlParams.set(key, decodeURIComponent(value));
+              }
+            });
+          }
+        }
+        
         const token_hash = urlParams.get('token_hash');
         const type = urlParams.get('type') as EmailOtpType;
         const error = urlParams.get('error');
         const error_code = urlParams.get('error_code');
         const error_description = urlParams.get('error_description');
+
+        console.log('[EmailConfirm] Parâmetros extraídos:', { 
+          token_hash: token_hash ? 'present' : 'missing', 
+          type, 
+          error, 
+          error_code 
+        });
+
+        // Se não encontrou parâmetros, mostrar mensagem de debug
+        if (!token_hash && !type && !error) {
+          console.warn('[EmailConfirm] Nenhum parâmetro encontrado na URL');
+          setMessage('Link de confirmação inválido ou corrompido. Verifique se você copiou o link completo do email.');
+          setIsSuccess(false);
+          setLoading(false);
+          return;
+        }
 
         // Tratar erros do Supabase
         if (error) {
@@ -39,15 +86,18 @@ const EmailConfirm = () => {
         }
 
         if (token_hash && type) {
+          console.log('[EmailConfirm] Verificando OTP...');
           const { error: verifyError } = await supabase.auth.verifyOtp({
             type,
             token_hash,
           });
 
           if (verifyError) {
+            console.error('[EmailConfirm] Erro na verificação:', verifyError);
             setMessage('Erro ao confirmar email. O link pode ter expirado.');
             setIsSuccess(false);
           } else {
+            console.log('[EmailConfirm] Email confirmado com sucesso!');
             setMessage('Email confirmado com sucesso! Redirecionando...');
             setIsSuccess(true);
             
@@ -57,11 +107,13 @@ const EmailConfirm = () => {
             }, 2000);
           }
         } else {
-          setMessage('Link de confirmação inválido.');
+          console.log('[EmailConfirm] Parâmetros inválidos - token_hash ou type faltando');
+          setMessage('Link de confirmação inválido. Faltando parâmetros necessários.');
           setIsSuccess(false);
         }
       } catch (err) {
-        setMessage('Ocorreu um erro ao processar a confirmação.');
+        console.error('[EmailConfirm] Erro geral:', err);
+        setMessage('Ocorreu um erro ao processar a confirmação. Tente novamente.');
         setIsSuccess(false);
       } finally {
         setLoading(false);

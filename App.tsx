@@ -99,9 +99,6 @@ const App: FC = () => {
         // Forçar logout do Supabase
         await supabase.auth.signOut();
         
-        // Limpar qualquer sessão residual
-        await supabase.auth.setSession(null);
-        
         // Limpar todos os dados do Supabase do localStorage (operação drástica)
         Object.keys(localStorage).forEach(key => {
           if (key.startsWith('supabase.auth.')) {
