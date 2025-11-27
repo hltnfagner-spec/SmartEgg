@@ -101,7 +101,7 @@ const ShedManagement: FC = () => {
         setIsModalOpen(true);
     };
 
-    const handleDeleteShed = (shed: Shed) => {
+    const handleDeleteShed = (shed: Shed & { isOccupied: boolean; occupyingFlockName?: string }) => {
         if (shed.isOccupied) {
             alert('Não é possível excluir um galpão ocupado. Primeiro remova ou descarte o lote associado.');
             return;
