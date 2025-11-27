@@ -40,18 +40,37 @@ const App: FC = () => {
   // Verifica se existe uma sessão ativa ao carregar a página e escuta mudanças de auth
   useEffect(() => {
     const checkSession = async () => {
+      console.log('[App] Verificando sessão atual...');
       const { data, error } = await supabase.auth.getSession();
-      if (!error && data.session) {
+      
+      if (error) {
+        console.error('[App] Erro ao verificar sessão:', error);
+        setAuthState('landing');
+        return;
+      }
+      
+      if (data.session) {
+        console.log('[App] Sessão encontrada, usuário:', data.session.user.email);
         setAuthState('app');
+      } else {
+        console.log('[App] Nenhuma sessão encontrada');
+        setAuthState('landing');
       }
     };
 
     checkSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[App] Mudança de auth detectada:', event, session?.user?.email);
+      
+      if (event === 'SIGNED_IN' && session) {
         setAuthState('app');
-      } else {
+      } else if (event === 'SIGNED_OUT') {
+        console.log('[App] Usuário deslogado via listener');
+        setAuthState('landing');
+        navigate('dashboard');
+      } else if (!session) {
+        console.log('[App] Sessão nula, voltando para landing');
         setAuthState('landing');
         navigate('dashboard');
       }
@@ -60,7 +79,7 @@ const App: FC = () => {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
 
   const handleLoginSuccess = () => {
       setAuthState('app');
@@ -73,8 +92,46 @@ const App: FC = () => {
   };
 
   const handleLogout = async () => {
+      console.log('[App] Iniciando logout...');
       clearData(); // Limpa todos os dados locais
-      await supabase.auth.signOut(); // Faz logout do Supabase - o listener vai mudar authState automaticamente
+      
+      try {
+        // Forçar logout do Supabase
+        await supabase.auth.signOut();
+        
+        // Limpar qualquer sessão residual
+        await supabase.auth.setSession(null);
+        
+        // Limpar todos os dados do Supabase do localStorage (operação drástica)
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('supabase.auth.')) {
+            localStorage.removeItem(key);
+            console.log('[App] Removido:', key);
+          }
+        });
+        
+        console.log('[App] Logout concluído');
+        
+        // Forçar mudança de estado imediatamente
+        setAuthState('landing');
+        
+        // Limpar URL
+        window.history.replaceState(null, '', '/');
+        
+        // Forçar reload para garantir limpeza completa
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
+        
+      } catch (error) {
+        console.error('[App] Erro no logout:', error);
+        // Mesmo com erro, forçar logout e reload
+        setAuthState('landing');
+        window.history.replaceState(null, '', '/');
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
+      }
   };
 
   const renderView = () => {
