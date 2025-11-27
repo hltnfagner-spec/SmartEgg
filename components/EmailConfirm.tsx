@@ -18,7 +18,7 @@ const EmailConfirm = () => {
         console.log('[EmailConfirm] Hash:', window.location.hash);
         
         // Safari pode ter problemas com URLSearchParams, tentar abordagem alternativa
-        let urlParams;
+        let urlParams: URLSearchParams;
         let searchSource = window.location.search;
         
         // Tentar obter parâmetros do hash também (alguns clientes de email podem fazer isso)
@@ -101,9 +101,27 @@ const EmailConfirm = () => {
             setMessage('Email confirmado com sucesso! Redirecionando...');
             setIsSuccess(true);
             
-            // Redirecionar após 2 segundos
-            setTimeout(() => {
-              window.location.href = '/';
+            // Aguardar um pouco e verificar se a sessão foi estabelecida
+            setTimeout(async () => {
+              try {
+                console.log('[EmailConfirm] Verificando sessão após confirmação...');
+                const { data: sessionData } = await supabase.auth.getSession();
+                
+                if (sessionData.session) {
+                  console.log('[EmailConfirm] Sessão confirmada, redirecionando para app...');
+                  window.location.href = '/?view=dashboard';
+                } else {
+                  console.warn('[EmailConfirm] Sessão não encontrada após confirmação, tentando novamente...');
+                  // Tentar novamente após um pequeno delay
+                  setTimeout(() => {
+                    window.location.href = '/?view=dashboard';
+                  }, 1000);
+                }
+              } catch (error) {
+                console.error('[EmailConfirm] Erro ao verificar sessão:', error);
+                // Mesmo com erro, tentar redirecionar para dashboard
+                window.location.href = '/?view=dashboard';
+              }
             }, 2000);
           }
         } else {

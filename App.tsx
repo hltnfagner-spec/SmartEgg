@@ -64,6 +64,7 @@ const App: FC = () => {
       console.log('[App] Mudança de auth detectada:', event, session?.user?.email);
       
       if (event === 'SIGNED_IN' && session) {
+        console.log('[App] Usuário logado/confirmado, mudando para app');
         setAuthState('app');
       } else if (event === 'SIGNED_OUT') {
         console.log('[App] Usuário deslogado via listener');
