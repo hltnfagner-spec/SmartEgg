@@ -104,7 +104,7 @@ const FlockForm: FC<FlockFormProps> = ({ onClose, flockToEdit }) => {
             val = value === '' ? '' : parseInt(value, 10);
         }
 
-        setFormData(prev => ({
+        setFormData((prev: any) => ({
             ...prev,
             [name]: val
         }));
@@ -113,7 +113,7 @@ const FlockForm: FC<FlockFormProps> = ({ onClose, flockToEdit }) => {
     const handleFocus = (e: FocusEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         if (Number(value) === 0) {
-            setFormData(prev => ({ ...prev, [name]: '' }));
+            setFormData((prev: any) => ({ ...prev, [name]: '' }));
         }
     };
 
