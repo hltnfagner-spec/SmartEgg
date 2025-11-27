@@ -945,7 +945,9 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
 
     // Recarregar dados
-    await loadDataForUser(userId);
+    if (userId) {
+      await loadDataForUser(userId);
+    }
   };
 
   // Funções de relatórios
@@ -977,8 +979,17 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         }));
 
         // Lógica de geração de relatório semanal
-        const weeklyReport = records.reduce((acc, record) => {
-          const weekNumber = getWeekNumber(record.date);
+        interface WeeklyReport {
+          [key: string]: {
+            totalEggs: number;
+            totalFeed: number;
+            totalWater: number;
+            totalMortality: number;
+          };
+        }
+
+        const weeklyReport: WeeklyReport = records.reduce((acc: WeeklyReport, record) => {
+          const weekNumber = Math.ceil((new Date(record.date).getTime() - new Date(record.date.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
           if (!acc[weekNumber]) {
             acc[weekNumber] = {
               totalEggs: 0,
@@ -992,7 +1003,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           acc[weekNumber].totalWater += record.waterConsumedLiters;
           acc[weekNumber].totalMortality += record.mortality;
           return acc;
-        }, {});
+        }, {} as WeeklyReport);
       } catch (err) {
         console.error('[FarmContext] Erro inesperado ao gerar relatório semanal:', err);
       }

@@ -37,7 +37,10 @@ const TestimonialCard: FC<{ name: string; role: string; content: string; initial
   </div>
 );
 
-const LandingPage: FC<LandingPageProps> = ({ onLogin, onRegister }) => {
+const LandingPage: FC<LandingPageProps> = ({ onLoginClick, onRegisterClick }) => {
+  const handleAccessSystem = () => {
+    onLoginClick();
+  };
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
       {/* Navbar */}
