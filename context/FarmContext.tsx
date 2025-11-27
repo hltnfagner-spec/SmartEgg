@@ -426,7 +426,9 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         if (event === 'SIGNED_IN') {
           await ensureUserInContacts(session.user);
           // Garantir que a URL esteja limpa e no dashboard após login
-          window.history.replaceState(null, '', '#dashboard');
+          const url = new URL(window.location.href);
+          url.searchParams.set('view', 'dashboard');
+          window.history.replaceState(null, '', url.toString());
         }
         
         await loadDataForUser(currentUserId);
@@ -453,31 +455,39 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Sincronizar navegação com mudanças na URL
   useEffect(() => {
     const handlePopState = () => {
-      const hash = window.location.hash.slice(1); // Remove o #
+      console.log('[FarmContext] Popstate detectado, URL atual:', window.location.href);
       const urlParams = new URLSearchParams(window.location.search);
+      const view = urlParams.get('view');
       const params: Record<string, any> = {};
       
-      // Converter parâmetros URL para objeto
+      // Converter parâmetros URL para objeto (exceto 'view')
       urlParams.forEach((value, key) => {
-        params[key] = value;
+        if (key !== 'view') {
+          params[key] = value;
+        }
       });
       
       // Lista de views válidas
       const validViews: View[] = ['dashboard', 'data-entry', 'flocks', 'sheds', 'expenses', 'sales', 'reports', 'ai-assistant', 'calculator', 'clients', 'contacts', 'inventory'];
       
       // Navegar para a view correspondente
-      if (hash && validViews.includes(hash as View)) {
-        setCurrentView(hash as View);
+      if (view && validViews.includes(view as View)) {
+        console.log('[FarmContext] Navegando para view da URL:', view);
+        setCurrentView(view as View);
         setViewParams(params);
       } else {
-        // Se não houver hash válido, voltar para dashboard
+        // Se não houver view válida, voltar para dashboard
+        console.log('[FarmContext] View inválido, voltando para dashboard');
         setCurrentView('dashboard');
         setViewParams({});
-        window.history.replaceState(null, '', '#dashboard');
+        const url = new URL(window.location.href);
+        url.searchParams.set('view', 'dashboard');
+        window.history.replaceState(null, '', url.toString());
       }
     };
 
     // Configurar estado inicial baseado na URL atual
+    console.log('[FarmContext] Configurando navegação inicial');
     handlePopState();
     
     // Adicionar listener para navegação do browser
@@ -525,20 +535,30 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }, [feedFormulations]);
 
   const navigate = (view: View, params: Record<string, any> = {}) => {
+      console.log('[FarmContext] Navegando para:', view, params);
       setCurrentView(view);
       setViewParams(params);
       
-      // Atualizar URL sem recarregar a página
+      // Usar query parameters em vez de hash para melhor compatibilidade
       const url = new URL(window.location.href);
-      url.hash = view;
       
-      // Adicionar parâmetros se houver
+      // Limpar parâmetros anteriores
+      url.searchParams.delete('view');
+      
+      // Adicionar view como parâmetro
+      url.searchParams.set('view', view);
+      
+      // Adicionar outros parâmetros
       Object.keys(params).forEach(key => {
         if (params[key]) {
           url.searchParams.set(key, params[key]);
         }
       });
       
+      // Remover hash se existir
+      url.hash = '';
+      
+      console.log('[FarmContext] Nova URL:', url.toString());
       window.history.pushState(null, '', url.toString());
   };
 
