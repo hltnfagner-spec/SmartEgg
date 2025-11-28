@@ -1,5 +1,4 @@
-
-import { useState, FC, useEffect, Fragment } from 'react';
+import { useState, useEffect, useMemo, FC, useRef } from 'react';
 import { EditIcon, TrashIcon, CalculatorIcon } from './icons';
 import StatCard from './StatCard';
 import NotificationBell from './NotificationBell';
@@ -19,6 +18,10 @@ const FeedCalculator: FC = () => {
   
   // Current Ingredient Input State
   const [currentIngredient, setCurrentIngredient] = useState({ name: '', price: '', quantity: '' });
+  
+  // Refs for inputs
+  const quantityInputRef = useRef<HTMLInputElement>(null);
+  const priceInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
       if (feedFormulations.length === 0 && activeTab === 'list') {
@@ -266,11 +269,13 @@ const FeedCalculator: FC = () => {
                                 <label className="block text-sm font-medium text-slate-600 mb-1">Qtd (kg)</label>
                                 <input 
                                     type="text" 
-                                    value={currentIngredient.quantity}
+                                    defaultValue={currentIngredient.quantity}
+                                    ref={quantityInputRef}
                                     onChange={e => {
     let value = e.target.value;
     // Permite apenas números, ponto e vírgula
     value = value.replace(/[^0-9.,]/g, '');
+    console.log('Valor digitado:', value); // Debug
     setCurrentIngredient({...currentIngredient, quantity: value});
 }}
                                     placeholder="0.0" 
