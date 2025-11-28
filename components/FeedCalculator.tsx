@@ -51,12 +51,15 @@ const FeedCalculator: FC = () => {
   };
 
   const addIngredient = () => {
-    if (currentIngredient.name && currentIngredient.price && currentIngredient.quantity) {
+    const quantity = parseFloat(currentIngredient.quantity);
+    const price = parseFloat(currentIngredient.price);
+    
+    if (currentIngredient.name && !isNaN(price) && price > 0 && !isNaN(quantity) && quantity > 0) {
       setIngredients([...ingredients, {
         id: `ing-${Date.now()}`,
         name: currentIngredient.name,
-        pricePerKg: parseFloat(currentIngredient.price),
-        quantityKg: parseFloat(currentIngredient.quantity)
+        pricePerKg: price,
+        quantityKg: quantity
       }]);
       setCurrentIngredient({ name: '', price: '', quantity: '' });
     }
@@ -250,7 +253,12 @@ const FeedCalculator: FC = () => {
                                     type="number" 
                                     step="0.01"
                                     value={currentIngredient.price}
-                                    onChange={e => setCurrentIngredient({...currentIngredient, price: e.target.value})}
+                                    onChange={e => {
+    let value = e.target.value;
+    // Converte vírgula para ponto para aceitar formato brasileiro
+    value = value.replace(',', '.');
+    setCurrentIngredient({...currentIngredient, price: value});
+}}
                                     placeholder="0.00" 
                                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" 
                                 />
@@ -261,7 +269,12 @@ const FeedCalculator: FC = () => {
                                     type="number" 
                                     step="0.01"
                                     value={currentIngredient.quantity}
-                                    onChange={e => setCurrentIngredient({...currentIngredient, quantity: e.target.value})}
+                                    onChange={e => {
+    let value = e.target.value;
+    // Converte vírgula para ponto para aceitar formato brasileiro
+    value = value.replace(',', '.');
+    setCurrentIngredient({...currentIngredient, quantity: value});
+}}
                                     placeholder="0.0" 
                                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" 
                                 />
