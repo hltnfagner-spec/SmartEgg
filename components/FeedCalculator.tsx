@@ -188,7 +188,7 @@ const FeedCalculator: FC = () => {
                                                   <div className="flex flex-wrap gap-2">
                                                       {formula.ingredients.map((ing, idx) => (
                                                           <span key={idx} className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-white text-slate-700 border border-slate-200 shadow-sm">
-                                                              {ing.name}: <span className="font-bold ml-1 text-slate-900">{ing.quantityKg} kg</span>
+                                                              {ing.name}: <span className="font-bold ml-1 text-slate-900">{ing.quantityKg.toFixed(3)} kg</span>
                                                           </span>
                                                       ))}
                                                   </div>
@@ -361,7 +361,7 @@ const FeedCalculator: FC = () => {
                                         <tr key={item.id} className="border-b border-slate-50">
                                             <td className="px-4 py-3 font-medium text-slate-800">{item.name}</td>
                                             <td className="px-4 py-3 text-right">R$ {item.pricePerKg.toFixed(2)}</td>
-                                            <td className="px-4 py-3 text-right">{item.quantityKg.toFixed(2)}</td>
+                                            <td className="px-4 py-3 text-right">{item.quantityKg.toFixed(3)}</td>
                                             <td className="px-4 py-3 text-right font-medium text-slate-800">
                                                 R$ {(item.pricePerKg * item.quantityKg).toFixed(2)}
                                             </td>
