@@ -51,8 +51,8 @@ const FeedCalculator: FC = () => {
   };
 
   const addIngredient = () => {
-    const quantity = parseFloat(currentIngredient.quantity);
-    const price = parseFloat(currentIngredient.price);
+    const quantity = parseFloat(currentIngredient.quantity.replace(',', '.'));
+    const price = parseFloat(currentIngredient.price.replace(',', '.'));
     
     if (currentIngredient.name && !isNaN(price) && price > 0 && !isNaN(quantity) && quantity > 0) {
       setIngredients([...ingredients, {
@@ -250,13 +250,12 @@ const FeedCalculator: FC = () => {
                             <div>
                                 <label className="block text-sm font-medium text-slate-600 mb-1">Preço/Kg (R$)</label>
                                 <input 
-                                    type="number" 
-                                    step="0.01"
+                                    type="text" 
                                     value={currentIngredient.price}
                                     onChange={e => {
     let value = e.target.value;
-    // Converte vírgula para ponto para aceitar formato brasileiro
-    value = value.replace(',', '.');
+    // Permite apenas números, ponto e vírgula
+    value = value.replace(/[^0-9.,]/g, '');
     setCurrentIngredient({...currentIngredient, price: value});
 }}
                                     placeholder="0.00" 
@@ -266,13 +265,12 @@ const FeedCalculator: FC = () => {
                             <div>
                                 <label className="block text-sm font-medium text-slate-600 mb-1">Qtd (kg)</label>
                                 <input 
-                                    type="number" 
-                                    step="0.01"
+                                    type="text" 
                                     value={currentIngredient.quantity}
                                     onChange={e => {
     let value = e.target.value;
-    // Converte vírgula para ponto para aceitar formato brasileiro
-    value = value.replace(',', '.');
+    // Permite apenas números, ponto e vírgula
+    value = value.replace(/[^0-9.,]/g, '');
     setCurrentIngredient({...currentIngredient, quantity: value});
 }}
                                     placeholder="0.0" 
