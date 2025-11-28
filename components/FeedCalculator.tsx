@@ -56,16 +56,31 @@ const FeedCalculator: FC = () => {
   };
 
   const addIngredient = () => {
-    const quantity = parseFloat(quantityInputValue.replace(',', '.'));
-    const price = parseFloat(priceInputValue.replace(',', '.'));
+    // Pega valores diretamente dos inputs do DOM
+    const quantityInput = quantityInputRef.current;
+    const priceInput = priceInputRef.current;
     
-    if (currentIngredient.name && !isNaN(price) && price > 0 && !isNaN(quantity) && quantity > 0) {
+    if (!quantityInput || !priceInput) return;
+    
+    const quantity = parseFloat(quantityInput.value.replace(',', '.'));
+    const price = parseFloat(priceInput.value.replace(',', '.'));
+    
+    const nameInput = document.querySelector('input[placeholder="Ex: Milho"]') as HTMLInputElement;
+    const name = nameInput?.value || '';
+    
+    if (name && !isNaN(price) && price > 0 && !isNaN(quantity) && quantity > 0) {
       setIngredients([...ingredients, {
         id: `ing-${Date.now()}`,
-        name: currentIngredient.name,
+        name: name,
         pricePerKg: price,
         quantityKg: quantity
       }]);
+      
+      // Limpa inputs diretamente no DOM
+      if (nameInput) nameInput.value = '';
+      if (quantityInput) quantityInput.value = '';
+      if (priceInput) priceInput.value = '';
+      
       setCurrentIngredient({ name: '', price: '', quantity: '' });
       setQuantityInputValue('');
       setPriceInputValue('');
@@ -258,13 +273,12 @@ const FeedCalculator: FC = () => {
                                 <label className="block text-sm font-medium text-slate-600 mb-1">Preço/Kg (R$)</label>
                                 <input 
                                     type="text" 
-                                    value={priceInputValue}
+                                    ref={priceInputRef}
                                     onChange={e => {
     let value = e.target.value;
     // Permite apenas números, ponto e vírgula
     value = value.replace(/[^0-9.,]/g, '');
-    setPriceInputValue(value);
-    setCurrentIngredient({...currentIngredient, price: value});
+    e.target.value = value; // Força o valor no DOM
 }}
                                     placeholder="0.00" 
                                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" 
@@ -274,13 +288,12 @@ const FeedCalculator: FC = () => {
                                 <label className="block text-sm font-medium text-slate-600 mb-1">Qtd (kg)</label>
                                 <input 
                                     type="text" 
-                                    value={quantityInputValue}
+                                    ref={quantityInputRef}
                                     onChange={e => {
     let value = e.target.value;
     // Permite apenas números, ponto e vírgula
     value = value.replace(/[^0-9.,]/g, '');
-    setQuantityInputValue(value);
-    setCurrentIngredient({...currentIngredient, quantity: value});
+    e.target.value = value; // Força o valor no DOM
 }}
                                     placeholder="0.0" 
                                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" 
