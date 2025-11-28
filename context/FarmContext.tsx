@@ -436,7 +436,6 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       if (!sessionError && sessionData.session) {
         const currentUserId = sessionData.session.user.id;
         setUserId(currentUserId);
-        await ensureUserInContacts(sessionData.session.user);
         await loadDataForUser(currentUserId);
       }
     };
