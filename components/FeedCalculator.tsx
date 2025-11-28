@@ -91,6 +91,15 @@ const FeedCalculator: FC = () => {
       setIngredients(ingredients.filter(i => i.id !== id));
   }
 
+  // Formata número: inteiro se não tem decimais, senão mostra até 3 casas
+  const formatQuantity = (num: number): string => {
+    if (Number.isInteger(num)) {
+      return num.toString();
+    }
+    // Remove zeros à direita desnecessários
+    return num.toFixed(3).replace(/\.?0+$/, '');
+  };
+
   const totalWeight = ingredients.reduce((sum, item) => sum + item.quantityKg, 0);
   const totalCost = ingredients.reduce((sum, item) => sum + (item.pricePerKg * item.quantityKg), 0);
   const costPerKg = totalWeight > 0 ? totalCost / totalWeight : 0;
@@ -188,7 +197,7 @@ const FeedCalculator: FC = () => {
                                                   <div className="flex flex-wrap gap-2">
                                                       {formula.ingredients.map((ing, idx) => (
                                                           <span key={idx} className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-white text-slate-700 border border-slate-200 shadow-sm">
-                                                              {ing.name}: <span className="font-bold ml-1 text-slate-900">{ing.quantityKg.toFixed(3)} kg</span>
+                                                              {ing.name}: <span className="font-bold ml-1 text-slate-900">{formatQuantity(ing.quantityKg)} kg</span>
                                                           </span>
                                                       ))}
                                                   </div>
@@ -361,7 +370,7 @@ const FeedCalculator: FC = () => {
                                         <tr key={item.id} className="border-b border-slate-50">
                                             <td className="px-4 py-3 font-medium text-slate-800">{item.name}</td>
                                             <td className="px-4 py-3 text-right">R$ {item.pricePerKg.toFixed(2)}</td>
-                                            <td className="px-4 py-3 text-right">{item.quantityKg.toFixed(3)}</td>
+                                            <td className="px-4 py-3 text-right">{formatQuantity(item.quantityKg)}</td>
                                             <td className="px-4 py-3 text-right font-medium text-slate-800">
                                                 R$ {(item.pricePerKg * item.quantityKg).toFixed(2)}
                                             </td>
