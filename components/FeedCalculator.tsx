@@ -18,6 +18,8 @@ const FeedCalculator: FC = () => {
   
   // Current Ingredient Input State
   const [currentIngredient, setCurrentIngredient] = useState({ name: '', price: '', quantity: '' });
+  const [quantityInputValue, setQuantityInputValue] = useState('');
+  const [priceInputValue, setPriceInputValue] = useState('');
   
   // Refs for inputs
   const quantityInputRef = useRef<HTMLInputElement>(null);
@@ -54,8 +56,8 @@ const FeedCalculator: FC = () => {
   };
 
   const addIngredient = () => {
-    const quantity = parseFloat(currentIngredient.quantity.replace(',', '.'));
-    const price = parseFloat(currentIngredient.price.replace(',', '.'));
+    const quantity = parseFloat(quantityInputValue.replace(',', '.'));
+    const price = parseFloat(priceInputValue.replace(',', '.'));
     
     if (currentIngredient.name && !isNaN(price) && price > 0 && !isNaN(quantity) && quantity > 0) {
       setIngredients([...ingredients, {
@@ -65,6 +67,8 @@ const FeedCalculator: FC = () => {
         quantityKg: quantity
       }]);
       setCurrentIngredient({ name: '', price: '', quantity: '' });
+      setQuantityInputValue('');
+      setPriceInputValue('');
     }
   };
 
@@ -254,11 +258,12 @@ const FeedCalculator: FC = () => {
                                 <label className="block text-sm font-medium text-slate-600 mb-1">Preço/Kg (R$)</label>
                                 <input 
                                     type="text" 
-                                    value={currentIngredient.price}
+                                    value={priceInputValue}
                                     onChange={e => {
     let value = e.target.value;
     // Permite apenas números, ponto e vírgula
     value = value.replace(/[^0-9.,]/g, '');
+    setPriceInputValue(value);
     setCurrentIngredient({...currentIngredient, price: value});
 }}
                                     placeholder="0.00" 
@@ -269,13 +274,12 @@ const FeedCalculator: FC = () => {
                                 <label className="block text-sm font-medium text-slate-600 mb-1">Qtd (kg)</label>
                                 <input 
                                     type="text" 
-                                    defaultValue={currentIngredient.quantity}
-                                    ref={quantityInputRef}
+                                    value={quantityInputValue}
                                     onChange={e => {
     let value = e.target.value;
     // Permite apenas números, ponto e vírgula
     value = value.replace(/[^0-9.,]/g, '');
-    console.log('Valor digitado:', value); // Debug
+    setQuantityInputValue(value);
     setCurrentIngredient({...currentIngredient, quantity: value});
 }}
                                     placeholder="0.0" 
