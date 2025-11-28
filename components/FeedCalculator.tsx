@@ -91,13 +91,12 @@ const FeedCalculator: FC = () => {
       setIngredients(ingredients.filter(i => i.id !== id));
   }
 
-  // Formata número: inteiro se não tem decimais, senão mostra até 3 casas
+  // Formata número: inteiro se não tem decimais, senão mostra 3 casas decimais
   const formatQuantity = (num: number): string => {
     if (Number.isInteger(num)) {
-      return num.toString();
+      return num.toString();  // 60 → "60"
     }
-    // Remove zeros à direita desnecessários
-    return num.toFixed(3).replace(/\.?0+$/, '');
+    return num.toFixed(3);  // 0.2 → "0.200"
   };
 
   const totalWeight = ingredients.reduce((sum, item) => sum + item.quantityKg, 0);
