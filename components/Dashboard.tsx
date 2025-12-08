@@ -463,7 +463,7 @@ const Dashboard: FC = () => {
               </li>
             )) : (
               <li className="text-center py-10 text-slate-500">Nenhuma transação recente.</li>
-            ))}
+            )}
               </ul>
           </div>
       </div>
