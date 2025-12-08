@@ -126,4 +126,4 @@ export interface FeedFormulation {
   notes?: string;
 }
 
-export type View = 'dashboard' | 'data-entry' | 'flocks' | 'sheds' | 'expenses' | 'sales' | 'reports' | 'ai-assistant' | 'calculator' | 'clients' | 'contacts' | 'inventory';
+export type View = 'dashboard' | 'data-entry' | 'flocks' | 'sheds' | 'expenses' | 'sales' | 'reports' | 'ai-assistant' | 'calculator' | 'clients' | 'contacts' | 'inventory' | 'mortality';

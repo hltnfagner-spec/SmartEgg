@@ -191,7 +191,7 @@ const FlockForm: FC<FlockFormProps> = ({ onClose, flockToEdit }) => {
 };
 
 const FlockManagement: FC = () => {
-    const { flocks, sheds, addFlock, updateFlock, disposeFlock, deleteFlock, addTask, deleteTask } = useFarm();
+    const { flocks, sheds, addFlock, updateFlock, disposeFlock, deleteFlock, addTask, deleteTask, getHensCountOnDate, getRecordsByFlockId } = useFarm();
     const [isFlockModalOpen, setIsFlockModalOpen] = useState(false);
     const [flockToEdit, setFlockToEdit] = useState<Flock | null>(null);
     const [taskModalState, setTaskModalState] = useState<{isOpen: boolean, flockId: string | null}>({isOpen: false, flockId: null});
@@ -245,11 +245,18 @@ const FlockManagement: FC = () => {
 
     const flockData = useMemo(() => {
         return flocks.map(flock => {
+            // Calcula mortalidade total a partir dos registros do lote
+            const records = getRecordsByFlockId(flock.id);
+            const totalMortality = records.reduce((sum, r) => sum + (r.mortality || 0), 0);
+            // Calcula aves atuais usando helper do contexto (considera data atual)
+            const currentHenCount = getHensCountOnDate(flock.id, new Date());
+
             return {
                 ...flock,
                 totalExpenses: 0,
                 totalRevenue: 0,
-                totalMortality: 0,
+                totalMortality,
+                currentHenCount,
                 costPerEgg: 0,
                 profitPerEgg: 0,
             };
@@ -257,7 +264,7 @@ const FlockManagement: FC = () => {
             if (a.status === b.status) return 0;
             return a.status === 'Ativo' ? -1 : 1;
         });
-    }, [flocks]);
+    }, [flocks, getHensCountOnDate, getRecordsByFlockId]);
 
     const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 
@@ -314,7 +321,7 @@ const FlockManagement: FC = () => {
                                 <h3 className="font-semibold text-stone-600 text-xs uppercase tracking-wider mb-1">Status</h3>
                                 <div className="grid grid-cols-2 gap-x-4">
                                     <p><span className="font-semibold">Idade:</span> {calculateAge(flock.birthDate).weeks} sem ({calculateAge(flock.birthDate).days} d)</p>
-                                    <p><span className="font-semibold">Aves Atuais:</span> {flock.initialHenCount}</p>
+                                    <p><span className="font-semibold">Aves Atuais:</span> {flock.currentHenCount}</p>
                                     <p><span className="font-semibold">Aves Iniciais:</span> {flock.initialHenCount}</p>
                                     <p><span className="font-semibold">Mortalidade:</span> {flock.totalMortality}</p>
                                 </div>

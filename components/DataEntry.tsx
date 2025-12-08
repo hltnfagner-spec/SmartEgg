@@ -22,7 +22,6 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
         brokenEggs: 0,
         feedConsumedKg: 0,
         waterConsumedLiters: 0,
-        mortality: 0,
         notes: '',
     });
     const [message, setMessage] = useState<{type: 'error', text: string} | null>(null);
@@ -42,7 +41,7 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
         
         let val: string | number = value;
         // Campos numéricos que podem ser vazios durante a digitação ou zero
-        if (['eggsCollected', 'brokenEggs', 'mortality', 'feedConsumedKg', 'waterConsumedLiters'].includes(name)) {
+        if (['eggsCollected', 'brokenEggs', 'feedConsumedKg', 'waterConsumedLiters'].includes(name)) {
             val = value === '' ? '' : parseFloat(value);
         }
 
@@ -74,19 +73,28 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
         // new Date('2025-11-26') cria 2025-11-26T00:00:00.000Z
         const recordDate = new Date(formData.date);
         
-        const payload = {
+        const basePayload = {
             ...formData,
             eggsCollected: Number(formData.eggsCollected),
             brokenEggs: Number(formData.brokenEggs) || 0,
             feedConsumedKg: Number(formData.feedConsumedKg) || 0,
             waterConsumedLiters: Number(formData.waterConsumedLiters) || 0,
-            mortality: Number(formData.mortality) || 0,
-            date: recordDate.toISOString()
+            date: recordDate.toISOString(),
         };
 
         if(recordToEdit) {
+            // Preserva a mortalidade existente (lançada pelo menu Mortalidade)
+            const payload = {
+                ...basePayload,
+                mortality: recordToEdit.mortality,
+            };
             updateRecord(recordToEdit.id, payload);
         } else {
+            // Novos registros de coleta começam com mortalidade 0
+            const payload = {
+                ...basePayload,
+                mortality: 0,
+            };
             addRecord(payload);
         }
 
@@ -154,11 +162,7 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
 
             <div className="space-y-4">
                 <h3 className="text-sm font-bold text-stone-500 uppercase tracking-wide border-b border-stone-200 pb-1">Saúde & Observações</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <div>
-                        <label htmlFor="mortality" className="block text-sm font-medium text-stone-600">Mortalidade (nº aves)</label>
-                        <input type="number" id="mortality" name="mortality" min="0" value={formData.mortality} onChange={handleChange} onFocus={handleFocus} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" />
-                    </div>
+                <div className="grid grid-cols-1 gap-6">
                     <div>
                         <label htmlFor="notes" className="block text-sm font-medium text-stone-600">Observações</label>
                         <textarea id="notes" name="notes" value={formData.notes || ''} onChange={handleChange} rows={2} className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"></textarea>

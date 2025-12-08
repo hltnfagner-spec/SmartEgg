@@ -17,6 +17,7 @@ const Sidebar: FC<SidebarProps> = ({ onLogout }) => {
     { id: 'sheds', label: 'Galpões', icon: <ShedIcon /> },
     { id: 'flocks', label: 'Lotes', icon: <FlockIcon /> },
     { id: 'data-entry', label: 'Coleta de Ovos', icon: <DataEntryIcon /> },
+    { id: 'mortality', label: 'Mortalidade', icon: <ExpenseIcon /> },
     { id: 'inventory', label: 'Estoque', icon: <InventoryIcon /> },
     // Menu Financeiro dividido para facilitar acesso a entradas e saídas
     { id: 'sales', label: 'Vendas', icon: <SalesIcon /> },

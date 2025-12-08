@@ -13,6 +13,7 @@ import FeedCalculator from './components/FeedCalculator';
 import Clients from './components/Clients';
 import Contacts from './components/Contacts';
 import Inventory from './components/Inventory';
+import Mortality from './components/Mortality';
 import LandingPage from './components/LandingPage';
 import Register from './components/Register';
 import Login from './components/Login';
@@ -131,6 +132,7 @@ function App() {
       case 'clients': return <Clients />;
       case 'contacts': return <Contacts />;
       case 'inventory': return <Inventory />;
+      case 'mortality': return <Mortality />;
       default: return <Dashboard />;
     }
   };
