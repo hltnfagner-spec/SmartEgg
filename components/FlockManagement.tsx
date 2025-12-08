@@ -21,7 +21,7 @@ const TaskForm: FC<TaskFormProps> = ({ flockId, onClose }) => {
 
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData((prev: any) => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = (e: FormEvent) => {

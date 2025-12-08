@@ -34,7 +34,7 @@ const AddExpenseForm: FC<{onClose: () => void; expenseToEdit?: Expense | null}> 
              val = value === '' ? '' : parseFloat(value);
         }
 
-        setFormData(prev => ({
+        setFormData((prev: any) => ({
             ...prev,
             [name]: val
         }));
@@ -43,7 +43,7 @@ const AddExpenseForm: FC<{onClose: () => void; expenseToEdit?: Expense | null}> 
     const handleFocus = (e: FocusEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         if (Number(value) === 0) {
-            setFormData(prev => ({ ...prev, [name]: '' }));
+            setFormData((prev: any) => ({ ...prev, [name]: '' }));
         }
     };
 

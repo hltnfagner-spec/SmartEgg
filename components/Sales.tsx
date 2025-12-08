@@ -101,7 +101,7 @@ const AddSaleForm: FC<{onClose: () => void; saleToEdit?: Sale | null}> = ({ onCl
     const handleFocus = (e: FocusEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         if (Number(value) === 0) {
-            setFormData(prev => ({ ...prev, [name]: '' }));
+            setFormData((prev: any) => ({ ...prev, [name]: '' }));
         }
     };
 
