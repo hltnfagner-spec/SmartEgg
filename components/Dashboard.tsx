@@ -215,7 +215,7 @@ const Dashboard: FC = () => {
         const timestampA = parseInt(a.id.split('-')[1] || '0');
         const timestampB = parseInt(b.id.split('-')[1] || '0');
         return timestampB - timestampA;
-    }).slice(0, 5);
+    }).slice(0, 4);
   }, [sales, expenses]);
 
   const upcomingTasks = useMemo(() => {
@@ -444,7 +444,8 @@ const Dashboard: FC = () => {
       {/* Latest Transactions Section - MOVED HERE */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
           <h2 className="text-lg font-semibold text-slate-800 mb-4">Últimas Transações</h2>
-          <ul className="divide-y divide-slate-100">
+          <div className="max-h-64 overflow-y-auto">
+              <ul className="divide-y divide-slate-100">
             {latestTransactions.length > 0 ? latestTransactions.map(tx => (
                <li key={tx.id} className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
                   <div className="flex items-center min-w-0">
@@ -462,8 +463,9 @@ const Dashboard: FC = () => {
               </li>
             )) : (
               <li className="text-center py-10 text-slate-500">Nenhuma transação recente.</li>
-            )}
-          </ul>
+            ))}
+              </ul>
+          </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

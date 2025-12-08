@@ -168,7 +168,7 @@ const Inventory: FC = () => {
                                 <th className="px-6 py-3 text-right">Mínimo</th>
                                 <th className="px-6 py-3 text-right">Custo Unit.</th>
                                 <th className="px-6 py-3 text-right">Valor Total</th>
-                                <th className="px-6 py-3 text-center sticky right-0 bg-slate-50 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] z-10">Ações</th>
+                                <th className="px-6 py-3 text-center">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -186,7 +186,7 @@ const Inventory: FC = () => {
                                     <td className="px-6 py-4 text-right text-slate-400">{item.minThreshold} {item.unit}</td>
                                     <td className="px-6 py-4 text-right">{item.costPerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                                     <td className="px-6 py-4 text-right text-green-600 font-medium">{(item.quantity * item.costPerUnit).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                                    <td className="px-6 py-4 text-center space-x-2 sticky right-0 bg-white group-hover:bg-slate-50 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] z-20">
+                                    <td className="px-6 py-4 text-center space-x-2">
                                         <button 
                                             type="button"
                                             onClick={(e) => {e.preventDefault(); e.stopPropagation(); handleOpenEditModal(item); }}

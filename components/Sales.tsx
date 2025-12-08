@@ -336,7 +336,7 @@ const Sales: FC = () => {
                                 <th scope="col" className="px-4 py-3">Status Pagto.</th>
                                 <th scope="col" className="px-4 py-3 text-right">Qtd</th>
                                 <th scope="col" className="px-4 py-3 text-right">Total</th>
-                                <th scope="col" className="px-4 py-3 text-center sticky right-0 bg-stone-50 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] z-10">Ações</th>
+                                <th scope="col" className="px-4 py-3 text-center">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -366,7 +366,7 @@ const Sales: FC = () => {
                                     <td className="px-4 py-4 text-right font-medium text-green-600">
                                         {sale.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                     </td>
-                                    <td className="px-4 py-4 text-center sticky right-0 bg-white group-hover:bg-stone-50 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] z-10">
+                                    <td className="px-4 py-4 text-center">
                                         <button onClick={() => handleOpenEditModal(sale)} className="p-2 text-stone-500 hover:text-amber-600 transition-colors" aria-label="Editar Venda">
                                             <EditIcon />
                                         </button>

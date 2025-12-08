@@ -146,7 +146,7 @@ const Expenses: FC = () => {
                                 <th scope="col" className="px-6 py-3">Categoria</th>
                                 <th scope="col" className="px-6 py-3">Descrição</th>
                                 <th scope="col" className="px-6 py-3 text-right">Valor</th>
-                                <th scope="col" className="px-6 py-3 text-center sticky right-0 bg-stone-50 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] z-10">Ações</th>
+                                <th scope="col" className="px-6 py-3 text-center">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -161,7 +161,7 @@ const Expenses: FC = () => {
                                     <td className="px-6 py-4 text-right font-medium text-red-600">
                                         {expense.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                     </td>
-                                    <td className="px-6 py-4 text-center sticky right-0 bg-white group-hover:bg-stone-50 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] z-10">
+                                    <td className="px-6 py-4 text-center">
                                         <button onClick={() => handleOpenEditModal(expense)} className="p-2 text-stone-500 hover:text-amber-600 transition-colors" aria-label="Editar Despesa">
                                             <EditIcon />
                                         </button>
