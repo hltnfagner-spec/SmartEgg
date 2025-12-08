@@ -223,11 +223,7 @@ const Reports: FC = () => {
 		}
 	};
 
-	const handlePrint = () => {
-		if (!reportData) return;
-		window.print();
-	};
-
+	
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
             <h1 className="text-3xl font-bold text-stone-800">Gerador de Relatórios</h1>
@@ -365,14 +361,6 @@ const Reports: FC = () => {
                                     className="flex-1 py-3 px-4 rounded-xl border border-stone-300 text-sm font-medium text-stone-700 bg-white hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Baixar PDF
-                                </button>
-
-                                <button
-                                    onClick={handlePrint}
-                                    disabled={!reportData}
-                                    className="flex-1 py-3 px-4 rounded-xl border border-stone-300 text-sm font-medium text-stone-700 bg-white hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Imprimir
                                 </button>
                             </div>
 
