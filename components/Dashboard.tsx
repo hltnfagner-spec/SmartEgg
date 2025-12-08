@@ -215,7 +215,7 @@ const Dashboard: FC = () => {
         const timestampA = parseInt(a.id.split('-')[1] || '0');
         const timestampB = parseInt(b.id.split('-')[1] || '0');
         return timestampB - timestampA;
-    }).slice(0, 4);
+    });
   }, [sales, expenses]);
 
   const upcomingTasks = useMemo(() => {
