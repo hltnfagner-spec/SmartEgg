@@ -45,13 +45,13 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
             val = value === '' ? '' : parseFloat(value);
         }
 
-        setFormData(prev => ({ ...prev, [name]: val }));
+        setFormData((prev: any) => ({ ...prev, [name]: val }));
     };
 
     const handleFocus = (e: FocusEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         if (Number(value) === 0) {
-            setFormData(prev => ({ ...prev, [name]: '' }));
+            setFormData((prev: any) => ({ ...prev, [name]: '' }));
         }
     };
 
