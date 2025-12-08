@@ -1,10 +1,12 @@
-import { useState, FC, useMemo } from 'react';
+import { useState, FC, useMemo, useCallback } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { generateProductionReport, generateFinancialReport } from '../services/reportGenerator.ts';
 import { ReportIcon } from './icons';
 import { DailyRecord, Expense, Sale } from '../types';
 
 type ReportType = 'production' | 'financial' | 'eggs' | 'sales' | 'expenses' | 'posture' | 'clients';
+
+type PeriodType = 'daily' | 'weekly' | 'monthly' | 'custom';
 
 type ProductionReportData = {
 	type: 'production';
@@ -68,7 +70,8 @@ type ReportData = ProductionReportData | FinancialReportData | EggsReportData | 
 const Reports: FC = () => {
 	const { flocks, records, expenses, sales } = useFarm();
 	const [reportType, setReportType] = useState<ReportType | null>(null);
-    
+	const [periodType, setPeriodType] = useState<PeriodType>('monthly');
+	
     // Helper to get local date string YYYY-MM-DD
     const getLocalDateString = () => {
         const date = new Date();
@@ -76,9 +79,59 @@ const Reports: FC = () => {
         return new Date(date.getTime() - offset).toISOString().split('T')[0];
     };
     
-    // Define data inicial e final como a data atual (local)
-    const [startDate, setStartDate] = useState(getLocalDateString());
-    const [endDate, setEndDate] = useState(getLocalDateString());
+    // Calculate date range based on period type
+    const getDateRange = useCallback(() => {
+        const today = new Date();
+        const offset = today.getTimezoneOffset() * 60000;
+        const localToday = new Date(today.getTime() - offset);
+        
+        let startDate: Date;
+        let endDate: Date = localToday;
+        
+        switch (periodType) {
+            case 'daily':
+                startDate = new Date(localToday);
+                break;
+            case 'weekly':
+                startDate = new Date(localToday);
+                startDate.setDate(startDate.getDate() - 7);
+                break;
+            case 'monthly':
+                startDate = new Date(localToday);
+                startDate.setMonth(startDate.getMonth() - 1);
+                break;
+            case 'custom':
+                // For custom, use the manually set dates
+                return {
+                    start: startDate,
+                    end: endDate
+                };
+            default:
+                startDate = new Date(localToday);
+                break;
+        }
+        
+        return { start: startDate, end: endDate };
+    }, [periodType]);
+    
+    // Initialize date range based on period type
+    const [customStartDate, setCustomStartDate] = useState(getLocalDateString());
+    const [customEndDate, setCustomEndDate] = useState(getLocalDateString());
+    
+    // Get actual start and end dates for filtering
+    const { start: actualStartDate, end: actualEndDate } = useMemo(() => {
+        if (periodType === 'custom') {
+            return {
+                start: new Date(customStartDate),
+                end: new Date(customEndDate)
+            };
+        }
+        return getDateRange();
+    }, [periodType, customStartDate, customEndDate, getDateRange]);
+    
+    // Format dates for display
+    const startDate = actualStartDate.toISOString().split('T')[0];
+    const endDate = actualEndDate.toISOString().split('T')[0];
     
     	const [selectedFlockId, setSelectedFlockId] = useState('all');
 	const [isLoading, setIsLoading] = useState(false);
@@ -317,14 +370,15 @@ const Reports: FC = () => {
 
                     <div className="bg-stone-50 p-6 rounded-xl border border-stone-200">
                          <label className="block text-lg font-semibold text-stone-700 mb-4">Configure os Filtros</label>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label htmlFor="startDate" className="block text-sm font-medium text-stone-600 mb-1">Data Inicial</label>
-                                <input type="date" id="startDate" value={startDate} onChange={e => setStartDate(e.target.value)} className="block w-full px-3 py-2 bg-white border border-stone-300 rounded-lg shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"/>
-                            </div>
-                            <div>
-                                <label htmlFor="endDate" className="block text-sm font-medium text-stone-600 mb-1">Data Final</label>
-                                <input type="date" id="endDate" value={endDate} onChange={e => setEndDate(e.target.value)} className="block w-full px-3 py-2 bg-white border border-stone-300 rounded-lg shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"/>
+                                <label htmlFor="periodType" className="block text-sm font-medium text-stone-600 mb-1">Período</label>
+                                <select id="periodType" value={periodType} onChange={e => setPeriodType(e.target.value as PeriodType)} className="block w-full px-3 py-2 bg-white border border-stone-300 rounded-lg shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
+                                    <option value="daily">Diário</option>
+                                    <option value="weekly">Semanal</option>
+                                    <option value="monthly">Mensal</option>
+                                    <option value="custom">Personalizado</option>
+                                </select>
                             </div>
                             <div>
                                 <label htmlFor="flockId" className="block text-sm font-medium text-stone-600 mb-1">Filtrar por Lote</label>
@@ -335,6 +389,25 @@ const Reports: FC = () => {
                                     ))}
                                 </select>
                             </div>
+                        </div>
+                        
+                        {periodType === 'custom' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                <div>
+                                    <label htmlFor="customStartDate" className="block text-sm font-medium text-stone-600 mb-1">Data Inicial</label>
+                                    <input type="date" id="customStartDate" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="block w-full px-3 py-2 bg-white border border-stone-300 rounded-lg shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"/>
+                                </div>
+                                <div>
+                                    <label htmlFor="customEndDate" className="block text-sm font-medium text-stone-600 mb-1">Data Final</label>
+                                    <input type="date" id="customEndDate" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="block w-full px-3 py-2 bg-white border border-stone-300 rounded-lg shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"/>
+                                </div>
+                            </div>
+                        )}
+                        
+                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-sm text-blue-700">
+                                <strong>Período selecionado:</strong> {periodType === 'daily' ? 'Hoje' : periodType === 'weekly' ? 'Últimos 7 dias' : periodType === 'monthly' ? 'Últimos 30 dias' : `${startDate} a ${endDate}`}
+                            </p>
                         </div>
                     </div>
 
