@@ -258,7 +258,7 @@ const DataEntry: FC = () => {
                                 <th scope="col" className="px-6 py-3 text-center sticky right-0 bg-stone-50 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] z-10 border-l border-stone-200">Ações</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="relative">
                             {sortedRecords.length > 0 ? sortedRecords.map(record => (
                                 <tr key={record.id} className="bg-white border-b hover:bg-stone-50 transition-colors group">
                                     <td className="px-6 py-4">
@@ -268,7 +268,7 @@ const DataEntry: FC = () => {
                                     <td className="px-6 py-4 text-right">{record.eggsCollected}</td>
                                     <td className="px-6 py-4 text-right text-red-500 font-medium">{record.brokenEggs || 0}</td>
                                     <td className="px-6 py-4 text-right">{record.feedConsumedKg.toFixed(2)}</td>
-                                    <td className="px-6 py-4 text-center space-x-2 sticky right-0 bg-white group-hover:bg-stone-50 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] z-10 border-l border-stone-100">
+                                    <td className="px-6 py-4 text-center space-x-2 sticky right-0 bg-white group-hover:bg-stone-50 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)] z-20 border-l border-stone-100">
                                         <button 
                                             type="button" 
                                             onClick={(e) => { e.stopPropagation(); handleOpenEditModal(record); }} 
