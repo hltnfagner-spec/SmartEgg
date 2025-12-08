@@ -279,8 +279,8 @@ const FlockManagement: FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {flockData.map(flock => {
-                    const tasks = [];
-                    const shed = null;
+                    const tasks: any[] = [];
+                    const shed: any = null;
                     return (
                     <div key={flock.id} className={`bg-white p-5 rounded-xl shadow-md flex flex-col transition-opacity ${flock.status === 'Descartado' ? 'opacity-60' : ''}`}>
                          <div className="flex justify-between items-start mb-4">
