@@ -1065,9 +1065,21 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             }
 
             const feedItem = inventoryData?.find(i => i.category === 'Ração');
-            const eggItem = inventoryData?.find(i => i.category === 'Produto Final' && i.name.toLowerCase().includes('ovos'));
+            // Busca mais flexível para encontrar item de ovos
+            const eggItem = inventoryData?.find(i => 
+              i.category === 'Produto Final' && 
+              (i.name.toLowerCase().includes('ovos') || i.name.toLowerCase().includes('ovo'))
+            );
             const feedPrice = feedItem ? parseFloat(feedItem.cost_per_unit) : 0;
             const totalRecordCost = recordData.feedConsumedKg * feedPrice;
+            
+            console.log('[addRecord] Estoque encontrado:', { 
+              feedItem: feedItem?.name, 
+              eggItem: eggItem?.name,
+              feedPrice,
+              totalRecordCost,
+              netEggs: recordData.eggsCollected - (recordData.brokenEggs || 0)
+            });
 
             // 1. Deduzir ração
             if (feedItem && recordData.feedConsumedKg > 0) {
@@ -1086,8 +1098,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
             // 2. Adicionar ovos com cálculo de custo médio
             const netEggs = recordData.eggsCollected - (recordData.brokenEggs || 0);
+            console.log('[addRecord] Processando ovos:', { netEggs, eggItemExists: !!eggItem });
+            
             if (netEggs > 0) {
               if (eggItem) {
+                console.log('[addRecord] Atualizando item existente:', eggItem.name);
                 // Atualizar ovos existentes com custo médio
                 const currentQuantity = parseFloat(eggItem.quantity);
                 const currentTotalValue = currentQuantity * parseFloat(eggItem.cost_per_unit);
@@ -1115,7 +1130,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
                 ));
               } else {
                 // Criar novo item de ovos
-                const unitCost = totalRecordCost / netEggs;
+                console.log('[addRecord] Criando novo item de ovos no estoque');
+                const unitCost = netEggs > 0 ? totalRecordCost / netEggs : 0;
                 const { data: newEggItem, error: insertError } = await supabase
                   .from('inventory')
                   .insert({
@@ -1130,7 +1146,12 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
                   .select()
                   .single();
 
+                if (insertError) {
+                  console.error('[addRecord] Erro ao criar item de ovos:', insertError);
+                }
+                
                 if (!insertError && newEggItem) {
+                  console.log('[addRecord] Item de ovos criado com sucesso:', newEggItem);
                   const mappedItem: InventoryItem = {
                     id: newEggItem.id,
                     name: newEggItem.name,
