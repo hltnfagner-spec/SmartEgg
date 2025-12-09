@@ -45,8 +45,6 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
         eggsCollected: '',
         brokenEggs: 0,
         feedConsumedKg: 0,
-        waterConsumedLiters: 0,
-        notes: '',
     });
     const [message, setMessage] = useState<{type: 'error', text: string} | null>(null);
 
@@ -65,7 +63,7 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
         
         let val: string | number = value;
         // Campos numéricos que podem ser vazios durante a digitação ou zero
-        if (['eggsCollected', 'brokenEggs', 'feedConsumedKg', 'waterConsumedLiters'].includes(name)) {
+        if (['eggsCollected', 'brokenEggs', 'feedConsumedKg'].includes(name)) {
             val = value === '' ? '' : parseFloat(value);
         }
 
@@ -102,7 +100,6 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
             eggsCollected: Number(formData.eggsCollected),
             brokenEggs: Number(formData.brokenEggs) || 0,
             feedConsumedKg: Number(formData.feedConsumedKg) || 0,
-            waterConsumedLiters: Number(formData.waterConsumedLiters) || 0,
             date: recordDate.toISOString(),
         };
 
@@ -172,24 +169,10 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
 
             <div className="space-y-4">
                  <h3 className="text-sm font-bold text-stone-500 uppercase tracking-wide border-b border-stone-200 pb-1">Consumo</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-6">
                     <div>
                         <label htmlFor="feedConsumedKg" className="block text-sm font-medium text-stone-600">Ração Consumida (kg)</label>
                         <input type="number" step="0.01" id="feedConsumedKg" name="feedConsumedKg" min="0" value={formData.feedConsumedKg} onChange={handleChange} onFocus={handleFocus} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" />
-                    </div>
-                    <div>
-                        <label htmlFor="waterConsumedLiters" className="block text-sm font-medium text-stone-600">Água Consumida (L)</label>
-                        <input type="number" step="0.01" id="waterConsumedLiters" name="waterConsumedLiters" min="0" value={formData.waterConsumedLiters} onChange={handleChange} onFocus={handleFocus} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" />
-                    </div>
-                </div>
-            </div>
-
-            <div className="space-y-4">
-                <h3 className="text-sm font-bold text-stone-500 uppercase tracking-wide border-b border-stone-200 pb-1">Saúde & Observações</h3>
-                <div className="grid grid-cols-1 gap-6">
-                    <div>
-                        <label htmlFor="notes" className="block text-sm font-medium text-stone-600">Observações</label>
-                        <textarea id="notes" name="notes" value={formData.notes || ''} onChange={handleChange} rows={2} className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"></textarea>
                     </div>
                 </div>
             </div>
@@ -390,8 +373,8 @@ const DataEntry: FC = () => {
                             <label className="block text-sm font-medium text-stone-600 mb-1">Período Selecionado</label>
                             <div className="px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-stone-700">
                                 {dateFilter.start === dateFilter.end 
-                                    ? `Hoje: ${new Date(dateFilter.start).toLocaleDateString('pt-BR')}`
-                                    : `${new Date(dateFilter.start).toLocaleDateString('pt-BR')} até ${new Date(dateFilter.end).toLocaleDateString('pt-BR')}`
+                                    ? `Hoje: ${new Date(dateFilter.start + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                                    : `${new Date(dateFilter.start + 'T00:00:00').toLocaleDateString('pt-BR')} até ${new Date(dateFilter.end + 'T00:00:00').toLocaleDateString('pt-BR')}`
                                 }
                             </div>
                         </div>

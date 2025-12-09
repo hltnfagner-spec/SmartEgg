@@ -209,7 +209,6 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           eggsCollected: r.eggs_collected,
           brokenEggs: r.broken_eggs,
           feedConsumedKg: parseFloat(r.feed_consumed_kg),
-          waterConsumedLiters: parseFloat(r.water_consumed_liters),
           mortality: r.mortality,
           notes: r.notes ?? undefined,
           createdAt: r.created_at ?? undefined, // Timestamp de criação do Supabase
@@ -972,7 +971,6 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           eggsCollected: record.eggs_collected,
           brokenEggs: record.broken_eggs,
           feedConsumedKg: record.feed_consumed_kg,
-          waterConsumedLiters: record.water_consumed_liters,
           mortality: record.mortality,
           notes: record.notes,
         }));
@@ -982,7 +980,6 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           [key: string]: {
             totalEggs: number;
             totalFeed: number;
-            totalWater: number;
             totalMortality: number;
           };
         }
@@ -993,13 +990,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             acc[weekNumber] = {
               totalEggs: 0,
               totalFeed: 0,
-              totalWater: 0,
               totalMortality: 0,
             };
           }
           acc[weekNumber].totalEggs += record.eggsCollected;
           acc[weekNumber].totalFeed += record.feedConsumedKg;
-          acc[weekNumber].totalWater += record.waterConsumedLiters;
           acc[weekNumber].totalMortality += record.mortality;
           return acc;
         }, {} as WeeklyReport);
@@ -1023,7 +1018,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             eggs_collected: recordData.eggsCollected,
             broken_eggs: recordData.brokenEggs ?? 0,
             feed_consumed_kg: recordData.feedConsumedKg,
-            water_consumed_liters: recordData.waterConsumedLiters,
+            water_consumed_liters: 0,
             mortality: recordData.mortality,
             notes: recordData.notes ?? null,
           })
@@ -1042,7 +1037,6 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           eggsCollected: data.eggs_collected,
           brokenEggs: data.broken_eggs,
           feedConsumedKg: parseFloat(data.feed_consumed_kg),
-          waterConsumedLiters: parseFloat(data.water_consumed_liters),
           mortality: data.mortality,
           notes: data.notes ?? undefined,
           createdAt: data.created_at ?? undefined,
@@ -1190,7 +1184,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             eggs_collected: data.eggsCollected,
             broken_eggs: data.brokenEggs ?? 0,
             feed_consumed_kg: data.feedConsumedKg,
-            water_consumed_liters: data.waterConsumedLiters,
+            water_consumed_liters: 0,
             mortality: data.mortality,
             notes: data.notes ?? null,
           })
@@ -1284,12 +1278,22 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
           const feedItem = inventoryData?.find((i: any) => i.category === 'Ração');
           const eggItem = inventoryData?.find((i: any) => 
-            i.category === 'Produto Final' && i.name.toLowerCase().includes('ovos')
+            i.category === 'Produto Final' && 
+            (i.name.toLowerCase().includes('ovos') || i.name.toLowerCase().includes('ovo'))
           );
           
           const feedPrice = feedItem ? parseFloat(feedItem.cost_per_unit) : 0;
           const recordValue = recordToDelete.feedConsumedKg * feedPrice;
           const netEggs = recordToDelete.eggsCollected - (recordToDelete.brokenEggs || 0);
+          
+          console.log('[deleteRecord] Revertendo estoque:', {
+            recordId,
+            feedItem: feedItem?.name,
+            eggItem: eggItem?.name,
+            netEggs,
+            recordValue,
+            feedToRestore: recordToDelete.feedConsumedKg
+          });
 
           // 1. Restaurar Ração no Supabase
           if (feedItem && recordToDelete.feedConsumedKg > 0) {
@@ -1344,7 +1348,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             // Remover ovos
             if (netEggs > 0) {
               const eggItemIndex = newInventory.findIndex(i => 
-                i.category === 'Produto Final' && i.name.toLowerCase().includes('ovos')
+                i.category === 'Produto Final' && 
+                (i.name.toLowerCase().includes('ovos') || i.name.toLowerCase().includes('ovo'))
               );
               
               if (eggItemIndex >= 0) {
@@ -1381,6 +1386,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
         // 5. Remover do estado local
         setRecords(prev => prev.filter(rec => rec.id !== recordId));
+        console.log('[deleteRecord] Registro deletado e estoque revertido com sucesso!');
         
         console.log('✅ Registro deletado e estoque ajustado com sucesso');
       } catch (err) {

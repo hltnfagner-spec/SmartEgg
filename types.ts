@@ -24,7 +24,6 @@ export interface DailyRecord {
   eggsCollected: number;
   brokenEggs?: number; // Novos campos de qualidade
   feedConsumedKg: number;
-  waterConsumedLiters: number;
   mortality: number;
   notes?: string;
   createdAt?: string; // Timestamp de criação para ordenação

@@ -55,14 +55,8 @@ const Mortality: FC = () => {
     // Buscar se já existe registro para esse lote + data
     const existing = records.find(r => r.flockId === formData.flockId && toLocalDateString(new Date(r.date)) === formData.date);
 
-    const notesParts = [] as string[];
-    if (formData.reason) {
-      notesParts.push(`Motivo: ${formData.reason}`);
-    }
-    if (formData.notes) {
-      notesParts.push(formData.notes);
-    }
-    const combinedNotes = notesParts.join(' | ');
+    // Salva motivo e observações separados por ||
+    const combinedNotes = [formData.reason, formData.notes].filter(Boolean).join(' || ');
 
     if (existing) {
       // Atualiza registro existente
@@ -80,7 +74,6 @@ const Mortality: FC = () => {
         eggsCollected: 0,
         brokenEggs: 0,
         feedConsumedKg: 0,
-        waterConsumedLiters: 0,
         mortality: mortalityNumber,
         notes: combinedNotes || undefined,
       };
@@ -196,24 +189,32 @@ const Mortality: FC = () => {
         {formData.flockId ? (
           selectedFlockRecords.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left text-stone-500 border-collapse">
+              <table className="w-full text-sm text-stone-500 border-collapse">
                 <thead className="text-xs text-stone-700 uppercase bg-stone-50">
                   <tr>
-                    <th className="px-4 py-3">Data</th>
-                    <th className="px-4 py-3 text-right">Qtd Mortas</th>
-                    <th className="px-4 py-3">Observações / Motivo</th>
+                    <th className="px-4 py-3 text-center">Data</th>
+                    <th className="px-4 py-3 text-center">Qtd Mortas</th>
+                    <th className="px-4 py-3 text-center">Motivo</th>
+                    <th className="px-4 py-3 text-center">Observações</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedFlockRecords.map(record => (
-                    <tr key={record.id} className="border-b hover:bg-stone-50">
-                      <td className="px-4 py-2">
-                        {new Date(record.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
-                      </td>
-                      <td className="px-4 py-2 text-right font-medium text-stone-800">{record.mortality}</td>
-                      <td className="px-4 py-2 text-stone-600">{record.notes || '-'}</td>
-                    </tr>
-                  ))}
+                  {selectedFlockRecords.map(record => {
+                    // Extrai motivo e observações do campo notes
+                    const parts = (record.notes || '').split(' || ');
+                    const motivo = parts[0]?.replace('Motivo: ', '') || '-';
+                    const obs = parts[1] || '-';
+                    return (
+                      <tr key={record.id} className="border-b hover:bg-stone-50">
+                        <td className="px-4 py-2 text-center">
+                          {new Date(record.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                        </td>
+                        <td className="px-4 py-2 text-center font-medium text-stone-800">{record.mortality}</td>
+                        <td className="px-4 py-2 text-center text-stone-600 capitalize">{motivo}</td>
+                        <td className="px-4 py-2 text-center text-stone-600">{obs}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
