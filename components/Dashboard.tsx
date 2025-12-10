@@ -168,12 +168,28 @@ const Dashboard: FC = () => {
         const profitability = totalRevenue - totalCost;
         const costPerEgg = totalProduction > 0 ? totalCost / totalProduction : 0;
 
-// Calcular porcentagem de postura
+        // Calcular porcentagem de postura (últimos 7 dias ou menos se não houver 7 dias)
         const today = new Date();
+        const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
         const currentHensCount = getHensCountOnDate(flock.id, today);
-        const layingRatePercentage = currentHensCount > 0 
-          ? ((totalProduction / currentHensCount) * 100) 
-          : 0;
+        
+        // Filtrar registros dos últimos 7 dias
+        const recentRecords = flockRecords.filter(r => {
+          const recordDate = new Date(r.date);
+          return recordDate >= sevenDaysAgo && recordDate <= today;
+        });
+        
+        // Calcular média diária de ovos (usa quantos dias tiverem dados disponíveis)
+        const totalRecentEggs = recentRecords.reduce((sum, record) => sum + record.eggsCollected, 0);
+        const daysWithRecords = recentRecords.length; // Quantidade real de dias com registros
+        
+        // Se não houver registros, porcentagem é 0
+        // Se houver registros, calcula a média e a porcentagem
+        let layingRatePercentage = 0;
+        if (daysWithRecords > 0 && currentHensCount > 0) {
+          const averageDailyEggs = totalRecentEggs / daysWithRecords;
+          layingRatePercentage = (averageDailyEggs / currentHensCount) * 100;
+        }
 
         return {
           id: flock.id,
@@ -538,9 +554,6 @@ const Dashboard: FC = () => {
                                 }`}>
                                     {flock.layingRatePercentage}%
                                 </span>
-                                <div className="text-xs text-slate-400 mt-1">
-                                    {flock.totalProduction}/{flock.currentHensCount} aves
-                                </div>
                             </td>
                             <td className="px-6 py-4 text-right text-red-600">{flock.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                             <td className="px-6 py-4 text-right text-slate-600">{flock.costPerEgg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 3 })}</td>

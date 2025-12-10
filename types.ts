@@ -125,4 +125,19 @@ export interface FeedFormulation {
   notes?: string;
 }
 
+// Tipos para movimentação de estoque de ovos
+export type EggMovementType = 'entrada' | 'saida';
+export type EggMovementReason = 'coleta' | 'venda' | 'consumo' | 'doacao' | 'marketing' | 'perda' | 'ajuste';
+
+export interface EggMovement {
+  id: string;
+  date: string; // ISO string format
+  type: EggMovementType;
+  reason: EggMovementReason;
+  quantity: number;
+  balance: number; // Saldo após a movimentação
+  notes?: string;
+  referenceId?: string; // ID do registro relacionado (coleta, venda, etc)
+}
+
 export type View = 'dashboard' | 'data-entry' | 'flocks' | 'sheds' | 'expenses' | 'sales' | 'reports' | 'ai-assistant' | 'calculator' | 'clients' | 'contacts' | 'inventory' | 'mortality';

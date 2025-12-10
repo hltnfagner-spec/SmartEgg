@@ -1,6 +1,6 @@
 
 import { createContext, useState, useEffect, useContext, ReactNode, useCallback, FC } from 'react';
-import { Flock, DailyRecord, Expense, Sale, FlockTask, Shed, Client, InventoryItem, FeedFormulation, View } from '../types';
+import { Flock, DailyRecord, Expense, Sale, FlockTask, Shed, Client, InventoryItem, FeedFormulation, View, EggMovement, EggMovementType, EggMovementReason } from '../types';
 import { supabase } from '../services/supabaseClient';
 
 interface FarmContextType {
@@ -13,6 +13,7 @@ interface FarmContextType {
   clients: Client[];
   inventory: InventoryItem[];
   feedFormulations: FeedFormulation[];
+  eggMovements: EggMovement[];
   
   // Navigation State
   currentView: View;
@@ -45,6 +46,7 @@ interface FarmContextType {
   addFeedFormulation: (formulation: Omit<FeedFormulation, 'id'>) => void;
   updateFeedFormulation: (id: string, formulation: Omit<FeedFormulation, 'id'>) => void;
   deleteFeedFormulation: (id: string) => void;
+  addEggMovement: (movement: Omit<EggMovement, 'id' | 'balance'>) => void;
   getShedById: (id: string) => Shed | undefined;
   getFlockById: (id: string) => Flock | undefined;
   getClientById: (id: string) => Client | undefined;
@@ -143,6 +145,15 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       try {
         const savedFormulations = localStorage.getItem('farm_feed_formulations');
         return savedFormulations ? JSON.parse(savedFormulations) : [];
+      } catch {
+        return [];
+      }
+  });
+
+  const [eggMovements, setEggMovements] = useState<EggMovement[]>(() => {
+      try {
+        const savedMovements = localStorage.getItem('farm_egg_movements');
+        return savedMovements ? JSON.parse(savedMovements) : [];
       } catch {
         return [];
       }
@@ -1980,6 +1991,58 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     })();
   };
 
+  // Função para adicionar movimentação de ovos
+  const addEggMovement = (movementData: Omit<EggMovement, 'id' | 'balance'>) => {
+    if (!userId) return;
+
+    // Buscar saldo atual de ovos
+    const eggItem = inventory.find(i => 
+      i.category === 'Produto Final' && 
+      (i.name.toLowerCase().includes('ovos') || i.name.toLowerCase().includes('ovo'))
+    );
+    
+    const currentBalance = eggItem ? eggItem.quantity : 0;
+    const quantityChange = movementData.type === 'entrada' ? movementData.quantity : -movementData.quantity;
+    const newBalance = Math.max(0, currentBalance + quantityChange);
+
+    // Criar nova movimentação
+    const newMovement: EggMovement = {
+      id: `mov_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      ...movementData,
+      balance: newBalance
+    };
+
+    // Atualizar lista de movimentações
+    setEggMovements(prev => {
+      const updated = [...prev, newMovement];
+      localStorage.setItem('farm_egg_movements', JSON.stringify(updated));
+      return updated;
+    });
+
+    // Atualizar estoque de ovos
+    if (eggItem) {
+      (async () => {
+        try {
+          await supabase
+            .from('inventory')
+            .update({
+              quantity: newBalance,
+              last_updated: new Date().toISOString()
+            })
+            .eq('id', eggItem.id);
+
+          setInventory(prev => prev.map(item => 
+            item.id === eggItem.id 
+              ? { ...item, quantity: newBalance, lastUpdated: new Date().toISOString() }
+              : item
+          ));
+        } catch (err) {
+          console.error('[FarmContext] Erro ao atualizar estoque de ovos:', err);
+        }
+      })();
+    }
+  };
+
   const getShedById = useCallback((id: string) => sheds.find(s => s.id === id), [sheds]);
 
   const getFlockById = useCallback((id: string) => flocks.find(f => f.id === id), [flocks]);
@@ -2022,7 +2085,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   return (
     <FarmContext.Provider value={{ 
-        sheds, flocks, records, expenses, sales, tasks, clients, inventory, feedFormulations,
+        sheds, flocks, records, expenses, sales, tasks, clients, inventory, feedFormulations, eggMovements,
         currentView, viewParams, navigate,
         addShed, updateShed, deleteShed, addFlock, updateFlock, disposeFlock, deleteFlock, 
         addRecord, updateRecord, deleteRecord, 
@@ -2031,6 +2094,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         addClient, updateClient, deleteClient, 
         addInventoryItem, updateInventoryItem, deleteInventoryItem,
         addFeedFormulation, updateFeedFormulation, deleteFeedFormulation,
+        addEggMovement,
         getShedById, getFlockById, getClientById, getAvailableSheds, 
         getRecordsByFlockId, getExpensesByFlockId, getSalesByFlockId, getTasksByFlockId, getHensCountOnDate,
         clearData
