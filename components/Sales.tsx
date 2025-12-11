@@ -1,8 +1,8 @@
 
-import { useState, useEffect, FC, ChangeEvent, FormEvent, FocusEvent } from 'react';
+import { useState, useEffect, FC, ChangeEvent, FormEvent, FocusEvent, useRef } from 'react';
 import { useFarm } from '../context/FarmContext';
-import { Sale, SaleType, PaymentMethod, PaymentStatus, ProductType, DeliveryStatus } from '../types';
-import { EditIcon } from './icons';
+import { Sale, SaleType, PaymentMethod, PaymentStatus, ProductType, DeliveryStatus, CompanySettings } from '../types';
+import { EditIcon, PrinterIcon } from './icons';
 
 const SALE_TYPES: SaleType[] = ['Cliente Final', 'Atacado'];
 const PRODUCT_TYPES: ProductType[] = ['Ovos', 'Aves', 'Cama'];
@@ -285,10 +285,176 @@ const AddSaleForm: FC<{onClose: () => void; saleToEdit?: Sale | null}> = ({ onCl
 };
 
 
+// Componente de Recibo para Impressão
+const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | null; onClose: () => void }> = ({ sale, client, settings, onClose }) => {
+    const receiptRef = useRef<HTMLDivElement>(null);
+
+    const handlePrint = () => {
+        const printContent = receiptRef.current;
+        if (!printContent) return;
+
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Recibo de Venda #${sale.saleNumber || 'N/A'}</title>
+                    <style>
+                        body { font-family: 'Courier New', monospace; padding: 20px; max-width: 300px; margin: 0 auto; }
+                        .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+                        .header h1 { font-size: 16px; margin: 0; }
+                        .header p { font-size: 10px; margin: 2px 0; }
+                        .sale-number { font-size: 14px; font-weight: bold; text-align: center; margin: 10px 0; }
+                        .divider { border-top: 1px dashed #000; margin: 10px 0; }
+                        .row { display: flex; justify-content: space-between; font-size: 12px; margin: 4px 0; }
+                        .row.total { font-weight: bold; font-size: 14px; border-top: 2px solid #000; padding-top: 8px; margin-top: 8px; }
+                        .footer { text-align: center; font-size: 10px; margin-top: 15px; border-top: 2px dashed #000; padding-top: 10px; }
+                        .payment-status { margin-top: 10px; padding: 10px; text-align: center; font-weight: bold; font-size: 16px; }
+                        .payment-status.paid { color: #15803d; }
+                        .payment-status.pending { color: #a16207; }
+                        .signature-area { margin-top: 25px; padding-top: 15px; border-top: 2px dashed #000; }
+                        .signature-line { height: 40px; border-bottom: 2px solid #000; margin-bottom: 5px; }
+                        .signature-label { font-size: 9px; text-align: center; color: #666; }
+                        @media print { body { padding: 0; } }
+                    </style>
+                </head>
+                <body>
+                    ${printContent.innerHTML}
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+                <div className="p-4 border-b flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-stone-800">Recibo de Venda</h2>
+                    <button onClick={onClose} className="text-stone-500 hover:text-stone-700">✕</button>
+                </div>
+                
+                {/* Preview do Recibo */}
+                <div ref={receiptRef} className="p-6 bg-white font-mono text-sm">
+                    <div className="header text-center border-b-2 border-dashed border-stone-400 pb-3 mb-3">
+                        <h1 className="text-base font-bold">{settings?.farmName || 'GRANJA'}</h1>
+                        {settings?.ownerName && <p className="text-xs text-stone-600">{settings.ownerName}</p>}
+                        {settings?.document && <p className="text-xs text-stone-500">CPF/CNPJ: {settings.document}</p>}
+                        {settings?.address && (
+                            <p className="text-xs text-stone-500">
+                                {settings.address}
+                                {settings.city && ` - ${settings.city}`}
+                                {settings.state && `/${settings.state}`}
+                            </p>
+                        )}
+                        {settings?.phone && <p className="text-xs text-stone-500">Tel: {settings.phone}</p>}
+                    </div>
+
+                    <div className="sale-number text-center font-bold text-lg my-3">
+                        VENDA #{String(sale.saleNumber || 0).padStart(6, '0')}
+                    </div>
+
+                    <div className="divider border-t border-dashed border-stone-300 my-3"></div>
+
+                    <div className="space-y-2">
+                        <div className="row flex justify-between">
+                            <span>Data:</span>
+                            <span>{new Date(sale.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span>
+                        </div>
+                        {client && (
+                            <div className="row flex justify-between">
+                                <span>Cliente:</span>
+                                <span>{client.name}</span>
+                            </div>
+                        )}
+                        <div className="row flex justify-between">
+                            <span>Produto:</span>
+                            <span>{sale.productType}</span>
+                        </div>
+                        <div className="row flex justify-between">
+                            <span>Quantidade:</span>
+                            <span>{sale.quantity}</span>
+                        </div>
+                        <div className="row flex justify-between">
+                            <span>Valor Unit.:</span>
+                            <span>{sale.pricePerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        </div>
+                    </div>
+
+                    <div className="divider border-t border-dashed border-stone-300 my-3"></div>
+
+                    <div className="row total flex justify-between font-bold text-base border-t-2 border-stone-800 pt-2 mt-2">
+                        <span>TOTAL:</span>
+                        <span>{sale.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    </div>
+
+                    <div className="space-y-2 mt-3">
+                        <div className="row flex justify-between text-xs">
+                            <span>Forma de Pagamento:</span>
+                            <span className="font-medium">{sale.paymentMethod}</span>
+                        </div>
+                        <div className="payment-status mt-2 p-2 text-center mb-4">
+                            <span className={`text-lg font-bold ${sale.paymentStatus === 'Pago' ? 'text-green-700' : 'text-yellow-700'}`}>
+                                {sale.paymentStatus === 'Pago' ? '✓ PAGO' : '⚠ PENDENTE'}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Área de Assinatura */}
+                    <div className="mt-10 pt-6 border-t-2 border-dashed border-stone-400">
+                        <div className="h-14 border-b-2 border-stone-400 mb-2"></div>
+                    </div>
+
+                    <div className="footer text-center text-xs mt-12 border-t-2 border-dashed border-stone-400 pt-4">
+                        <p>Obrigado pela preferência!</p>
+                        <p className="text-stone-400 mt-1">{new Date().toLocaleString('pt-BR')}</p>
+                    </div>
+                </div>
+
+                {/* Botões */}
+                <div className="p-4 border-t flex justify-end space-x-3">
+                    <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-stone-700 bg-stone-100 rounded-md hover:bg-stone-200">
+                        Fechar
+                    </button>
+                    <button onClick={handlePrint} className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 flex items-center">
+                        <PrinterIcon className="w-4 h-4 mr-2" />
+                        Imprimir
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const Sales: FC = () => {
     const { sales, getFlockById, getClientById } = useFarm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [saleToEdit, setSaleToEdit] = useState<Sale | null>(null);
+    const [receiptSale, setReceiptSale] = useState<Sale | null>(null);
+    
+    // Carregar configurações da empresa
+    const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
+    
+    // Recarregar configurações sempre que abrir o recibo
+    useEffect(() => {
+        const loadSettings = () => {
+            try {
+                const saved = localStorage.getItem('farm_settings');
+                if (saved) {
+                    setCompanySettings(JSON.parse(saved));
+                }
+            } catch {
+                console.error('Erro ao carregar configurações');
+            }
+        };
+        loadSettings();
+        
+        // Também escutar mudanças no localStorage
+        window.addEventListener('storage', loadSettings);
+        return () => window.removeEventListener('storage', loadSettings);
+    }, [receiptSale]);
 
     const handleOpenEditModal = (sale: Sale) => {
         setSaleToEdit(sale);
@@ -303,6 +469,14 @@ const Sales: FC = () => {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setSaleToEdit(null);
+    };
+
+    const handleOpenReceipt = (sale: Sale) => {
+        setReceiptSale(sale);
+    };
+
+    const handleCloseReceipt = () => {
+        setReceiptSale(null);
     };
 
     const getDeliveryBadge = (status?: DeliveryStatus) => {
@@ -329,7 +503,8 @@ const Sales: FC = () => {
                     <table className="w-full text-sm text-left text-stone-500 min-w-[1000px]">
                         <thead className="text-xs text-stone-700 uppercase bg-stone-50">
                             <tr>
-                                <th scope="col" className="px-4 py-3">Data Venda</th>
+                                <th scope="col" className="px-4 py-3">Nº Venda</th>
+                                <th scope="col" className="px-4 py-3">Data</th>
                                 <th scope="col" className="px-4 py-3">Produto</th>
                                 <th scope="col" className="px-4 py-3">Cliente</th>
                                 <th scope="col" className="px-4 py-3">Status Entrega</th>
@@ -342,6 +517,9 @@ const Sales: FC = () => {
                         <tbody>
                             {sales.length > 0 ? sales.map(sale => (
                                 <tr key={sale.id} className="bg-white border-b hover:bg-stone-50 group">
+                                    <td className="px-4 py-4">
+                                        <span className="font-mono font-bold text-amber-700">#{String(sale.saleNumber || 0).padStart(6, '0')}</span>
+                                    </td>
                                     <td className="px-4 py-4">{new Date(sale.date).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}</td>
                                     <td className="px-4 py-4 font-medium text-amber-600">{sale.productType || 'Ovos'}</td>
                                     <td className="px-4 py-4 font-medium text-stone-800">
@@ -367,14 +545,19 @@ const Sales: FC = () => {
                                         {sale.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                     </td>
                                     <td className="px-4 py-4 text-center">
-                                        <button onClick={() => handleOpenEditModal(sale)} className="p-2 text-stone-500 hover:text-amber-600 transition-colors" aria-label="Editar Venda">
-                                            <EditIcon />
-                                        </button>
+                                        <div className="flex items-center justify-center space-x-1">
+                                            <button onClick={() => handleOpenReceipt(sale)} className="p-2 text-stone-500 hover:text-green-600 transition-colors" aria-label="Imprimir Recibo" title="Imprimir Recibo">
+                                                <PrinterIcon />
+                                            </button>
+                                            <button onClick={() => handleOpenEditModal(sale)} className="p-2 text-stone-500 hover:text-amber-600 transition-colors" aria-label="Editar Venda" title="Editar Venda">
+                                                <EditIcon />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan={8} className="text-center py-10 text-stone-500">Nenhuma venda registrada ainda.</td>
+                                    <td colSpan={9} className="text-center py-10 text-stone-500">Nenhuma venda registrada ainda.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -391,6 +574,16 @@ const Sales: FC = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Modal de Recibo */}
+            {receiptSale && (
+                <SaleReceipt 
+                    sale={receiptSale} 
+                    client={receiptSale.clientId ? getClientById(receiptSale.clientId) : undefined}
+                    settings={companySettings}
+                    onClose={handleCloseReceipt}
+                />
             )}
         </div>
     );
