@@ -168,7 +168,7 @@ const Dashboard: FC = () => {
         const profitability = totalRevenue - totalCost;
         const costPerEgg = totalProduction > 0 ? totalCost / totalProduction : 0;
 
-        // Calcular porcentagem de postura (últimos 7 dias ou menos se não houver 7 dias)
+        // Calcular porcentagem de postura (últimos 7 dias)
         const today = new Date();
         const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
         const currentHensCount = getHensCountOnDate(flock.id, today);
@@ -179,16 +179,31 @@ const Dashboard: FC = () => {
           return recordDate >= sevenDaysAgo && recordDate <= today;
         });
         
-        // Calcular média diária de ovos (usa quantos dias tiverem dados disponíveis)
+        // Calcular total de ovos nos últimos 7 dias
         const totalRecentEggs = recentRecords.reduce((sum, record) => sum + record.eggsCollected, 0);
-        const daysWithRecords = recentRecords.length; // Quantidade real de dias com registros
+        const daysWithRecords = recentRecords.length;
         
-        // Se não houver registros, porcentagem é 0
-        // Se houver registros, calcula a média e a porcentagem
+        // Porcentagem de postura = (Produção real / Produção esperada nos dias com coleta) * 100
         let layingRatePercentage = 0;
         if (daysWithRecords > 0 && currentHensCount > 0) {
-          const averageDailyEggs = totalRecentEggs / daysWithRecords;
-          layingRatePercentage = (averageDailyEggs / currentHensCount) * 100;
+          // Produção esperada = número de aves × dias com coleta
+          const expectedProduction = currentHensCount * daysWithRecords;
+          
+          // Porcentagem = (produção real / produção esperada) × 100
+          layingRatePercentage = (totalRecentEggs / expectedProduction) * 100;
+          
+          // Limitar a 100% no máximo
+          layingRatePercentage = Math.min(layingRatePercentage, 100);
+          
+          // Debug: mostrar cálculo no console
+          console.log(`[Dashboard] Lote ${flock.name}:`, {
+            totalRecentEggs: totalRecentEggs,
+            currentHensCount: currentHensCount,
+            daysWithRecords: daysWithRecords,
+            expectedProduction: expectedProduction,
+            rawPercentage: (totalRecentEggs / expectedProduction) * 100,
+            finalPercentage: layingRatePercentage
+          });
         }
 
         return {

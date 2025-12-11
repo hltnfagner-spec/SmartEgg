@@ -62,6 +62,87 @@ const TaskForm: FC<TaskFormProps> = ({ flockId, onClose }) => {
 };
 
 
+// Componente de Tarefas com Filtro
+interface TasksCardProps {
+    flockId: string;
+    getTasksByFlockId: (flockId: string) => FlockTask[];
+    deleteTask: (taskId: string) => void;
+}
+
+const TasksCard: FC<TasksCardProps> = ({ flockId, getTasksByFlockId, deleteTask }) => {
+    const [taskFilter, setTaskFilter] = useState<'pendentes' | 'concluidas'>('pendentes');
+    
+    const flockTasks = getTasksByFlockId(flockId);
+    const pendingTasks = flockTasks.filter(t => !t.isCompleted);
+    const completedTasks = flockTasks.filter(t => t.isCompleted);
+    const displayTasks = taskFilter === 'pendentes' ? pendingTasks : completedTasks;
+    
+    const formatTaskDate = (d: string) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+
+    return (
+        <div className="bg-stone-50 rounded-xl p-4 mb-3">
+            <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-bold text-stone-500 uppercase tracking-wider">📋 Tarefas</h3>
+                <div className="flex gap-1">
+                    <button
+                        onClick={() => setTaskFilter('pendentes')}
+                        className={`text-xs px-2 py-1 rounded-md transition-all ${
+                            taskFilter === 'pendentes'
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-white text-stone-500 hover:bg-amber-50'
+                        }`}
+                    >
+                        Pendentes ({pendingTasks.length})
+                    </button>
+                    <button
+                        onClick={() => setTaskFilter('concluidas')}
+                        className={`text-xs px-2 py-1 rounded-md transition-all ${
+                            taskFilter === 'concluidas'
+                                ? 'bg-green-500 text-white'
+                                : 'bg-white text-stone-500 hover:bg-green-50'
+                        }`}
+                    >
+                        Concluídas ({completedTasks.length})
+                    </button>
+                </div>
+            </div>
+            {displayTasks.length > 0 ? (
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {displayTasks.map(task => (
+                        <div key={task.id} className={`p-2 rounded-lg ${task.isCompleted ? 'bg-stone-100' : 'bg-white border border-stone-200'}`}>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${task.isCompleted ? 'bg-green-500' : 'bg-amber-500'}`}></span>
+                                    <div>
+                                        <p className={`text-sm font-medium ${task.isCompleted ? 'text-stone-400 line-through' : 'text-stone-700'}`}>{task.taskType}</p>
+                                        <p className="text-xs text-stone-500">{formatTaskDate(task.dueDate)}</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => deleteTask(task.id)} 
+                                    className="p-1 text-stone-400 hover:text-red-500 transition-colors"
+                                    aria-label="Remover tarefa"
+                                >
+                                    <TrashIcon />
+                                </button>
+                            </div>
+                            {task.notes && (
+                                <p className={`text-xs mt-1 ml-4 pl-2 border-l-2 ${task.isCompleted ? 'text-stone-400 border-stone-300' : 'text-stone-600 border-amber-300'}`}>
+                                    {task.notes}
+                                </p>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <p className="text-sm text-stone-400 text-center py-2">
+                    {taskFilter === 'pendentes' ? 'Nenhuma tarefa pendente' : 'Nenhuma tarefa concluída'}
+                </p>
+            )}
+        </div>
+    );
+};
+
 interface FlockFormProps {
     onClose: () => void;
     flockToEdit?: Flock | null;
@@ -191,11 +272,12 @@ const FlockForm: FC<FlockFormProps> = ({ onClose, flockToEdit }) => {
 };
 
 const FlockManagement: FC = () => {
-    const { flocks, sheds, addFlock, updateFlock, disposeFlock, deleteFlock, addTask, deleteTask, getHensCountOnDate, getRecordsByFlockId } = useFarm();
+    const { flocks, sheds, tasks, addFlock, updateFlock, disposeFlock, deleteFlock, addTask, deleteTask, getHensCountOnDate, getRecordsByFlockId, getTasksByFlockId } = useFarm();
     const [isFlockModalOpen, setIsFlockModalOpen] = useState(false);
     const [flockToEdit, setFlockToEdit] = useState<Flock | null>(null);
     const [taskModalState, setTaskModalState] = useState<{isOpen: boolean, flockId: string | null}>({isOpen: false, flockId: null});
     const [deleteDialog, setDeleteDialog] = useState<{isOpen: boolean, flockId: string | null, flockName: string}>({isOpen: false, flockId: null, flockName: ''});
+    const [statusFilter, setStatusFilter] = useState<'todos' | 'ativos' | 'descartados'>('ativos');
 
     const handleOpenAddModal = () => {
         setFlockToEdit(null);
@@ -250,6 +332,27 @@ const FlockManagement: FC = () => {
             const totalMortality = records.reduce((sum, r) => sum + (r.mortality || 0), 0);
             // Calcula aves atuais usando helper do contexto (considera data atual)
             const currentHenCount = getHensCountOnDate(flock.id, new Date());
+            // Calcula total de ovos produzidos
+            const totalEggsProduced = records.reduce((sum, r) => sum + (r.eggsCollected || 0), 0);
+            // Calcula taxa de mortalidade
+            const mortalityRate = flock.initialHenCount > 0 
+                ? ((totalMortality / flock.initialHenCount) * 100).toFixed(1) 
+                : '0.0';
+            // Calcula produção média diária (últimos 7 dias)
+            const today = new Date();
+            const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const recentRecords = records.filter(r => {
+                const recordDate = new Date(r.date);
+                return recordDate >= sevenDaysAgo && recordDate <= today;
+            });
+            const recentEggs = recentRecords.reduce((sum, r) => sum + (r.eggsCollected || 0), 0);
+            const daysWithRecords = recentRecords.length;
+            const avgDailyProduction = daysWithRecords > 0 ? Math.round(recentEggs / daysWithRecords) : 0;
+            // Calcula porcentagem de postura
+            const expectedProduction = currentHenCount * daysWithRecords;
+            const layingRate = expectedProduction > 0 
+                ? Math.min(((recentEggs / expectedProduction) * 100), 100).toFixed(1)
+                : '0.0';
 
             return {
                 ...flock,
@@ -257,6 +360,11 @@ const FlockManagement: FC = () => {
                 totalRevenue: 0,
                 totalMortality,
                 currentHenCount,
+                totalEggsProduced,
+                mortalityRate,
+                avgDailyProduction,
+                layingRate,
+                daysWithRecords,
                 costPerEgg: 0,
                 profitPerEgg: 0,
             };
@@ -266,113 +374,249 @@ const FlockManagement: FC = () => {
         });
     }, [flocks, getHensCountOnDate, getRecordsByFlockId]);
 
+    // Filtrar lotes por status
+    const filteredFlockData = useMemo(() => {
+        if (statusFilter === 'todos') return flockData;
+        if (statusFilter === 'ativos') return flockData.filter(f => f.status === 'Ativo');
+        return flockData.filter(f => f.status === 'Descartado');
+    }, [flockData, statusFilter]);
+
+    // Contadores para os badges
+    const activeFlocksCount = flockData.filter(f => f.status === 'Ativo').length;
+    const discardedFlocksCount = flockData.filter(f => f.status === 'Descartado').length;
+
     const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-3xl font-bold text-stone-800">Gerenciamento de Lotes</h1>
                 <button onClick={handleOpenAddModal} className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 shadow-sm transition-colors">
-                    Adicionar Lote
+                    + Adicionar Lote
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {flockData.map(flock => {
-                    const tasks: any[] = [];
-                    const shed: any = null;
+            {/* Filtros de Status */}
+            <div className="flex flex-wrap gap-2">
+                <button
+                    onClick={() => setStatusFilter('todos')}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                        statusFilter === 'todos'
+                            ? 'bg-stone-800 text-white shadow-md'
+                            : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'
+                    }`}
+                >
+                    Todos
+                    <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                        statusFilter === 'todos' ? 'bg-white/20' : 'bg-stone-100'
+                    }`}>
+                        {flockData.length}
+                    </span>
+                </button>
+                <button
+                    onClick={() => setStatusFilter('ativos')}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                        statusFilter === 'ativos'
+                            ? 'bg-green-600 text-white shadow-md'
+                            : 'bg-white text-stone-600 hover:bg-green-50 border border-stone-200'
+                    }`}
+                >
+                    Ativos
+                    <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                        statusFilter === 'ativos' ? 'bg-white/20' : 'bg-green-100 text-green-700'
+                    }`}>
+                        {activeFlocksCount}
+                    </span>
+                </button>
+                <button
+                    onClick={() => setStatusFilter('descartados')}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                        statusFilter === 'descartados'
+                            ? 'bg-stone-500 text-white shadow-md'
+                            : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'
+                    }`}
+                >
+                    Descartados
+                    <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                        statusFilter === 'descartados' ? 'bg-white/20' : 'bg-stone-200'
+                    }`}>
+                        {discardedFlocksCount}
+                    </span>
+                </button>
+            </div>
+
+            {/* Lista de Lotes */}
+            {filteredFlockData.length === 0 ? (
+                <div className="bg-white rounded-xl p-12 text-center shadow-sm">
+                    <div className="text-4xl mb-4">🐔</div>
+                    <h3 className="text-lg font-semibold text-stone-700 mb-2">
+                        {statusFilter === 'todos' ? 'Nenhum lote cadastrado' : 
+                         statusFilter === 'ativos' ? 'Nenhum lote ativo' : 
+                         'Nenhum lote descartado'}
+                    </h3>
+                    <p className="text-stone-500 text-sm">
+                        {statusFilter === 'todos' ? 'Clique em "Adicionar Lote" para começar.' : 
+                         statusFilter === 'ativos' ? 'Todos os lotes foram descartados ou não há lotes cadastrados.' : 
+                         'Nenhum lote foi descartado ainda.'}
+                    </p>
+                </div>
+            ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredFlockData.map(flock => {
+                    const age = calculateAge(flock.birthDate);
+                    const isActive = flock.status === 'Ativo';
+                    
                     return (
-                    <div key={flock.id} className={`bg-white p-5 rounded-xl shadow-md flex flex-col transition-opacity ${flock.status === 'Descartado' ? 'opacity-60' : ''}`}>
-                         <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center space-x-4">
-                                <div className="p-3 bg-red-100 rounded-full"><ChickenIcon /></div>
+                    <div key={flock.id} className={`bg-white rounded-2xl shadow-lg overflow-hidden transition-all hover:shadow-xl ${!isActive ? 'opacity-70' : ''}`}>
+                        {/* Header do Card */}
+                        <div className={`px-6 py-4 ${isActive ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-gradient-to-r from-stone-400 to-stone-500'}`}>
+                            <div className="flex justify-between items-start">
                                 <div>
-                                    <h2 className="text-xl font-bold text-stone-800">{flock.name}</h2>
-                                    <p className="text-sm text-stone-500">{flock.breed}</p>
+                                    <h2 className="text-xl font-bold text-white">{flock.name}</h2>
+                                    <p className="text-white/80 text-sm">{flock.breed}</p>
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                    {isActive ? (
+                                        <>
+                                            <button onClick={() => handleOpenEditModal(flock)} className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-all" aria-label="Editar Lote">
+                                                <EditIcon />
+                                            </button>
+                                            <button onClick={() => handleDispose(flock.id, flock.name)} className="p-2 text-white/80 hover:text-white hover:bg-red-500/50 rounded-lg transition-all" aria-label="Descartar Lote">
+                                                <TrashIcon />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <span className="text-xs font-semibold bg-white/20 text-white px-3 py-1 rounded-full">Descartado</span>
+                                    )}
                                 </div>
                             </div>
-                            <div className="flex items-center space-x-2 flex-shrink-0">
-                                {flock.status === 'Ativo' ? (
-                                    <>
-                                        <button onClick={() => handleOpenEditModal(flock)} className="p-1 text-stone-500 hover:text-amber-600 transition-colors" aria-label="Editar Lote"><EditIcon /></button>
-                                        <button onClick={() => handleDispose(flock.id, flock.name)} className="p-1 text-stone-500 hover:text-red-600 transition-colors" aria-label="Descartar Lote"><TrashIcon /></button>
-                                    </>
-                                ) : (
-                                    <span className="text-xs font-semibold bg-stone-200 text-stone-600 px-2 py-1 rounded-full">Descartado</span>
-                                )}
+                            {/* Badge de Status */}
+                            <div className="mt-3 flex items-center space-x-2">
+                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${isActive ? 'bg-green-400/30 text-white' : 'bg-white/20 text-white'}`}>
+                                    {isActive ? '● Ativo' : '○ Inativo'}
+                                </span>
+                                <span className="px-2 py-1 text-xs font-medium bg-white/20 text-white rounded-full">
+                                    {age.weeks} semanas
+                                </span>
                             </div>
                         </div>
 
-                        <div className="text-sm space-y-3">
-                             <div className="flex items-center text-xs text-stone-600 bg-stone-50 p-2 rounded-md">
-                                <ShedIcon className="h-4 w-4 mr-2" />
-                                <span className="font-semibold">Galpão:</span>
-                                <span className="ml-1">{shed?.name || 'Não especificado'}</span>
-                            </div>
-                            <div>
-                                <h3 className="font-semibold text-stone-600 text-xs uppercase tracking-wider mb-1 mt-2">Cronograma</h3>
-                                <div className="text-xs grid grid-cols-3 gap-2">
-                                    <p><span className="font-semibold block">Nascimento:</span> {formatDate(flock.birthDate)}</p>
-                                    <p><span className="font-semibold block">Chegada:</span> {formatDate(flock.arrivalDate)}</p>
-                                    <p><span className="font-semibold block">Descarte:</span> {formatDate(flock.plannedDisposalDate)}</p>
+                        {/* Cards de Métricas Principais */}
+                        <div className="grid grid-cols-2 gap-3 p-4 bg-stone-50">
+                            {/* Aves Atuais */}
+                            <div className="bg-white p-4 rounded-xl shadow-sm border border-stone-100">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-2xl">🐔</span>
+                                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${flock.currentHenCount === flock.initialHenCount ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                        {flock.currentHenCount === flock.initialHenCount ? '100%' : `${((flock.currentHenCount / flock.initialHenCount) * 100).toFixed(0)}%`}
+                                    </span>
                                 </div>
+                                <p className="text-2xl font-bold text-stone-800 mt-1">{flock.currentHenCount.toLocaleString('pt-BR')}</p>
+                                <p className="text-xs text-stone-500">Aves Atuais</p>
+                                <p className="text-xs text-stone-400 mt-1">de {flock.initialHenCount.toLocaleString('pt-BR')} iniciais</p>
                             </div>
-                             <div>
-                                <h3 className="font-semibold text-stone-600 text-xs uppercase tracking-wider mb-1">Status</h3>
-                                <div className="grid grid-cols-2 gap-x-4">
-                                    <p><span className="font-semibold">Idade:</span> {calculateAge(flock.birthDate).weeks} sem ({calculateAge(flock.birthDate).days} d)</p>
-                                    <p><span className="font-semibold">Aves Atuais:</span> {flock.currentHenCount}</p>
-                                    <p><span className="font-semibold">Aves Iniciais:</span> {flock.initialHenCount}</p>
-                                    <p><span className="font-semibold">Mortalidade:</span> {flock.totalMortality}</p>
+
+                            {/* Taxa de Postura */}
+                            <div className="bg-white p-4 rounded-xl shadow-sm border border-stone-100">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-2xl">🥚</span>
+                                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                                        parseFloat(flock.layingRate) >= 80 ? 'bg-green-100 text-green-700' : 
+                                        parseFloat(flock.layingRate) >= 50 ? 'bg-amber-100 text-amber-700' : 
+                                        'bg-red-100 text-red-700'
+                                    }`}>
+                                        {flock.daysWithRecords > 0 ? `${flock.daysWithRecords}d` : 'Sem dados'}
+                                    </span>
                                 </div>
+                                <p className="text-2xl font-bold text-stone-800 mt-1">{flock.layingRate}%</p>
+                                <p className="text-xs text-stone-500">Taxa de Postura</p>
+                                <p className="text-xs text-stone-400 mt-1">média {flock.avgDailyProduction} ovos/dia</p>
+                            </div>
+
+                            {/* Mortalidade */}
+                            <div className="bg-white p-4 rounded-xl shadow-sm border border-stone-100">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-2xl">📉</span>
+                                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                                        parseFloat(flock.mortalityRate) <= 2 ? 'bg-green-100 text-green-700' : 
+                                        parseFloat(flock.mortalityRate) <= 5 ? 'bg-amber-100 text-amber-700' : 
+                                        'bg-red-100 text-red-700'
+                                    }`}>
+                                        {parseFloat(flock.mortalityRate) <= 2 ? 'Normal' : parseFloat(flock.mortalityRate) <= 5 ? 'Atenção' : 'Crítico'}
+                                    </span>
+                                </div>
+                                <p className="text-2xl font-bold text-stone-800 mt-1">{flock.totalMortality}</p>
+                                <p className="text-xs text-stone-500">Mortalidade Total</p>
+                                <p className="text-xs text-stone-400 mt-1">{flock.mortalityRate}% do lote</p>
+                            </div>
+
+                            {/* Produção Total */}
+                            <div className="bg-white p-4 rounded-xl shadow-sm border border-stone-100">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-2xl">📦</span>
+                                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                                        Total
+                                    </span>
+                                </div>
+                                <p className="text-2xl font-bold text-stone-800 mt-1">{flock.totalEggsProduced.toLocaleString('pt-BR')}</p>
+                                <p className="text-xs text-stone-500">Ovos Produzidos</p>
+                                <p className="text-xs text-stone-400 mt-1">desde o início</p>
                             </div>
                         </div>
 
-                        <div className="mt-4 pt-4 border-t text-sm space-y-2">
-                             <h3 className="font-semibold text-stone-600 text-xs uppercase tracking-wider mb-2">Financeiro Detalhado</h3>
-                             <div className="flex justify-between">
-                                <p className="font-semibold">Custo / Ovo:</p> <span className="font-medium text-red-600">{flock.costPerEgg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <p className="font-semibold">Lucro / Ovo:</p> <span className="font-medium text-green-600">{flock.profitPerEgg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                            </div>
-                        </div>
-                        
-                        <div className="mt-4 pt-4 border-t text-sm space-y-2 flex-grow flex flex-col">
-                            <h3 className="font-semibold text-stone-600 text-xs uppercase tracking-wider mb-2">Tarefas Agendadas</h3>
-                            <div className="space-y-2 overflow-y-auto max-h-32 pr-2 flex-grow">
-                                {tasks.length > 0 ? tasks.map(task => (
-                                    <div key={task.id} className={`flex flex-col text-xs p-1.5 rounded border border-transparent ${task.isCompleted ? 'bg-stone-100' : 'hover:bg-stone-50 hover:border-stone-100'}`}>
-                                        <div className="flex items-start justify-between w-full">
-                                            <div className="flex items-start">
-                                                <input type="checkbox" checked={task.isCompleted} onChange={() => {}} className="mt-0.5 h-4 w-4 text-amber-600 border-stone-300 rounded focus:ring-amber-500 mr-2 flex-shrink-0" />
-                                                <div className={task.isCompleted ? 'line-through text-stone-500' : ''}>
-                                                    <p className="font-medium">{task.taskType}</p>
-                                                    <p className="text-stone-500">{formatDate(task.dueDate)}</p>
-                                                </div>
-                                            </div>
-                                            <button onClick={() => deleteTask(task.id)} className="p-1 text-stone-400 hover:text-red-600 transition-colors ml-1" aria-label="Deletar Tarefa"><TrashIcon /></button>
-                                        </div>
-                                        {task.notes && (
-                                            <div className={`mt-1 pl-6 italic ${task.isCompleted ? 'text-stone-400' : 'text-stone-500'}`}>
-                                                {task.notes}
-                                            </div>
-                                        )}
+                        {/* Informações Adicionais */}
+                        <div className="px-4 pb-4">
+                            {/* Cronograma */}
+                            <div className="bg-stone-50 rounded-xl p-4 mb-3">
+                                <h3 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">📅 Cronograma</h3>
+                                <div className="grid grid-cols-3 gap-2 text-center">
+                                    <div className="bg-white p-2 rounded-lg">
+                                        <p className="text-xs text-stone-500">Nascimento</p>
+                                        <p className="text-sm font-semibold text-stone-700">{formatDate(flock.birthDate)}</p>
                                     </div>
-                                )) : (
-                                    <p className="text-xs text-stone-400 text-center py-2">Nenhuma tarefa agendada.</p>
-                                )}
+                                    <div className="bg-white p-2 rounded-lg">
+                                        <p className="text-xs text-stone-500">Chegada</p>
+                                        <p className="text-sm font-semibold text-stone-700">{formatDate(flock.arrivalDate)}</p>
+                                    </div>
+                                    <div className="bg-white p-2 rounded-lg">
+                                        <p className="text-xs text-stone-500">Descarte</p>
+                                        <p className="text-sm font-semibold text-stone-700">{formatDate(flock.plannedDisposalDate)}</p>
+                                    </div>
+                                </div>
                             </div>
-                            {flock.status === 'Ativo' && (
-                                <button onClick={() => handleOpenTaskModal(flock.id)} className="mt-auto w-full text-center mt-2 px-3 py-1.5 text-xs font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 shadow-sm transition-colors">
-                                    Adicionar Tarefa
-                                </button>
+
+                            {/* Idade Detalhada */}
+                            <div className="flex items-center justify-between bg-amber-50 rounded-xl p-3 mb-3">
+                                <div className="flex items-center space-x-2">
+                                    <span className="text-lg">⏱️</span>
+                                    <span className="text-sm font-medium text-amber-800">Idade do Lote</span>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-lg font-bold text-amber-700">{age.weeks}</span>
+                                    <span className="text-sm text-amber-600"> semanas</span>
+                                    <span className="text-xs text-amber-500 block">({age.days} dias)</span>
+                                </div>
+                            </div>
+
+                            {/* Tarefas Agendadas */}
+                            <TasksCard flockId={flock.id} getTasksByFlockId={getTasksByFlockId} deleteTask={deleteTask} />
+
+                            {/* Botões de Ação */}
+                            {isActive && (
+                                <div className="flex space-x-2">
+                                    <button 
+                                        onClick={() => handleOpenTaskModal(flock.id)} 
+                                        className="flex-1 px-4 py-2.5 text-sm font-medium text-amber-700 bg-amber-100 rounded-xl hover:bg-amber-200 transition-colors"
+                                    >
+                                        + Adicionar Tarefa
+                                    </button>
+                                </div>
                             )}
                         </div>
-
                     </div>
                 )})}
             </div>
+            )}
 
             {isFlockModalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">

@@ -36,12 +36,12 @@ const calculateStats = (records: DailyRecord[]) => {
 };
 
 const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}> = ({ onClose, recordToEdit }) => {
-    const { flocks, addRecord, updateRecord } = useFarm();
+    const { flocks, addRecord, updateRecord, getHensCountOnDate } = useFarm();
     const activeFlocks = flocks.filter(f => f.status === 'Ativo');
     
     const [formData, setFormData] = useState<any>({
         date: toLocalDateString(new Date()),
-        flockId: activeFlocks.length > 0 ? activeFlocks[0].id : '',
+        flockId: '',
         eggsCollected: '',
         brokenEggs: 0,
         feedConsumedKg: 0,
@@ -77,6 +77,21 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
         }
     };
 
+    const handleEggsFocus = (e: FocusEvent<HTMLInputElement>) => {
+        // Verificar se o lote foi selecionado antes de permitir digitar ovos
+        if (!formData.flockId) {
+            setMessage({type: 'error', text: 'Por favor, selecione um lote antes de informar a coleta de ovos.'});
+            e.target.blur(); // Remove o foco do campo
+            return;
+        }
+        setMessage(null);
+        // Limpar o campo se for 0
+        const { name, value } = e.target;
+        if (Number(value) === 0) {
+            setFormData((prev: any) => ({ ...prev, [name]: '' }));
+        }
+    };
+
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         setMessage(null);
@@ -91,10 +106,18 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
             return;
         }
         
+        // Validação: não aceitar coleta maior que o número de aves
+        const recordDate = new Date(formData.date);
+        const currentHensCount = getHensCountOnDate(formData.flockId, recordDate);
+        const eggsToCollect = Number(formData.eggsCollected);
+        
+        if (eggsToCollect > currentHensCount) {
+            setMessage({type: 'error', text: `O total de ovos coletados (${eggsToCollect}) não pode ser maior que o número de aves ativas no lote (${currentHensCount}).`});
+            return;
+        }
+        
         // Salva a data como string ISO (YYYY-MM-DD) + hora zerada UTC
         // new Date('2025-11-26') cria 2025-11-26T00:00:00.000Z
-        const recordDate = new Date(formData.date);
-        
         const basePayload = {
             ...formData,
             eggsCollected: Number(formData.eggsCollected),
@@ -141,6 +164,7 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
                         value={formData.date} 
                         onChange={handleChange} 
                         required 
+                        max={toLocalDateString(new Date())}
                         className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" 
                     />
                 </div>
@@ -158,7 +182,7 @@ const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label htmlFor="eggsCollected" className="block text-sm font-medium text-stone-600">Total Ovos Coletados</label>
-                        <input type="number" id="eggsCollected" name="eggsCollected" min="1" value={formData.eggsCollected} onChange={handleChange} onFocus={handleFocus} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" />
+                        <input type="number" id="eggsCollected" name="eggsCollected" min="1" value={formData.eggsCollected} onChange={handleChange} onFocus={handleEggsFocus} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" />
                     </div>
                     <div>
                         <label htmlFor="brokenEggs" className="block text-sm font-medium text-red-600">Ovos Quebrados/Trincados</label>
