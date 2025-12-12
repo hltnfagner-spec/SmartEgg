@@ -429,32 +429,17 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
 };
 
 const Sales: FC = () => {
-    const { sales, getFlockById, getClientById } = useFarm();
+    const { sales, getFlockById, getClientById, companySettings, loadCompanySettings } = useFarm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [saleToEdit, setSaleToEdit] = useState<Sale | null>(null);
     const [receiptSale, setReceiptSale] = useState<Sale | null>(null);
     
-    // Carregar configurações da empresa
-    const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
-    
     // Recarregar configurações sempre que abrir o recibo
     useEffect(() => {
-        const loadSettings = () => {
-            try {
-                const saved = localStorage.getItem('farm_settings');
-                if (saved) {
-                    setCompanySettings(JSON.parse(saved));
-                }
-            } catch {
-                console.error('Erro ao carregar configurações');
-            }
-        };
-        loadSettings();
-        
-        // Também escutar mudanças no localStorage
-        window.addEventListener('storage', loadSettings);
-        return () => window.removeEventListener('storage', loadSettings);
-    }, [receiptSale]);
+        if (receiptSale) {
+            loadCompanySettings();
+        }
+    }, [receiptSale, loadCompanySettings]);
 
     const handleOpenEditModal = (sale: Sale) => {
         setSaleToEdit(sale);

@@ -28,17 +28,7 @@ const defaultSettings: CompanySettings = {
 
 const Settings: FC = () => {
     const { companySettings, saveCompanySettings, loadCompanySettings } = useFarm();
-    const [settings, setSettings] = useState<CompanySettings>(() => {
-        try {
-            const saved = localStorage.getItem('farm_settings');
-            if (saved) {
-                return JSON.parse(saved);
-            }
-            return { ...defaultSettings, id: generateId() };
-        } catch {
-            return { ...defaultSettings, id: generateId() };
-        }
-    });
+    const [settings, setSettings] = useState<CompanySettings>(defaultSettings);
 
     const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 

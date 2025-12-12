@@ -14,6 +14,7 @@ import Clients from './components/Clients';
 import Contacts from './components/Contacts';
 import Inventory from './components/Inventory';
 import Mortality from './components/Mortality';
+import Settings from './components/Settings';
 import LandingPage from './components/LandingPage';
 import Register from './components/Register';
 import Login from './components/Login';
@@ -77,24 +78,17 @@ function App() {
   };
 
   const handleRegisterSuccess = () => {
-      // Limpa os dados do banco (localStorage e memória) para o novo usuário
+      // Limpa os dados da memória para o novo usuário
       clearData();
       setAuthState('app');
   };
 
   const handleLogout = async () => {
-      clearData(); // Limpa todos os dados locais
+      clearData(); // Limpa todos os dados da memória
       
       try {
         // Forçar logout do Supabase
         await supabase.auth.signOut();
-        
-        // Limpar todos os dados do Supabase do localStorage (operação drástica)
-        Object.keys(localStorage).forEach(key => {
-          if (key.startsWith('supabase.auth.')) {
-            localStorage.removeItem(key);
-          }
-        });
         
         // Forçar mudança de estado imediatamente
         setAuthState('landing');
@@ -133,6 +127,7 @@ function App() {
       case 'contacts': return <Contacts />;
       case 'inventory': return <Inventory />;
       case 'mortality': return <Mortality />;
+      case 'settings': return <Settings />;
       default: return <Dashboard />;
     }
   };

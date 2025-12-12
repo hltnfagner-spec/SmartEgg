@@ -74,104 +74,27 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Usuário atual (para filtrar dados no Supabase)
   const [userId, setUserId] = useState<string | null>(null);
 
-  const [sheds, setSheds] = useState<Shed[]>(() => {
-    try {
-      const savedSheds = localStorage.getItem('farm_sheds');
-      return savedSheds ? JSON.parse(savedSheds) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [sheds, setSheds] = useState<Shed[]>([]);
 
-  const [flocks, setFlocks] = useState<Flock[]>(() => {
-    try {
-      const savedFlocks = localStorage.getItem('farm_flocks');
-      return savedFlocks ? JSON.parse(savedFlocks) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [flocks, setFlocks] = useState<Flock[]>([]);
 
-  const [clients, setClients] = useState<Client[]>(() => {
-      try {
-        const savedClients = localStorage.getItem('farm_clients');
-        return savedClients ? JSON.parse(savedClients) : [];
-      } catch {
-        return [];
-      }
-  });
+  const [clients, setClients] = useState<Client[]>([]);
 
-  const [companySettings, setCompanySettings] = useState<CompanySettings | null>(() => {
-      try {
-        const savedSettings = localStorage.getItem('farm_settings');
-        return savedSettings ? JSON.parse(savedSettings) : null;
-      } catch {
-        return null;
-      }
-  });
+  const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
 
-  const [records, setRecords] = useState<DailyRecord[]>(() => {
-    try {
-      const savedRecords = localStorage.getItem('farm_records');
-      return savedRecords ? JSON.parse(savedRecords) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [records, setRecords] = useState<DailyRecord[]>([]);
 
-  const [expenses, setExpenses] = useState<Expense[]>(() => {
-    try {
-      const savedExpenses = localStorage.getItem('farm_expenses');
-      return savedExpenses ? JSON.parse(savedExpenses) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [expenses, setExpenses] = useState<Expense[]>([]);
 
-  const [sales, setSales] = useState<Sale[]>(() => {
-    try {
-      const savedSales = localStorage.getItem('farm_sales');
-      return savedSales ? JSON.parse(savedSales) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [sales, setSales] = useState<Sale[]>([]);
 
-  const [tasks, setTasks] = useState<FlockTask[]>(() => {
-    try {
-      const savedTasks = localStorage.getItem('farm_tasks');
-      return savedTasks ? JSON.parse(savedTasks) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [tasks, setTasks] = useState<FlockTask[]>([]);
 
-  const [inventory, setInventory] = useState<InventoryItem[]>(() => {
-    try {
-      const savedInventory = localStorage.getItem('farm_inventory');
-      return savedInventory ? JSON.parse(savedInventory) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
 
-  const [feedFormulations, setFeedFormulations] = useState<FeedFormulation[]>(() => {
-      try {
-        const savedFormulations = localStorage.getItem('farm_feed_formulations');
-        return savedFormulations ? JSON.parse(savedFormulations) : [];
-      } catch {
-        return [];
-      }
-  });
+  const [feedFormulations, setFeedFormulations] = useState<FeedFormulation[]>([]);
 
-  const [eggMovements, setEggMovements] = useState<EggMovement[]>(() => {
-      try {
-        const savedMovements = localStorage.getItem('farm_egg_movements');
-        return savedMovements ? JSON.parse(savedMovements) : [];
-      } catch {
-        return [];
-      }
-  });
+  const [eggMovements, setEggMovements] = useState<EggMovement[]>([]);
 
   // Função auxiliar para carregar sheds, flocks, registros diários, estoque e despesas para um usuário específico
   const loadDataForUser = useCallback(async (currentUserId: string) => {
@@ -544,42 +467,10 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     };
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('farm_sheds', JSON.stringify(sheds));
-  }, [sheds]);
-
-  useEffect(() => {
-    localStorage.setItem('farm_flocks', JSON.stringify(flocks));
-  }, [flocks]);
   
-  useEffect(() => {
-    localStorage.setItem('farm_clients', JSON.stringify(clients));
-  }, [clients]);
-
-  useEffect(() => {
-    localStorage.setItem('farm_records', JSON.stringify(records));
-  }, [records]);
-
-  useEffect(() => {
-    localStorage.setItem('farm_expenses', JSON.stringify(expenses));
-  }, [expenses]);
-
-  useEffect(() => {
-    localStorage.setItem('farm_sales', JSON.stringify(sales));
-  }, [sales]);
+    
   
-  useEffect(() => {
-    localStorage.setItem('farm_tasks', JSON.stringify(tasks));
-  }, [tasks]);
-
-  useEffect(() => {
-    localStorage.setItem('farm_inventory', JSON.stringify(inventory));
-  }, [inventory]);
-
-  useEffect(() => {
-      localStorage.setItem('farm_feed_formulations', JSON.stringify(feedFormulations));
-  }, [feedFormulations]);
-
+  
   const navigate = (view: View, params: Record<string, any> = {}) => {
       setCurrentView(view);
       setViewParams(params);
@@ -616,16 +507,6 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     setClients([]);
     setInventory([]);
     setFeedFormulations([]);
-    
-    localStorage.removeItem('farm_sheds');
-    localStorage.removeItem('farm_flocks');
-    localStorage.removeItem('farm_clients');
-    localStorage.removeItem('farm_records');
-    localStorage.removeItem('farm_expenses');
-    localStorage.removeItem('farm_sales');
-    localStorage.removeItem('farm_tasks');
-    localStorage.removeItem('farm_inventory');
-    localStorage.removeItem('farm_feed_formulations');
   };
 
   // Helper function to manage egg stock automatically (Used for Sales)
@@ -2037,7 +1918,6 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     // Atualizar lista de movimentações
     setEggMovements(prev => {
       const updated = [...prev, newMovement];
-      localStorage.setItem('farm_egg_movements', JSON.stringify(updated));
       return updated;
     });
 
@@ -2073,7 +1953,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
 
     try {
-      // Save to Supabase
+      // Save to Supabase only
       const { error } = await supabase
         .from('company_settings')
         .upsert({
@@ -2098,8 +1978,6 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         throw error;
       }
 
-      // Save to localStorage as backup
-      localStorage.setItem('farm_settings', JSON.stringify(settings));
       setCompanySettings(settings);
     } catch (error) {
       console.error('Error saving company settings:', error);
@@ -2114,7 +1992,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
 
     try {
-      // Load from Supabase
+      // Load from Supabase only
       const { data, error } = await supabase
         .from('company_settings')
         .select('*')
@@ -2141,21 +2019,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         };
 
         setCompanySettings(settings);
-        localStorage.setItem('farm_settings', JSON.stringify(settings));
-      } else {
-        // If no settings in Supabase, try localStorage
-        const savedSettings = localStorage.getItem('farm_settings');
-        if (savedSettings) {
-          const settings = JSON.parse(savedSettings);
-          setCompanySettings(settings);
-          // Save to Supabase for future
-          await saveCompanySettings(settings);
-        }
       }
     } catch (error) {
       console.error('Error loading company settings:', error);
     }
-  }, [userId, saveCompanySettings]);
+  }, [userId]);
 
   const getShedById = useCallback((id: string) => sheds.find(s => s.id === id), [sheds]);
 
@@ -2226,3 +2094,4 @@ export const useFarm = (): FarmContextType => {
   }
   return context;
 };
+
