@@ -2,7 +2,7 @@
 import { useState, useEffect, FC, ChangeEvent, FormEvent, FocusEvent, useRef } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { Sale, SaleType, PaymentMethod, PaymentStatus, ProductType, DeliveryStatus, CompanySettings } from '../types';
-import { EditIcon, PrinterIcon } from './icons';
+import { EditIcon, PrinterIcon, DownloadIcon } from './icons';
 
 const SALE_TYPES: SaleType[] = ['Cliente Final', 'Atacado'];
 const PRODUCT_TYPES: ProductType[] = ['Ovos', 'Aves', 'Cama'];
@@ -328,16 +328,64 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
         printWindow.print();
     };
 
+    const handleDownloadPDF = () => {
+        const printContent = receiptRef.current;
+        if (!printContent) return;
+
+        // Criar uma nova janela para gerar o PDF
+        const printWindow = window.open('', '', 'width=800,height=600');
+        if (!printWindow) return;
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>Recibo de Venda #${sale.saleNumber || 'N/A'}</title>
+                    <style>
+                        body { font-family: 'Courier New', monospace; padding: 20px; max-width: 300px; margin: 0 auto; }
+                        .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+                        .header h1 { font-size: 16px; margin: 0; }
+                        .header p { font-size: 10px; margin: 2px 0; }
+                        .sale-number { font-size: 14px; font-weight: bold; text-align: center; margin: 10px 0; }
+                        .divider { border-top: 1px dashed #000; margin: 10px 0; }
+                        .row { display: flex; justify-content: space-between; font-size: 12px; margin: 4px 0; }
+                        .row.total { font-weight: bold; font-size: 14px; border-top: 2px solid #000; padding-top: 8px; margin-top: 8px; }
+                        .footer { text-align: center; font-size: 10px; margin-top: 15px; border-top: 2px dashed #000; padding-top: 10px; }
+                        .payment-status { margin-top: 10px; padding: 10px; text-align: center; font-weight: bold; font-size: 16px; }
+                        .payment-status.paid { color: #15803d; }
+                        .payment-status.pending { color: #a16207; }
+                        .signature-area { margin-top: 25px; padding-top: 15px; border-top: 2px dashed #000; }
+                        .signature-line { height: 40px; border-bottom: 2px solid #000; margin-bottom: 5px; }
+                        .signature-label { font-size: 9px; text-align: center; color: #666; }
+                        @media print { body { padding: 0; } }
+                    </style>
+                </head>
+                <body>
+                    ${printContent.innerHTML}
+                    <script>
+                        window.onload = function() {
+                            window.print();
+                            setTimeout(function() {
+                                window.close();
+                            }, 100);
+                        }
+                    </script>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+    };
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-                <div className="p-4 border-b flex justify-between items-center">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+                <div className="p-4 border-b flex justify-between items-center flex-shrink-0">
                     <h2 className="text-lg font-bold text-stone-800">Recibo de Venda</h2>
                     <button onClick={onClose} className="text-stone-500 hover:text-stone-700">✕</button>
                 </div>
                 
                 {/* Preview do Recibo */}
-                <div ref={receiptRef} className="p-6 bg-white font-mono text-sm">
+                <div ref={receiptRef} className="p-6 bg-white font-mono text-sm overflow-y-auto flex-1">
                     <div className="header text-center border-b-2 border-dashed border-stone-400 pb-3 mb-3">
                         <h1 className="text-base font-bold">{settings?.farmName || 'GRANJA'}</h1>
                         {settings?.ownerName && <p className="text-xs text-stone-600">{settings.ownerName}</p>}
@@ -414,9 +462,13 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
                 </div>
 
                 {/* Botões */}
-                <div className="p-4 border-t flex justify-end space-x-3">
+                <div className="p-4 border-t flex justify-end space-x-3 flex-shrink-0">
                     <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-stone-700 bg-stone-100 rounded-md hover:bg-stone-200">
                         Fechar
+                    </button>
+                    <button onClick={handleDownloadPDF} className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 flex items-center">
+                        <DownloadIcon className="w-4 h-4 mr-2" />
+                        Baixar PDF
                     </button>
                     <button onClick={handlePrint} className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 flex items-center">
                         <PrinterIcon className="w-4 h-4 mr-2" />
