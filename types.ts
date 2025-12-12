@@ -48,6 +48,7 @@ export type DeliveryStatus = 'Pendente' | 'Em Rota' | 'Entregue' | 'Cancelada';
 
 export interface Sale {
   id: string;
+  saleNumber: number; // Número sequencial da venda
   date: string; // ISO string format (Data da Venda)
   flockId: string;
   clientId?: string; // Optional for legacy or anonymous sales
@@ -140,4 +141,19 @@ export interface EggMovement {
   referenceId?: string; // ID do registro relacionado (coleta, venda, etc)
 }
 
-export type View = 'dashboard' | 'data-entry' | 'flocks' | 'sheds' | 'expenses' | 'sales' | 'reports' | 'ai-assistant' | 'calculator' | 'clients' | 'contacts' | 'inventory' | 'mortality';
+export type View = 'dashboard' | 'data-entry' | 'flocks' | 'sheds' | 'expenses' | 'sales' | 'reports' | 'ai-assistant' | 'calculator' | 'clients' | 'contacts' | 'inventory' | 'mortality' | 'settings';
+
+// Configurações da Empresa/Granja
+export interface CompanySettings {
+  id: string;
+  farmName: string;
+  ownerName: string;
+  document: string; // CPF ou CNPJ
+  phone: string;
+  email: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  logo?: string; // URL ou base64 da logo
+}

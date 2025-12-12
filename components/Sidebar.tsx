@@ -1,6 +1,6 @@
 
 import { useState, FC } from 'react';
-import { DashboardIcon, DataEntryIcon, FlockIcon, AIIcon, ExpenseIcon, SalesIcon, ReportIcon, ShedIcon, CalculatorIcon, UsersIcon, ContactIcon, InventoryIcon, LogOutIcon } from './icons';
+import { DashboardIcon, DataEntryIcon, FlockIcon, AIIcon, ExpenseIcon, SalesIcon, ReportIcon, ShedIcon, CalculatorIcon, UsersIcon, ContactIcon, InventoryIcon, LogOutIcon, SettingsIcon } from './icons';
 import { useFarm } from '../context/FarmContext';
 import { View } from '../types';
 
@@ -27,6 +27,7 @@ const Sidebar: FC<SidebarProps> = ({ onLogout }) => {
     { id: 'calculator', label: 'Formulação', icon: <CalculatorIcon /> },
     { id: 'reports', label: 'Relatórios', icon: <ReportIcon /> },
     { id: 'ai-assistant', label: 'Assistente AI', icon: <AIIcon /> },
+    { id: 'settings', label: 'Configurações', icon: <SettingsIcon /> },
   ];
 
   const handleNavigation = (id: string) => {
