@@ -1,6 +1,6 @@
 
 import { createContext, useState, useEffect, useContext, ReactNode, useCallback, FC } from 'react';
-import { Flock, DailyRecord, Expense, Sale, FlockTask, Shed, Client, InventoryItem, FeedFormulation, View, EggMovement, EggMovementType, EggMovementReason } from '../types';
+import { Flock, DailyRecord, Expense, Sale, FlockTask, Shed, Client, InventoryItem, FeedFormulation, View, EggMovement, EggMovementType, EggMovementReason, CompanySettings } from '../types';
 import { supabase } from '../services/supabaseClient';
 
 interface FarmContextType {
@@ -32,7 +32,7 @@ interface FarmContextType {
   deleteRecord: (recordId: string) => void;
   addExpense: (expense: Omit<Expense, 'id'>) => void;
   updateExpense: (expenseId: string, data: Omit<Expense, 'id'>) => void;
-  addSale: (sale: Omit<Sale, 'id' | 'totalAmount'>) => void;
+  addSale: (sale: Omit<Sale, 'id' | 'totalAmount' | 'saleNumber'>) => void;
   updateSale: (saleId: string, data: Omit<Sale, 'id' | 'totalAmount'>) => void;
   addTask: (task: Omit<FlockTask, 'id'>) => void;
   toggleTaskCompletion: (taskId: string) => void;
@@ -57,6 +57,11 @@ interface FarmContextType {
   getTasksByFlockId: (flockId: string) => FlockTask[];
   getHensCountOnDate: (flockId: string, date: Date) => number;
   clearData: () => void;
+  
+  // Company Settings functions
+  companySettings: CompanySettings | null;
+  saveCompanySettings: (settings: CompanySettings) => Promise<void>;
+  loadCompanySettings: () => Promise<void>;
 }
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
@@ -93,6 +98,15 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         return savedClients ? JSON.parse(savedClients) : [];
       } catch {
         return [];
+      }
+  });
+
+  const [companySettings, setCompanySettings] = useState<CompanySettings | null>(() => {
+      try {
+        const savedSettings = localStorage.getItem('farm_settings');
+        return savedSettings ? JSON.parse(savedSettings) : null;
+      } catch {
+        return null;
       }
   });
 
@@ -281,8 +295,9 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .order('date', { ascending: false });
 
       if (!salesError && salesData) {
-        const mappedSales: Sale[] = salesData.map((s: any) => ({
+        const mappedSales: Sale[] = salesData.map((s: any, index: number) => ({
           id: s.id,
+          saleNumber: s.sale_number || index + 1,
           flockId: s.flock_id,
           clientId: s.client_id,
           date: s.date,
@@ -1474,12 +1489,17 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     })();
   };
 
-  const addSale = (saleData: Omit<Sale, 'id' | 'totalAmount'>) => {
+  const addSale = (saleData: Omit<Sale, 'id' | 'totalAmount' | 'saleNumber'>) => {
     if (!userId) return;
 
     (async () => {
       try {
         const totalAmount = saleData.quantity * saleData.pricePerUnit;
+        
+        // Gerar número sequencial da venda
+        const nextSaleNumber = sales.length > 0 
+          ? Math.max(...sales.map(s => s.saleNumber || 0)) + 1 
+          : 1;
         
         const { data, error } = await supabase
           .from('sales')
@@ -1488,6 +1508,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             flock_id: saleData.flockId,
             client_id: saleData.clientId ?? null,
             date: saleData.date,
+            sale_number: nextSaleNumber,
             product_type: saleData.productType || 'Ovos',
             sale_type: saleData.saleType,
             payment_method: saleData.paymentMethod,
@@ -1510,6 +1531,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
         const newSale: Sale = {
           id: data.id,
+          saleNumber: data.sale_number || nextSaleNumber,
           flockId: data.flock_id,
           clientId: data.client_id,
           date: data.date,
@@ -2043,6 +2065,98 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
+  // Company Settings functions
+  const saveCompanySettings = useCallback(async (settings: CompanySettings) => {
+    if (!userId) {
+      console.error('User not authenticated');
+      return;
+    }
+
+    try {
+      // Save to Supabase
+      const { error } = await supabase
+        .from('company_settings')
+        .upsert({
+          user_id: userId,
+          farm_name: settings.farmName,
+          owner_name: settings.ownerName,
+          document: settings.document,
+          phone: settings.phone,
+          email: settings.email,
+          address: settings.address,
+          city: settings.city,
+          state: settings.state,
+          zip_code: settings.zipCode,
+          logo: settings.logo,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (error) {
+        console.error('Error saving company settings to Supabase:', error);
+        throw error;
+      }
+
+      // Save to localStorage as backup
+      localStorage.setItem('farm_settings', JSON.stringify(settings));
+      setCompanySettings(settings);
+    } catch (error) {
+      console.error('Error saving company settings:', error);
+      throw error;
+    }
+  }, [userId]);
+
+  const loadCompanySettings = useCallback(async () => {
+    if (!userId) {
+      console.error('User not authenticated');
+      return;
+    }
+
+    try {
+      // Load from Supabase
+      const { data, error } = await supabase
+        .from('company_settings')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error('Error loading company settings from Supabase:', error);
+      }
+
+      if (data) {
+        const settings: CompanySettings = {
+          id: data.id,
+          farmName: data.farm_name,
+          ownerName: data.owner_name || '',
+          document: data.document || '',
+          phone: data.phone || '',
+          email: data.email || '',
+          address: data.address || '',
+          city: data.city || '',
+          state: data.state || '',
+          zipCode: data.zip_code || '',
+          logo: data.logo || ''
+        };
+
+        setCompanySettings(settings);
+        localStorage.setItem('farm_settings', JSON.stringify(settings));
+      } else {
+        // If no settings in Supabase, try localStorage
+        const savedSettings = localStorage.getItem('farm_settings');
+        if (savedSettings) {
+          const settings = JSON.parse(savedSettings);
+          setCompanySettings(settings);
+          // Save to Supabase for future
+          await saveCompanySettings(settings);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading company settings:', error);
+    }
+  }, [userId, saveCompanySettings]);
+
   const getShedById = useCallback((id: string) => sheds.find(s => s.id === id), [sheds]);
 
   const getFlockById = useCallback((id: string) => flocks.find(f => f.id === id), [flocks]);
@@ -2097,7 +2211,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         addEggMovement,
         getShedById, getFlockById, getClientById, getAvailableSheds, 
         getRecordsByFlockId, getExpensesByFlockId, getSalesByFlockId, getTasksByFlockId, getHensCountOnDate,
-        clearData
+        clearData,
+        companySettings, saveCompanySettings, loadCompanySettings
     }}>
       {children}
     </FarmContext.Provider>
