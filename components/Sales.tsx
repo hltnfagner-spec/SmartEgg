@@ -300,132 +300,19 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
             <!DOCTYPE html>
             <html>
                 <head>
-                    <title>Recibo de Venda #${sale.saleNumber || 'N/A'}</title>
+                    <title>Pedido de Venda #${sale.saleNumber || 'N/A'}</title>
                     <style>
-                        @page { size: A5; margin: 15mm; }
+                        @page { size: A4; margin: 15mm; }
                         * { margin: 0; padding: 0; box-sizing: border-box; }
                         body { 
                             font-family: Arial, sans-serif; 
-                            padding: 30px; 
-                            max-width: 148mm; 
-                            margin: 0 auto;
+                            padding: 20px; 
                             background: white;
-                            color: #333;
-                        }
-                        .header { 
-                            text-align: center; 
-                            border-bottom: 3px solid #333; 
-                            padding-bottom: 20px; 
-                            margin-bottom: 25px; 
-                        }
-                        .header h1 { 
-                            font-size: 24px; 
-                            font-weight: bold; 
-                            margin-bottom: 8px;
                             color: #000;
+                            font-size: 14px;
                         }
-                        .header p { 
-                            font-size: 12px; 
-                            margin: 3px 0;
-                            color: #555;
-                        }
-                        .receipt-title {
-                            text-align: center;
-                            font-size: 20px;
-                            font-weight: bold;
-                            margin: 20px 0;
-                            color: #000;
-                            text-transform: uppercase;
-                            letter-spacing: 1px;
-                        }
-                        .sale-number { 
-                            text-align: right;
-                            font-size: 14px; 
-                            font-weight: bold; 
-                            margin-bottom: 20px;
-                            color: #666;
-                        }
-                        .section {
-                            margin: 20px 0;
-                        }
-                        .section-title {
-                            font-size: 13px;
-                            font-weight: bold;
-                            margin-bottom: 10px;
-                            color: #000;
-                            border-bottom: 2px solid #ddd;
-                            padding-bottom: 5px;
-                        }
-                        .row { 
-                            display: flex; 
-                            justify-content: space-between; 
-                            font-size: 13px; 
-                            margin: 8px 0;
-                            padding: 5px 0;
-                        }
-                        .row-label {
-                            font-weight: 600;
-                            color: #555;
-                        }
-                        .row-value {
-                            color: #000;
-                        }
-                        .divider { 
-                            border-top: 1px solid #ddd; 
-                            margin: 15px 0; 
-                        }
-                        .total-section {
-                            background: #f5f5f5;
-                            padding: 15px;
-                            margin: 25px 0;
-                            border-radius: 5px;
-                            border: 2px solid #333;
-                        }
-                        .row.total { 
-                            font-weight: bold; 
-                            font-size: 18px;
-                            color: #000;
-                        }
-                        .payment-status { 
-                            text-align: center;
-                            margin: 20px 0; 
-                            padding: 12px;
-                            border-radius: 5px;
-                            font-weight: bold; 
-                            font-size: 16px;
-                        }
-                        .payment-status.paid { 
-                            background: #d1fae5;
-                            color: #065f46;
-                            border: 2px solid #10b981;
-                        }
-                        .payment-status.pending { 
-                            background: #fef3c7;
-                            color: #92400e;
-                            border: 2px solid #f59e0b;
-                        }
-                        .signature-area { 
-                            margin-top: 50px; 
-                            padding-top: 20px;
-                        }
-                        .signature-line { 
-                            height: 60px;
-                            border-bottom: 2px solid #333; 
-                            margin-bottom: 8px;
-                        }
-                        .signature-label { 
-                            font-size: 11px; 
-                            text-align: center; 
-                            color: #666;
-                            font-weight: 600;
-                        }
-                        .footer { 
-                            text-align: center; 
-                            font-size: 11px; 
-                            margin-top: 40px; 
-                            padding-top: 20px;
-                            border-top: 2px solid #ddd;
-                            color: #666;
+                        table {
+                            border-collapse: collapse;
                         }
                         @media print { 
                             body { padding: 15mm; }
@@ -446,7 +333,6 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
         const printContent = receiptRef.current;
         if (!printContent) return;
 
-        // Criar uma nova janela para gerar o PDF
         const printWindow = window.open('', '', 'width=800,height=600');
         if (!printWindow) return;
 
@@ -454,132 +340,19 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
             <!DOCTYPE html>
             <html>
                 <head>
-                    <title>Recibo de Venda #${sale.saleNumber || 'N/A'}</title>
+                    <title>Pedido de Venda #${sale.saleNumber || 'N/A'}</title>
                     <style>
-                        @page { size: A5; margin: 15mm; }
+                        @page { size: A4; margin: 15mm; }
                         * { margin: 0; padding: 0; box-sizing: border-box; }
                         body { 
                             font-family: Arial, sans-serif; 
-                            padding: 30px; 
-                            max-width: 148mm; 
-                            margin: 0 auto;
+                            padding: 20px; 
                             background: white;
-                            color: #333;
-                        }
-                        .header { 
-                            text-align: center; 
-                            border-bottom: 3px solid #333; 
-                            padding-bottom: 20px; 
-                            margin-bottom: 25px; 
-                        }
-                        .header h1 { 
-                            font-size: 24px; 
-                            font-weight: bold; 
-                            margin-bottom: 8px;
                             color: #000;
+                            font-size: 14px;
                         }
-                        .header p { 
-                            font-size: 12px; 
-                            margin: 3px 0;
-                            color: #555;
-                        }
-                        .receipt-title {
-                            text-align: center;
-                            font-size: 20px;
-                            font-weight: bold;
-                            margin: 20px 0;
-                            color: #000;
-                            text-transform: uppercase;
-                            letter-spacing: 1px;
-                        }
-                        .sale-number { 
-                            text-align: right;
-                            font-size: 14px; 
-                            font-weight: bold; 
-                            margin-bottom: 20px;
-                            color: #666;
-                        }
-                        .section {
-                            margin: 20px 0;
-                        }
-                        .section-title {
-                            font-size: 13px;
-                            font-weight: bold;
-                            margin-bottom: 10px;
-                            color: #000;
-                            border-bottom: 2px solid #ddd;
-                            padding-bottom: 5px;
-                        }
-                        .row { 
-                            display: flex; 
-                            justify-content: space-between; 
-                            font-size: 13px; 
-                            margin: 8px 0;
-                            padding: 5px 0;
-                        }
-                        .row-label {
-                            font-weight: 600;
-                            color: #555;
-                        }
-                        .row-value {
-                            color: #000;
-                        }
-                        .divider { 
-                            border-top: 1px solid #ddd; 
-                            margin: 15px 0; 
-                        }
-                        .total-section {
-                            background: #f5f5f5;
-                            padding: 15px;
-                            margin: 25px 0;
-                            border-radius: 5px;
-                            border: 2px solid #333;
-                        }
-                        .row.total { 
-                            font-weight: bold; 
-                            font-size: 18px;
-                            color: #000;
-                        }
-                        .payment-status { 
-                            text-align: center;
-                            margin: 20px 0; 
-                            padding: 12px;
-                            border-radius: 5px;
-                            font-weight: bold; 
-                            font-size: 16px;
-                        }
-                        .payment-status.paid { 
-                            background: #d1fae5;
-                            color: #065f46;
-                            border: 2px solid #10b981;
-                        }
-                        .payment-status.pending { 
-                            background: #fef3c7;
-                            color: #92400e;
-                            border: 2px solid #f59e0b;
-                        }
-                        .signature-area { 
-                            margin-top: 50px; 
-                            padding-top: 20px;
-                        }
-                        .signature-line { 
-                            height: 60px;
-                            border-bottom: 2px solid #333; 
-                            margin-bottom: 8px;
-                        }
-                        .signature-label { 
-                            font-size: 11px; 
-                            text-align: center; 
-                            color: #666;
-                            font-weight: 600;
-                        }
-                        .footer { 
-                            text-align: center; 
-                            font-size: 11px; 
-                            margin-top: 40px; 
-                            padding-top: 20px;
-                            border-top: 2px solid #ddd;
-                            color: #666;
+                        table {
+                            border-collapse: collapse;
                         }
                         @media print { 
                             body { padding: 15mm; }
@@ -605,105 +378,182 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
                 <div className="p-4 border-b flex justify-between items-center flex-shrink-0">
-                    <h2 className="text-lg font-bold text-stone-800">Recibo de Venda - Formato A5</h2>
+                    <h2 className="text-lg font-bold text-stone-800">Pedido de Venda</h2>
                     <button onClick={onClose} className="text-stone-500 hover:text-stone-700">✕</button>
                 </div>
                 
-                {/* Preview do Recibo A5 */}
-                <div ref={receiptRef} className="p-8 bg-white overflow-y-auto flex-1" style={{ fontFamily: 'Arial, sans-serif' }}>
-                    {/* Cabeçalho */}
-                    <div className="header text-center border-b-4 border-stone-800 pb-5 mb-6">
-                        <h1 className="text-2xl font-bold mb-2 text-stone-900">{settings?.farmName || 'GRANJA'}</h1>
-                        {settings?.ownerName && <p className="text-sm text-stone-600 mb-1">{settings.ownerName}</p>}
-                        {settings?.document && <p className="text-sm text-stone-500">CPF/CNPJ: {settings.document}</p>}
-                        {settings?.address && (
-                            <p className="text-sm text-stone-500">
-                                {settings.address}
-                                {settings.city && ` - ${settings.city}`}
-                                {settings.state && `/${settings.state}`}
-                            </p>
-                        )}
-                        {settings?.phone && <p className="text-sm text-stone-500">Tel: {settings.phone}</p>}
-                    </div>
+                {/* Preview do Recibo */}
+                <div ref={receiptRef} className="p-8 bg-white overflow-y-auto flex-1" style={{ fontFamily: 'Arial, sans-serif', fontSize: '14px' }}>
+                    {/* Cabeçalho com Logo e Dados da Granja */}
+                    <table style={{ width: '100%', border: '2px solid #999', marginBottom: '10px' }}>
+                        <tbody>
+                            <tr>
+                                <td style={{ width: '200px', padding: '15px', verticalAlign: 'top', borderRight: '1px solid #999' }}>
+                                    {settings?.logo ? (
+                                        <img src={settings.logo} alt="Logo" style={{ maxWidth: '180px', maxHeight: '120px' }} />
+                                    ) : (
+                                        <div style={{ width: '180px', height: '120px', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#999' }}>
+                                            Logo
+                                        </div>
+                                    )}
+                                </td>
+                                <td style={{ padding: '15px', verticalAlign: 'top' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <div>
+                                            <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>{settings?.farmName || 'Granja'}</div>
+                                            {settings?.document && <div>CNPJ: {settings.document}</div>}
+                                            {settings?.address && <div>{settings.address}</div>}
+                                            {settings?.city && settings?.state && settings?.zipCode && (
+                                                <div>{settings.city}/{settings.state} - CEP: {settings.zipCode}</div>
+                                            )}
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            {settings?.phone && <div>{settings.phone}</div>}
+                                            {settings?.email && <div>{settings.email}</div>}
+                                            {settings?.ownerName && <div>Aos cuidados de: {settings.ownerName}</div>}
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                    {/* Título do Recibo */}
-                    <div className="receipt-title text-center text-xl font-bold my-5 uppercase tracking-wider text-stone-900">
-                        Recibo de Venda
-                    </div>
+                    {/* Pedido Nº e Data */}
+                    <table style={{ width: '100%', marginBottom: '10px' }}>
+                        <tbody>
+                            <tr style={{ background: '#ccc' }}>
+                                <td style={{ padding: '10px', fontWeight: 'bold', fontSize: '16px' }}>
+                                    PEDIDO Nº {String(sale.saleNumber || 0).padStart(3, '0')}
+                                </td>
+                                <td style={{ padding: '10px', textAlign: 'right', fontWeight: 'bold', fontSize: '16px' }}>
+                                    {new Date(sale.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                    {/* Número da Venda */}
-                    <div className="sale-number text-right text-sm font-semibold mb-5 text-stone-600">
-                        Nº {String(sale.saleNumber || 0).padStart(6, '0')}
-                    </div>
+                    {/* Dados do Cliente */}
+                    <table style={{ width: '100%', border: '1px solid #999', borderCollapse: 'collapse', marginBottom: '10px' }}>
+                        <thead>
+                            <tr style={{ background: '#ccc' }}>
+                                <th colSpan={4} style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold', border: '1px solid #999' }}>
+                                    DADOS DO CLIENTE
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #999', width: '15%' }}>Nome</td>
+                                <td style={{ padding: '6px', border: '1px solid #999', width: '35%' }}>{client?.name || 'Venda Avulsa'}</td>
+                                <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #999', width: '15%' }}>Telefone</td>
+                                <td style={{ padding: '6px', border: '1px solid #999', width: '35%' }}>{client?.phone || ''}</td>
+                            </tr>
+                            <tr>
+                                <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #999' }}>CPF/CNPJ</td>
+                                <td style={{ padding: '6px', border: '1px solid #999' }}>{client?.document || ''}</td>
+                                <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #999' }}>E-mail</td>
+                                <td style={{ padding: '6px', border: '1px solid #999' }}>{client?.email || ''}</td>
+                            </tr>
+                            <tr>
+                                <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #999' }}>Endereço</td>
+                                <td style={{ padding: '6px', border: '1px solid #999' }}>{client?.address || ''}</td>
+                                <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #999' }}>Cidade</td>
+                                <td style={{ padding: '6px', border: '1px solid #999' }}>{client?.city || ''}</td>
+                            </tr>
+                            <tr>
+                                <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #999' }}>Bairro</td>
+                                <td style={{ padding: '6px', border: '1px solid #999' }}>{client?.neighborhood || ''}</td>
+                                <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #999' }}>UF</td>
+                                <td style={{ padding: '6px', border: '1px solid #999' }}>{client?.state || ''}</td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                    {/* Seção de Dados da Venda */}
-                    <div className="section mb-6">
-                        <div className="section-title text-sm font-bold mb-3 pb-2 border-b-2 border-stone-300 text-stone-900">
-                            DADOS DA VENDA
-                        </div>
-                        <div className="space-y-2">
-                            <div className="row flex justify-between py-1">
-                                <span className="row-label font-semibold text-stone-600">Data:</span>
-                                <span className="row-value text-stone-900">{new Date(sale.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span>
-                            </div>
-                            {client && (
-                                <div className="row flex justify-between py-1">
-                                    <span className="row-label font-semibold text-stone-600">Cliente:</span>
-                                    <span className="row-value text-stone-900">{client.name}</span>
-                                </div>
-                            )}
-                            <div className="row flex justify-between py-1">
-                                <span className="row-label font-semibold text-stone-600">Produto:</span>
-                                <span className="row-value text-stone-900">{sale.productType}</span>
-                            </div>
-                            <div className="row flex justify-between py-1">
-                                <span className="row-label font-semibold text-stone-600">Quantidade:</span>
-                                <span className="row-value text-stone-900">{sale.quantity}</span>
-                            </div>
-                            <div className="row flex justify-between py-1">
-                                <span className="row-label font-semibold text-stone-600">Valor Unitário:</span>
-                                <span className="row-value text-stone-900">{sale.pricePerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                            </div>
-                        </div>
-                    </div>
+                    {/* Produtos */}
+                    <table style={{ width: '100%', border: '1px solid #999', borderCollapse: 'collapse', marginBottom: '10px' }}>
+                        <thead>
+                            <tr style={{ background: '#ccc' }}>
+                                <th colSpan={4} style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold', border: '1px solid #999' }}>
+                                    PRODUTOS
+                                </th>
+                            </tr>
+                            <tr style={{ background: '#f0f0f0' }}>
+                                <th style={{ padding: '6px', border: '1px solid #999', textAlign: 'left' }}>Descrição</th>
+                                <th style={{ padding: '6px', border: '1px solid #999', textAlign: 'center', width: '15%' }}>Quantidade</th>
+                                <th style={{ padding: '6px', border: '1px solid #999', textAlign: 'right', width: '20%' }}>Preço unitário</th>
+                                <th style={{ padding: '6px', border: '1px solid #999', textAlign: 'right', width: '20%' }}>Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style={{ padding: '6px', border: '1px solid #999' }}>{sale.productType}</td>
+                                <td style={{ padding: '6px', border: '1px solid #999', textAlign: 'center' }}>{sale.quantity}</td>
+                                <td style={{ padding: '6px', border: '1px solid #999', textAlign: 'right' }}>
+                                    {sale.pricePerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </td>
+                                <td style={{ padding: '6px', border: '1px solid #999', textAlign: 'right', fontWeight: 'bold' }}>
+                                    {sale.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                    {/* Seção de Total */}
-                    <div className="total-section bg-stone-100 p-4 my-6 rounded-lg border-2 border-stone-800">
-                        <div className="row total flex justify-between text-xl">
-                            <span className="font-bold">VALOR TOTAL:</span>
-                            <span className="font-bold">{sale.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                        </div>
-                    </div>
+                    {/* Dados do Pagamento */}
+                    <table style={{ width: '100%', border: '1px solid #999', borderCollapse: 'collapse', marginBottom: '10px' }}>
+                        <thead>
+                            <tr style={{ background: '#ccc' }}>
+                                <th colSpan={4} style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold', border: '1px solid #999' }}>
+                                    Dados do pagamento
+                                </th>
+                            </tr>
+                            <tr style={{ background: '#f0f0f0' }}>
+                                <th style={{ padding: '6px', border: '1px solid #999', width: '15%' }}>Parcela</th>
+                                <th style={{ padding: '6px', border: '1px solid #999', width: '25%' }}>Vencimento</th>
+                                <th style={{ padding: '6px', border: '1px solid #999' }}>Forma de Pagamento</th>
+                                <th style={{ padding: '6px', border: '1px solid #999', textAlign: 'right', width: '20%' }}>Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style={{ padding: '6px', border: '1px solid #999', textAlign: 'center' }}>1</td>
+                                <td style={{ padding: '6px', border: '1px solid #999', textAlign: 'center' }}>
+                                    {new Date(sale.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                                </td>
+                                <td style={{ padding: '6px', border: '1px solid #999', textAlign: 'center' }}>{sale.paymentMethod}</td>
+                                <td style={{ padding: '6px', border: '1px solid #999', textAlign: 'right', fontWeight: 'bold' }}>
+                                    {sale.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colSpan={3} style={{ padding: '6px', border: '1px solid #999', fontWeight: 'bold', textAlign: 'right' }}>Total</td>
+                                <td style={{ padding: '6px', border: '1px solid #999', textAlign: 'right', fontWeight: 'bold' }}>
+                                    {sale.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                    {/* Seção de Pagamento */}
-                    <div className="section mb-6">
-                        <div className="section-title text-sm font-bold mb-3 pb-2 border-b-2 border-stone-300 text-stone-900">
-                            INFORMAÇÕES DE PAGAMENTO
-                        </div>
-                        <div className="row flex justify-between py-1">
-                            <span className="row-label font-semibold text-stone-600">Forma de Pagamento:</span>
-                            <span className="row-value text-stone-900">{sale.paymentMethod}</span>
-                        </div>
-                        <div className={`payment-status mt-4 p-3 text-center rounded-lg font-bold ${sale.paymentStatus === 'Pago' ? 'bg-green-100 text-green-800 border-2 border-green-600' : 'bg-yellow-100 text-yellow-800 border-2 border-yellow-600'}`}>
-                            {sale.paymentStatus === 'Pago' ? '✓ PAGAMENTO REALIZADO' : '⚠ PAGAMENTO PENDENTE'}
-                        </div>
-                    </div>
-
-                    {/* Área de Assinatura */}
-                    <div className="signature-area mt-12 pt-8">
-                        <div className="signature-line h-16 border-b-2 border-stone-800 mb-2"></div>
-                        <div className="signature-label text-center text-xs font-semibold text-stone-600">
-                            Assinatura do Responsável
-                        </div>
-                    </div>
-
-                    {/* Rodapé */}
-                    <div className="footer text-center text-sm mt-10 pt-5 border-t-2 border-stone-300">
-                        <p className="font-semibold text-stone-700">Obrigado pela preferência!</p>
-                        <p className="text-stone-500 mt-2 text-xs">Emitido em: {new Date().toLocaleString('pt-BR')}</p>
-                    </div>
+                    {/* Assinatura do Cliente */}
+                    <table style={{ width: '100%', border: '1px solid #999', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr style={{ background: '#ccc' }}>
+                                <th style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold', border: '1px solid #999' }}>
+                                    Assinatura do cliente
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style={{ padding: '80px 20px', border: '1px solid #999', position: 'relative' }}>
+                                    <div style={{ position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)', borderTop: '2px solid #000', width: '60%', paddingTop: '5px', textAlign: 'center', fontWeight: 'bold' }}>
+                                        {client?.name || 'Cliente'}
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
 
                 {/* Botões */}
