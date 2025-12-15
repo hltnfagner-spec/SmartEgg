@@ -535,6 +535,25 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
                         </tbody>
                     </table>
 
+                    {/* Status do Pagamento - Destacado */}
+                    <div style={{ 
+                        margin: '20px 0', 
+                        padding: '20px', 
+                        textAlign: 'center',
+                        border: '3px solid ' + (sale.paymentStatus === 'Pago' ? '#10b981' : '#f59e0b'),
+                        background: sale.paymentStatus === 'Pago' ? '#d1fae5' : '#fef3c7',
+                        borderRadius: '8px'
+                    }}>
+                        <div style={{ 
+                            fontSize: '24px', 
+                            fontWeight: 'bold',
+                            color: sale.paymentStatus === 'Pago' ? '#065f46' : '#92400e',
+                            letterSpacing: '2px'
+                        }}>
+                            {sale.paymentStatus === 'Pago' ? '✓ PAGAMENTO REALIZADO' : '⚠ PAGAMENTO PENDENTE'}
+                        </div>
+                    </div>
+
                     {/* Assinatura do Cliente */}
                     <table style={{ width: '100%', border: '1px solid #999', borderCollapse: 'collapse' }}>
                         <thead>
