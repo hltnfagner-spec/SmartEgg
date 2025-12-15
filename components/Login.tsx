@@ -5,10 +5,11 @@ import { supabase } from '../services/supabaseClient';
 interface LoginProps {
   onLogin: () => void;
   onSwitchToRegister: () => void;
+  onSwitchToForgotPassword: () => void;
   onBack: () => void;
 }
 
-const Login: FC<LoginProps> = ({ onLogin, onSwitchToRegister, onBack }) => {
+const Login: FC<LoginProps> = ({ onLogin, onSwitchToRegister, onSwitchToForgotPassword, onBack }) => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -94,7 +95,7 @@ const Login: FC<LoginProps> = ({ onLogin, onSwitchToRegister, onBack }) => {
             </div>
 
             <div className="text-right">
-                <a href="#" className="text-xs text-amber-600 hover:underline">Esqueceu a senha?</a>
+                <button type="button" onClick={onSwitchToForgotPassword} className="text-xs text-amber-600 hover:underline">Esqueceu a senha?</button>
             </div>
 
             <button 

@@ -18,21 +18,34 @@ import Settings from './components/Settings';
 import LandingPage from './components/LandingPage';
 import Register from './components/Register';
 import Login from './components/Login';
+import ForgotPassword from './components/ForgotPassword';
+import ResetPassword from './components/ResetPassword';
 import EmailConfirm from './components/EmailConfirm';
 import { useFarm } from './context/FarmContext';
 import { supabase } from './services/supabaseClient';
 
-type AuthState = 'landing' | 'login' | 'register' | 'app';
+type AuthState = 'landing' | 'login' | 'register' | 'forgot-password' | 'reset-password' | 'app';
 
 function App() {
-  const [authState, setAuthState] = useState<'landing' | 'login' | 'register' | 'app'>('landing');
+  const [authState, setAuthState] = useState<AuthState>('landing');
   
-  // Verificar se é rota de confirmação de email
+  // Verificar se é rota de confirmação de email ou recuperação de senha
   const urlParams = new URLSearchParams(window.location.search);
-  const isConfirmRoute = urlParams.has('token_hash') && urlParams.has('type');
+  const type = urlParams.get('type');
+  const isConfirmRoute = urlParams.has('token_hash') && type === 'signup';
+  const isRecoveryRoute = urlParams.has('token_hash') && type === 'recovery';
   
   if (isConfirmRoute) {
     return <EmailConfirm />;
+  }
+  
+  if (isRecoveryRoute) {
+    return <ResetPassword 
+      onSuccess={() => {
+        window.history.replaceState(null, '', '/');
+        window.location.href = '/?reset=success';
+      }}
+    />;
   }
   
   // Navigation state is now managed in FarmContext
@@ -156,7 +169,27 @@ function App() {
           <Login 
             onLogin={handleLoginSuccess} 
             onSwitchToRegister={() => setAuthState('register')}
+            onSwitchToForgotPassword={() => setAuthState('forgot-password')}
             onBack={() => setAuthState('landing')}
+          />
+      );
+  }
+
+  if (authState === 'forgot-password') {
+      return (
+          <ForgotPassword 
+            onBack={() => setAuthState('login')}
+          />
+      );
+  }
+
+  if (authState === 'reset-password') {
+      return (
+          <ResetPassword 
+            onSuccess={() => {
+              setAuthState('login');
+              alert('Senha redefinida com sucesso! Faça login com sua nova senha.');
+            }}
           />
       );
   }
