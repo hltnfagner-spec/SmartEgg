@@ -385,31 +385,31 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
                 </div>
                 
                 {/* Preview do Recibo */}
-                <div ref={receiptRef} className="p-8 bg-white overflow-y-auto flex-1" style={{ fontFamily: 'Arial, sans-serif', fontSize: '14px' }}>
+                <div ref={receiptRef} className="p-6 bg-white overflow-y-auto flex-1" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
                     {/* Cabeçalho com Logo e Dados da Granja */}
-                    <table style={{ width: '100%', border: '2px solid #999', marginBottom: '10px' }}>
+                    <table style={{ width: '100%', border: '2px solid #999', marginBottom: '6px' }}>
                         <tbody>
                             <tr>
-                                <td style={{ width: '200px', padding: '15px', verticalAlign: 'top', borderRight: '1px solid #999' }}>
+                                <td style={{ width: '160px', padding: '8px', verticalAlign: 'top', borderRight: '1px solid #999' }}>
                                     {settings?.logo ? (
-                                        <img src={settings.logo} alt="Logo" style={{ maxWidth: '180px', maxHeight: '120px' }} />
+                                        <img src={settings.logo} alt="Logo" style={{ maxWidth: '150px', maxHeight: '80px' }} />
                                     ) : (
-                                        <div style={{ width: '180px', height: '120px', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#999' }}>
+                                        <div style={{ width: '150px', height: '80px', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: '#999' }}>
                                             Logo
                                         </div>
                                     )}
                                 </td>
-                                <td style={{ padding: '15px', verticalAlign: 'top' }}>
+                                <td style={{ padding: '8px', verticalAlign: 'top', fontSize: '11px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <div>
-                                            <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>{settings?.farmName || 'Granja'}</div>
-                                            {settings?.document && <div>CNPJ: {settings.document}</div>}
-                                            {settings?.address && <div>{settings.address}</div>}
+                                            <div style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '4px' }}>{settings?.farmName || 'Granja'}</div>
+                                            {settings?.document && <div style={{ fontSize: '11px' }}>CNPJ: {settings.document}</div>}
+                                            {settings?.address && <div style={{ fontSize: '11px' }}>{settings.address}</div>}
                                             {settings?.city && settings?.state && settings?.zipCode && (
-                                                <div>{settings.city}/{settings.state} - CEP: {settings.zipCode}</div>
+                                                <div style={{ fontSize: '11px' }}>{settings.city}/{settings.state} - CEP: {settings.zipCode}</div>
                                             )}
                                         </div>
-                                        <div style={{ textAlign: 'right' }}>
+                                        <div style={{ textAlign: 'right', fontSize: '11px' }}>
                                             {settings?.phone && <div>{settings.phone}</div>}
                                             {settings?.email && <div>{settings.email}</div>}
                                         </div>
@@ -420,13 +420,13 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
                     </table>
 
                     {/* Pedido Nº e Data */}
-                    <table style={{ width: '100%', marginBottom: '10px' }}>
+                    <table style={{ width: '100%', marginBottom: '6px' }}>
                         <tbody>
                             <tr style={{ background: '#ccc' }}>
-                                <td style={{ padding: '10px', fontWeight: 'bold', fontSize: '16px' }}>
+                                <td style={{ padding: '6px', fontWeight: 'bold', fontSize: '14px' }}>
                                     PEDIDO Nº {String(sale.saleNumber || 0).padStart(3, '0')}
                                 </td>
-                                <td style={{ padding: '10px', textAlign: 'right', fontWeight: 'bold', fontSize: '16px' }}>
+                                <td style={{ padding: '6px', textAlign: 'right', fontWeight: 'bold', fontSize: '14px' }}>
                                     {new Date(sale.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
                                 </td>
                             </tr>
@@ -434,65 +434,65 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
                     </table>
 
                     {/* Dados do Cliente */}
-                    <table style={{ width: '100%', border: '1px solid #999', borderCollapse: 'collapse', marginBottom: '10px' }}>
+                    <table style={{ width: '100%', border: '1px solid #999', borderCollapse: 'collapse', marginBottom: '6px' }}>
                         <thead>
                             <tr style={{ background: '#ccc' }}>
-                                <th colSpan={4} style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold', border: '1px solid #999' }}>
+                                <th colSpan={4} style={{ padding: '5px', textAlign: 'center', fontWeight: 'bold', border: '1px solid #999', fontSize: '12px' }}>
                                     DADOS DO CLIENTE
                                 </th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #999', width: '15%' }}>Nome</td>
-                                <td style={{ padding: '6px', border: '1px solid #999', width: '35%' }}>{client?.name || 'Venda Avulsa'}</td>
-                                <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #999', width: '15%' }}>Telefone</td>
-                                <td style={{ padding: '6px', border: '1px solid #999', width: '35%' }}>{client?.phone || ''}</td>
+                                <td style={{ padding: '4px', fontWeight: 'bold', border: '1px solid #999', width: '15%', fontSize: '11px' }}>Nome</td>
+                                <td style={{ padding: '4px', border: '1px solid #999', width: '35%', fontSize: '11px' }}>{client?.name || 'Venda Avulsa'}</td>
+                                <td style={{ padding: '4px', fontWeight: 'bold', border: '1px solid #999', width: '15%', fontSize: '11px' }}>Telefone</td>
+                                <td style={{ padding: '4px', border: '1px solid #999', width: '35%', fontSize: '11px' }}>{client?.phone || ''}</td>
                             </tr>
                             <tr>
-                                <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #999' }}>CPF/CNPJ</td>
-                                <td style={{ padding: '6px', border: '1px solid #999' }}>{client?.document || ''}</td>
-                                <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #999' }}>E-mail</td>
-                                <td style={{ padding: '6px', border: '1px solid #999' }}>{client?.email || ''}</td>
+                                <td style={{ padding: '4px', fontWeight: 'bold', border: '1px solid #999', fontSize: '11px' }}>CPF/CNPJ</td>
+                                <td style={{ padding: '4px', border: '1px solid #999', fontSize: '11px' }}>{client?.document || ''}</td>
+                                <td style={{ padding: '4px', fontWeight: 'bold', border: '1px solid #999', fontSize: '11px' }}>E-mail</td>
+                                <td style={{ padding: '4px', border: '1px solid #999', fontSize: '11px' }}>{client?.email || ''}</td>
                             </tr>
                             <tr>
-                                <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #999' }}>Endereço</td>
-                                <td style={{ padding: '6px', border: '1px solid #999' }}>{client?.address || ''}</td>
-                                <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #999' }}>Cidade</td>
-                                <td style={{ padding: '6px', border: '1px solid #999' }}>{client?.city || ''}</td>
+                                <td style={{ padding: '4px', fontWeight: 'bold', border: '1px solid #999', fontSize: '11px' }}>Endereço</td>
+                                <td style={{ padding: '4px', border: '1px solid #999', fontSize: '11px' }}>{client?.address || ''}</td>
+                                <td style={{ padding: '4px', fontWeight: 'bold', border: '1px solid #999', fontSize: '11px' }}>Cidade</td>
+                                <td style={{ padding: '4px', border: '1px solid #999', fontSize: '11px' }}>{client?.city || ''}</td>
                             </tr>
                             <tr>
-                                <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #999' }}>Bairro</td>
-                                <td style={{ padding: '6px', border: '1px solid #999' }}>{client?.neighborhood || ''}</td>
-                                <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #999' }}>UF</td>
-                                <td style={{ padding: '6px', border: '1px solid #999' }}>{client?.state || ''}</td>
+                                <td style={{ padding: '4px', fontWeight: 'bold', border: '1px solid #999', fontSize: '11px' }}>Bairro</td>
+                                <td style={{ padding: '4px', border: '1px solid #999', fontSize: '11px' }}>{client?.neighborhood || ''}</td>
+                                <td style={{ padding: '4px', fontWeight: 'bold', border: '1px solid #999', fontSize: '11px' }}>UF</td>
+                                <td style={{ padding: '4px', border: '1px solid #999', fontSize: '11px' }}>{client?.state || ''}</td>
                             </tr>
                         </tbody>
                     </table>
 
                     {/* Produtos */}
-                    <table style={{ width: '100%', border: '1px solid #999', borderCollapse: 'collapse', marginBottom: '10px' }}>
+                    <table style={{ width: '100%', border: '1px solid #999', borderCollapse: 'collapse', marginBottom: '6px' }}>
                         <thead>
                             <tr style={{ background: '#ccc' }}>
-                                <th colSpan={4} style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold', border: '1px solid #999' }}>
+                                <th colSpan={4} style={{ padding: '5px', textAlign: 'center', fontWeight: 'bold', border: '1px solid #999', fontSize: '12px' }}>
                                     PRODUTOS
                                 </th>
                             </tr>
                             <tr style={{ background: '#f0f0f0' }}>
-                                <th style={{ padding: '6px', border: '1px solid #999', textAlign: 'left' }}>Descrição</th>
-                                <th style={{ padding: '6px', border: '1px solid #999', textAlign: 'center', width: '15%' }}>Quantidade</th>
-                                <th style={{ padding: '6px', border: '1px solid #999', textAlign: 'right', width: '20%' }}>Preço unitário</th>
-                                <th style={{ padding: '6px', border: '1px solid #999', textAlign: 'right', width: '20%' }}>Valor</th>
+                                <th style={{ padding: '4px', border: '1px solid #999', textAlign: 'left', fontSize: '11px' }}>Descrição</th>
+                                <th style={{ padding: '4px', border: '1px solid #999', textAlign: 'center', width: '15%', fontSize: '11px' }}>Quantidade</th>
+                                <th style={{ padding: '4px', border: '1px solid #999', textAlign: 'right', width: '20%', fontSize: '11px' }}>Preço unitário</th>
+                                <th style={{ padding: '4px', border: '1px solid #999', textAlign: 'right', width: '20%', fontSize: '11px' }}>Valor</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td style={{ padding: '6px', border: '1px solid #999' }}>{sale.productType}</td>
-                                <td style={{ padding: '6px', border: '1px solid #999', textAlign: 'center' }}>{sale.quantity}</td>
-                                <td style={{ padding: '6px', border: '1px solid #999', textAlign: 'right' }}>
+                                <td style={{ padding: '4px', border: '1px solid #999', fontSize: '11px' }}>{sale.productType}</td>
+                                <td style={{ padding: '4px', border: '1px solid #999', textAlign: 'center', fontSize: '11px' }}>{sale.quantity}</td>
+                                <td style={{ padding: '4px', border: '1px solid #999', textAlign: 'right', fontSize: '11px' }}>
                                     {sale.pricePerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                 </td>
-                                <td style={{ padding: '6px', border: '1px solid #999', textAlign: 'right', fontWeight: 'bold' }}>
+                                <td style={{ padding: '4px', border: '1px solid #999', textAlign: 'right', fontWeight: 'bold', fontSize: '11px' }}>
                                     {sale.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                 </td>
                             </tr>
@@ -500,34 +500,34 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
                     </table>
 
                     {/* Dados do Pagamento */}
-                    <table style={{ width: '100%', border: '1px solid #999', borderCollapse: 'collapse', marginBottom: '10px' }}>
+                    <table style={{ width: '100%', border: '1px solid #999', borderCollapse: 'collapse', marginBottom: '6px' }}>
                         <thead>
                             <tr style={{ background: '#ccc' }}>
-                                <th colSpan={4} style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold', border: '1px solid #999' }}>
+                                <th colSpan={4} style={{ padding: '5px', textAlign: 'center', fontWeight: 'bold', border: '1px solid #999', fontSize: '12px' }}>
                                     Dados do pagamento
                                 </th>
                             </tr>
                             <tr style={{ background: '#f0f0f0' }}>
-                                <th style={{ padding: '6px', border: '1px solid #999', width: '15%' }}>Parcela</th>
-                                <th style={{ padding: '6px', border: '1px solid #999', width: '25%' }}>Vencimento</th>
-                                <th style={{ padding: '6px', border: '1px solid #999' }}>Forma de Pagamento</th>
-                                <th style={{ padding: '6px', border: '1px solid #999', textAlign: 'right', width: '20%' }}>Valor</th>
+                                <th style={{ padding: '4px', border: '1px solid #999', width: '15%', fontSize: '11px' }}>Parcela</th>
+                                <th style={{ padding: '4px', border: '1px solid #999', width: '25%', fontSize: '11px' }}>Vencimento</th>
+                                <th style={{ padding: '4px', border: '1px solid #999', fontSize: '11px' }}>Forma de Pagamento</th>
+                                <th style={{ padding: '4px', border: '1px solid #999', textAlign: 'right', width: '20%', fontSize: '11px' }}>Valor</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td style={{ padding: '6px', border: '1px solid #999', textAlign: 'center' }}>1</td>
-                                <td style={{ padding: '6px', border: '1px solid #999', textAlign: 'center' }}>
+                                <td style={{ padding: '4px', border: '1px solid #999', textAlign: 'center', fontSize: '11px' }}>1</td>
+                                <td style={{ padding: '4px', border: '1px solid #999', textAlign: 'center', fontSize: '11px' }}>
                                     {new Date(sale.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
                                 </td>
-                                <td style={{ padding: '6px', border: '1px solid #999', textAlign: 'center' }}>{sale.paymentMethod}</td>
-                                <td style={{ padding: '6px', border: '1px solid #999', textAlign: 'right', fontWeight: 'bold' }}>
+                                <td style={{ padding: '4px', border: '1px solid #999', textAlign: 'center', fontSize: '11px' }}>{sale.paymentMethod}</td>
+                                <td style={{ padding: '4px', border: '1px solid #999', textAlign: 'right', fontWeight: 'bold', fontSize: '11px' }}>
                                     {sale.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                 </td>
                             </tr>
                             <tr>
-                                <td colSpan={3} style={{ padding: '6px', border: '1px solid #999', fontWeight: 'bold', textAlign: 'right' }}>Total</td>
-                                <td style={{ padding: '6px', border: '1px solid #999', textAlign: 'right', fontWeight: 'bold' }}>
+                                <td colSpan={3} style={{ padding: '4px', border: '1px solid #999', fontWeight: 'bold', textAlign: 'right', fontSize: '11px' }}>Total</td>
+                                <td style={{ padding: '4px', border: '1px solid #999', textAlign: 'right', fontWeight: 'bold', fontSize: '11px' }}>
                                     {sale.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                 </td>
                             </tr>
@@ -536,18 +536,18 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
 
                     {/* Status do Pagamento - Destacado */}
                     <div style={{ 
-                        margin: '20px 0', 
-                        padding: '20px', 
+                        margin: '8px 0', 
+                        padding: '12px', 
                         textAlign: 'center',
                         border: '3px solid ' + (sale.paymentStatus === 'Pago' ? '#10b981' : '#f59e0b'),
                         background: sale.paymentStatus === 'Pago' ? '#d1fae5' : '#fef3c7',
-                        borderRadius: '8px'
+                        borderRadius: '6px'
                     }}>
                         <div style={{ 
-                            fontSize: '24px', 
+                            fontSize: '18px', 
                             fontWeight: 'bold',
                             color: sale.paymentStatus === 'Pago' ? '#065f46' : '#92400e',
-                            letterSpacing: '2px'
+                            letterSpacing: '1px'
                         }}>
                             {sale.paymentStatus === 'Pago' ? '✓ PAGAMENTO REALIZADO' : '⚠ PAGAMENTO PENDENTE'}
                         </div>
@@ -557,15 +557,15 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
                     <table style={{ width: '100%', border: '1px solid #999', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr style={{ background: '#ccc' }}>
-                                <th style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold', border: '1px solid #999' }}>
+                                <th style={{ padding: '5px', textAlign: 'center', fontWeight: 'bold', border: '1px solid #999', fontSize: '12px' }}>
                                     Assinatura do cliente
                                 </th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td style={{ padding: '80px 20px', border: '1px solid #999', position: 'relative' }}>
-                                    <div style={{ position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)', borderTop: '2px solid #000', width: '60%', paddingTop: '5px', textAlign: 'center', fontWeight: 'bold' }}>
+                                <td style={{ padding: '50px 20px', border: '1px solid #999', position: 'relative' }}>
+                                    <div style={{ position: 'absolute', bottom: '8px', left: '50%', transform: 'translateX(-50%)', borderTop: '2px solid #000', width: '60%', paddingTop: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px' }}>
                                         {client?.name || 'Cliente'}
                                     </div>
                                 </td>
