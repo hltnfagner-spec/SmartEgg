@@ -297,26 +297,140 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
         if (!printWindow) return;
 
         printWindow.document.write(`
+            <!DOCTYPE html>
             <html>
                 <head>
                     <title>Recibo de Venda #${sale.saleNumber || 'N/A'}</title>
                     <style>
-                        body { font-family: 'Courier New', monospace; padding: 20px; max-width: 300px; margin: 0 auto; }
-                        .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
-                        .header h1 { font-size: 16px; margin: 0; }
-                        .header p { font-size: 10px; margin: 2px 0; }
-                        .sale-number { font-size: 14px; font-weight: bold; text-align: center; margin: 10px 0; }
-                        .divider { border-top: 1px dashed #000; margin: 10px 0; }
-                        .row { display: flex; justify-content: space-between; font-size: 12px; margin: 4px 0; }
-                        .row.total { font-weight: bold; font-size: 14px; border-top: 2px solid #000; padding-top: 8px; margin-top: 8px; }
-                        .footer { text-align: center; font-size: 10px; margin-top: 15px; border-top: 2px dashed #000; padding-top: 10px; }
-                        .payment-status { margin-top: 10px; padding: 10px; text-align: center; font-weight: bold; font-size: 16px; }
-                        .payment-status.paid { color: #15803d; }
-                        .payment-status.pending { color: #a16207; }
-                        .signature-area { margin-top: 25px; padding-top: 15px; border-top: 2px dashed #000; }
-                        .signature-line { height: 40px; border-bottom: 2px solid #000; margin-bottom: 5px; }
-                        .signature-label { font-size: 9px; text-align: center; color: #666; }
-                        @media print { body { padding: 0; } }
+                        @page { size: A5; margin: 15mm; }
+                        * { margin: 0; padding: 0; box-sizing: border-box; }
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            padding: 30px; 
+                            max-width: 148mm; 
+                            margin: 0 auto;
+                            background: white;
+                            color: #333;
+                        }
+                        .header { 
+                            text-align: center; 
+                            border-bottom: 3px solid #333; 
+                            padding-bottom: 20px; 
+                            margin-bottom: 25px; 
+                        }
+                        .header h1 { 
+                            font-size: 24px; 
+                            font-weight: bold; 
+                            margin-bottom: 8px;
+                            color: #000;
+                        }
+                        .header p { 
+                            font-size: 12px; 
+                            margin: 3px 0;
+                            color: #555;
+                        }
+                        .receipt-title {
+                            text-align: center;
+                            font-size: 20px;
+                            font-weight: bold;
+                            margin: 20px 0;
+                            color: #000;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                        }
+                        .sale-number { 
+                            text-align: right;
+                            font-size: 14px; 
+                            font-weight: bold; 
+                            margin-bottom: 20px;
+                            color: #666;
+                        }
+                        .section {
+                            margin: 20px 0;
+                        }
+                        .section-title {
+                            font-size: 13px;
+                            font-weight: bold;
+                            margin-bottom: 10px;
+                            color: #000;
+                            border-bottom: 2px solid #ddd;
+                            padding-bottom: 5px;
+                        }
+                        .row { 
+                            display: flex; 
+                            justify-content: space-between; 
+                            font-size: 13px; 
+                            margin: 8px 0;
+                            padding: 5px 0;
+                        }
+                        .row-label {
+                            font-weight: 600;
+                            color: #555;
+                        }
+                        .row-value {
+                            color: #000;
+                        }
+                        .divider { 
+                            border-top: 1px solid #ddd; 
+                            margin: 15px 0; 
+                        }
+                        .total-section {
+                            background: #f5f5f5;
+                            padding: 15px;
+                            margin: 25px 0;
+                            border-radius: 5px;
+                            border: 2px solid #333;
+                        }
+                        .row.total { 
+                            font-weight: bold; 
+                            font-size: 18px;
+                            color: #000;
+                        }
+                        .payment-status { 
+                            text-align: center;
+                            margin: 20px 0; 
+                            padding: 12px;
+                            border-radius: 5px;
+                            font-weight: bold; 
+                            font-size: 16px;
+                        }
+                        .payment-status.paid { 
+                            background: #d1fae5;
+                            color: #065f46;
+                            border: 2px solid #10b981;
+                        }
+                        .payment-status.pending { 
+                            background: #fef3c7;
+                            color: #92400e;
+                            border: 2px solid #f59e0b;
+                        }
+                        .signature-area { 
+                            margin-top: 50px; 
+                            padding-top: 20px;
+                        }
+                        .signature-line { 
+                            height: 60px;
+                            border-bottom: 2px solid #333; 
+                            margin-bottom: 8px;
+                        }
+                        .signature-label { 
+                            font-size: 11px; 
+                            text-align: center; 
+                            color: #666;
+                            font-weight: 600;
+                        }
+                        .footer { 
+                            text-align: center; 
+                            font-size: 11px; 
+                            margin-top: 40px; 
+                            padding-top: 20px;
+                            border-top: 2px solid #ddd;
+                            color: #666;
+                        }
+                        @media print { 
+                            body { padding: 15mm; }
+                            .no-print { display: none; }
+                        }
                     </style>
                 </head>
                 <body>
@@ -342,22 +456,135 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
                 <head>
                     <title>Recibo de Venda #${sale.saleNumber || 'N/A'}</title>
                     <style>
-                        body { font-family: 'Courier New', monospace; padding: 20px; max-width: 300px; margin: 0 auto; }
-                        .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
-                        .header h1 { font-size: 16px; margin: 0; }
-                        .header p { font-size: 10px; margin: 2px 0; }
-                        .sale-number { font-size: 14px; font-weight: bold; text-align: center; margin: 10px 0; }
-                        .divider { border-top: 1px dashed #000; margin: 10px 0; }
-                        .row { display: flex; justify-content: space-between; font-size: 12px; margin: 4px 0; }
-                        .row.total { font-weight: bold; font-size: 14px; border-top: 2px solid #000; padding-top: 8px; margin-top: 8px; }
-                        .footer { text-align: center; font-size: 10px; margin-top: 15px; border-top: 2px dashed #000; padding-top: 10px; }
-                        .payment-status { margin-top: 10px; padding: 10px; text-align: center; font-weight: bold; font-size: 16px; }
-                        .payment-status.paid { color: #15803d; }
-                        .payment-status.pending { color: #a16207; }
-                        .signature-area { margin-top: 25px; padding-top: 15px; border-top: 2px dashed #000; }
-                        .signature-line { height: 40px; border-bottom: 2px solid #000; margin-bottom: 5px; }
-                        .signature-label { font-size: 9px; text-align: center; color: #666; }
-                        @media print { body { padding: 0; } }
+                        @page { size: A5; margin: 15mm; }
+                        * { margin: 0; padding: 0; box-sizing: border-box; }
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            padding: 30px; 
+                            max-width: 148mm; 
+                            margin: 0 auto;
+                            background: white;
+                            color: #333;
+                        }
+                        .header { 
+                            text-align: center; 
+                            border-bottom: 3px solid #333; 
+                            padding-bottom: 20px; 
+                            margin-bottom: 25px; 
+                        }
+                        .header h1 { 
+                            font-size: 24px; 
+                            font-weight: bold; 
+                            margin-bottom: 8px;
+                            color: #000;
+                        }
+                        .header p { 
+                            font-size: 12px; 
+                            margin: 3px 0;
+                            color: #555;
+                        }
+                        .receipt-title {
+                            text-align: center;
+                            font-size: 20px;
+                            font-weight: bold;
+                            margin: 20px 0;
+                            color: #000;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                        }
+                        .sale-number { 
+                            text-align: right;
+                            font-size: 14px; 
+                            font-weight: bold; 
+                            margin-bottom: 20px;
+                            color: #666;
+                        }
+                        .section {
+                            margin: 20px 0;
+                        }
+                        .section-title {
+                            font-size: 13px;
+                            font-weight: bold;
+                            margin-bottom: 10px;
+                            color: #000;
+                            border-bottom: 2px solid #ddd;
+                            padding-bottom: 5px;
+                        }
+                        .row { 
+                            display: flex; 
+                            justify-content: space-between; 
+                            font-size: 13px; 
+                            margin: 8px 0;
+                            padding: 5px 0;
+                        }
+                        .row-label {
+                            font-weight: 600;
+                            color: #555;
+                        }
+                        .row-value {
+                            color: #000;
+                        }
+                        .divider { 
+                            border-top: 1px solid #ddd; 
+                            margin: 15px 0; 
+                        }
+                        .total-section {
+                            background: #f5f5f5;
+                            padding: 15px;
+                            margin: 25px 0;
+                            border-radius: 5px;
+                            border: 2px solid #333;
+                        }
+                        .row.total { 
+                            font-weight: bold; 
+                            font-size: 18px;
+                            color: #000;
+                        }
+                        .payment-status { 
+                            text-align: center;
+                            margin: 20px 0; 
+                            padding: 12px;
+                            border-radius: 5px;
+                            font-weight: bold; 
+                            font-size: 16px;
+                        }
+                        .payment-status.paid { 
+                            background: #d1fae5;
+                            color: #065f46;
+                            border: 2px solid #10b981;
+                        }
+                        .payment-status.pending { 
+                            background: #fef3c7;
+                            color: #92400e;
+                            border: 2px solid #f59e0b;
+                        }
+                        .signature-area { 
+                            margin-top: 50px; 
+                            padding-top: 20px;
+                        }
+                        .signature-line { 
+                            height: 60px;
+                            border-bottom: 2px solid #333; 
+                            margin-bottom: 8px;
+                        }
+                        .signature-label { 
+                            font-size: 11px; 
+                            text-align: center; 
+                            color: #666;
+                            font-weight: 600;
+                        }
+                        .footer { 
+                            text-align: center; 
+                            font-size: 11px; 
+                            margin-top: 40px; 
+                            padding-top: 20px;
+                            border-top: 2px solid #ddd;
+                            color: #666;
+                        }
+                        @media print { 
+                            body { padding: 15mm; }
+                            .no-print { display: none; }
+                        }
                     </style>
                 </head>
                 <body>
@@ -378,86 +605,104 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                 <div className="p-4 border-b flex justify-between items-center flex-shrink-0">
-                    <h2 className="text-lg font-bold text-stone-800">Recibo de Venda</h2>
+                    <h2 className="text-lg font-bold text-stone-800">Recibo de Venda - Formato A5</h2>
                     <button onClick={onClose} className="text-stone-500 hover:text-stone-700">✕</button>
                 </div>
                 
-                {/* Preview do Recibo */}
-                <div ref={receiptRef} className="p-6 bg-white font-mono text-sm overflow-y-auto flex-1">
-                    <div className="header text-center border-b-2 border-dashed border-stone-400 pb-3 mb-3">
-                        <h1 className="text-base font-bold">{settings?.farmName || 'GRANJA'}</h1>
-                        {settings?.ownerName && <p className="text-xs text-stone-600">{settings.ownerName}</p>}
-                        {settings?.document && <p className="text-xs text-stone-500">CPF/CNPJ: {settings.document}</p>}
+                {/* Preview do Recibo A5 */}
+                <div ref={receiptRef} className="p-8 bg-white overflow-y-auto flex-1" style={{ fontFamily: 'Arial, sans-serif' }}>
+                    {/* Cabeçalho */}
+                    <div className="header text-center border-b-4 border-stone-800 pb-5 mb-6">
+                        <h1 className="text-2xl font-bold mb-2 text-stone-900">{settings?.farmName || 'GRANJA'}</h1>
+                        {settings?.ownerName && <p className="text-sm text-stone-600 mb-1">{settings.ownerName}</p>}
+                        {settings?.document && <p className="text-sm text-stone-500">CPF/CNPJ: {settings.document}</p>}
                         {settings?.address && (
-                            <p className="text-xs text-stone-500">
+                            <p className="text-sm text-stone-500">
                                 {settings.address}
                                 {settings.city && ` - ${settings.city}`}
                                 {settings.state && `/${settings.state}`}
                             </p>
                         )}
-                        {settings?.phone && <p className="text-xs text-stone-500">Tel: {settings.phone}</p>}
+                        {settings?.phone && <p className="text-sm text-stone-500">Tel: {settings.phone}</p>}
                     </div>
 
-                    <div className="sale-number text-center font-bold text-lg my-3">
-                        VENDA #{String(sale.saleNumber || 0).padStart(6, '0')}
+                    {/* Título do Recibo */}
+                    <div className="receipt-title text-center text-xl font-bold my-5 uppercase tracking-wider text-stone-900">
+                        Recibo de Venda
                     </div>
 
-                    <div className="divider border-t border-dashed border-stone-300 my-3"></div>
+                    {/* Número da Venda */}
+                    <div className="sale-number text-right text-sm font-semibold mb-5 text-stone-600">
+                        Nº {String(sale.saleNumber || 0).padStart(6, '0')}
+                    </div>
 
-                    <div className="space-y-2">
-                        <div className="row flex justify-between">
-                            <span>Data:</span>
-                            <span>{new Date(sale.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span>
+                    {/* Seção de Dados da Venda */}
+                    <div className="section mb-6">
+                        <div className="section-title text-sm font-bold mb-3 pb-2 border-b-2 border-stone-300 text-stone-900">
+                            DADOS DA VENDA
                         </div>
-                        {client && (
-                            <div className="row flex justify-between">
-                                <span>Cliente:</span>
-                                <span>{client.name}</span>
+                        <div className="space-y-2">
+                            <div className="row flex justify-between py-1">
+                                <span className="row-label font-semibold text-stone-600">Data:</span>
+                                <span className="row-value text-stone-900">{new Date(sale.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span>
                             </div>
-                        )}
-                        <div className="row flex justify-between">
-                            <span>Produto:</span>
-                            <span>{sale.productType}</span>
-                        </div>
-                        <div className="row flex justify-between">
-                            <span>Quantidade:</span>
-                            <span>{sale.quantity}</span>
-                        </div>
-                        <div className="row flex justify-between">
-                            <span>Valor Unit.:</span>
-                            <span>{sale.pricePerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                            {client && (
+                                <div className="row flex justify-between py-1">
+                                    <span className="row-label font-semibold text-stone-600">Cliente:</span>
+                                    <span className="row-value text-stone-900">{client.name}</span>
+                                </div>
+                            )}
+                            <div className="row flex justify-between py-1">
+                                <span className="row-label font-semibold text-stone-600">Produto:</span>
+                                <span className="row-value text-stone-900">{sale.productType}</span>
+                            </div>
+                            <div className="row flex justify-between py-1">
+                                <span className="row-label font-semibold text-stone-600">Quantidade:</span>
+                                <span className="row-value text-stone-900">{sale.quantity}</span>
+                            </div>
+                            <div className="row flex justify-between py-1">
+                                <span className="row-label font-semibold text-stone-600">Valor Unitário:</span>
+                                <span className="row-value text-stone-900">{sale.pricePerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="divider border-t border-dashed border-stone-300 my-3"></div>
-
-                    <div className="row total flex justify-between font-bold text-base border-t-2 border-stone-800 pt-2 mt-2">
-                        <span>TOTAL:</span>
-                        <span>{sale.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    {/* Seção de Total */}
+                    <div className="total-section bg-stone-100 p-4 my-6 rounded-lg border-2 border-stone-800">
+                        <div className="row total flex justify-between text-xl">
+                            <span className="font-bold">VALOR TOTAL:</span>
+                            <span className="font-bold">{sale.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        </div>
                     </div>
 
-                    <div className="space-y-2 mt-3">
-                        <div className="row flex justify-between text-xs">
-                            <span>Forma de Pagamento:</span>
-                            <span className="font-medium">{sale.paymentMethod}</span>
+                    {/* Seção de Pagamento */}
+                    <div className="section mb-6">
+                        <div className="section-title text-sm font-bold mb-3 pb-2 border-b-2 border-stone-300 text-stone-900">
+                            INFORMAÇÕES DE PAGAMENTO
                         </div>
-                        <div className="payment-status mt-2 p-2 text-center mb-4">
-                            <span className={`text-lg font-bold ${sale.paymentStatus === 'Pago' ? 'text-green-700' : 'text-yellow-700'}`}>
-                                {sale.paymentStatus === 'Pago' ? '✓ PAGO' : '⚠ PENDENTE'}
-                            </span>
+                        <div className="row flex justify-between py-1">
+                            <span className="row-label font-semibold text-stone-600">Forma de Pagamento:</span>
+                            <span className="row-value text-stone-900">{sale.paymentMethod}</span>
+                        </div>
+                        <div className={`payment-status mt-4 p-3 text-center rounded-lg font-bold ${sale.paymentStatus === 'Pago' ? 'bg-green-100 text-green-800 border-2 border-green-600' : 'bg-yellow-100 text-yellow-800 border-2 border-yellow-600'}`}>
+                            {sale.paymentStatus === 'Pago' ? '✓ PAGAMENTO REALIZADO' : '⚠ PAGAMENTO PENDENTE'}
                         </div>
                     </div>
 
                     {/* Área de Assinatura */}
-                    <div className="mt-10 pt-6 border-t-2 border-dashed border-stone-400">
-                        <div className="h-14 border-b-2 border-stone-400 mb-2"></div>
+                    <div className="signature-area mt-12 pt-8">
+                        <div className="signature-line h-16 border-b-2 border-stone-800 mb-2"></div>
+                        <div className="signature-label text-center text-xs font-semibold text-stone-600">
+                            Assinatura do Responsável
+                        </div>
                     </div>
 
-                    <div className="footer text-center text-xs mt-12 border-t-2 border-dashed border-stone-400 pt-4">
-                        <p>Obrigado pela preferência!</p>
-                        <p className="text-stone-400 mt-1">{new Date().toLocaleString('pt-BR')}</p>
+                    {/* Rodapé */}
+                    <div className="footer text-center text-sm mt-10 pt-5 border-t-2 border-stone-300">
+                        <p className="font-semibold text-stone-700">Obrigado pela preferência!</p>
+                        <p className="text-stone-500 mt-2 text-xs">Emitido em: {new Date().toLocaleString('pt-BR')}</p>
                     </div>
                 </div>
 
