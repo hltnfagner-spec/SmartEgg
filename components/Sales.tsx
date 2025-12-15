@@ -1,8 +1,8 @@
-
 import { useState, useEffect, FC, ChangeEvent, FormEvent, FocusEvent, useRef } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { Sale, SaleType, PaymentMethod, PaymentStatus, ProductType, DeliveryStatus, CompanySettings } from '../types';
 import { EditIcon, PrinterIcon, DownloadIcon } from './icons';
+import html2pdf from 'html2pdf.js';
 
 const SALE_TYPES: SaleType[] = ['Cliente Final', 'Atacado'];
 const PRODUCT_TYPES: ProductType[] = ['Ovos', 'Aves', 'Cama'];
@@ -334,55 +334,19 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
         if (!printContent) return;
 
         // Criar nome do arquivo
-        const fileName = `Pedido_${String(sale.saleNumber || 0).padStart(3, '0')}_${client?.name?.replace(/\s+/g, '_') || 'Cliente'}.pdf`;
+        const fileName = `Pedido_${String(sale.saleNumber || 0).padStart(3, '0')}_${client?.name?.replace(/\s+/g, '_') || 'Cliente'}`;
 
-        const printWindow = window.open('', '', 'width=800,height=600');
-        if (!printWindow) return;
+        // Configurações do PDF
+        const opt = {
+            margin: 10,
+            filename: `${fileName}.pdf`,
+            image: { type: 'jpeg' as const, quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
+        };
 
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-                <head>
-                    <title>${fileName}</title>
-                    <style>
-                        @page { size: A4; margin: 15mm; }
-                        * { margin: 0; padding: 0; box-sizing: border-box; }
-                        body { 
-                            font-family: Arial, sans-serif; 
-                            padding: 20px; 
-                            background: white;
-                            color: #000;
-                            font-size: 14px;
-                        }
-                        table {
-                            border-collapse: collapse;
-                        }
-                        @media print { 
-                            body { padding: 15mm; }
-                            .no-print { display: none; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    ${printContent.innerHTML}
-                    <script>
-                        window.onload = function() {
-                            // Configurar para salvar como PDF
-                            document.title = '${fileName}';
-                            
-                            // Abrir diálogo de impressão (usuário deve selecionar "Salvar como PDF")
-                            window.print();
-                            
-                            // Fechar janela após impressão/salvamento
-                            setTimeout(function() {
-                                window.close();
-                            }, 500);
-                        }
-                    </script>
-                </body>
-            </html>
-        `);
-        printWindow.document.close();
+        // Gerar e baixar o PDF diretamente
+        html2pdf().set(opt).from(printContent).save();
     };
 
     return (
