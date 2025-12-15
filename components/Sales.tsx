@@ -333,6 +333,9 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
         const printContent = receiptRef.current;
         if (!printContent) return;
 
+        // Criar nome do arquivo
+        const fileName = `Pedido_${String(sale.saleNumber || 0).padStart(3, '0')}_${client?.name?.replace(/\s+/g, '_') || 'Cliente'}.pdf`;
+
         const printWindow = window.open('', '', 'width=800,height=600');
         if (!printWindow) return;
 
@@ -340,7 +343,7 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
             <!DOCTYPE html>
             <html>
                 <head>
-                    <title>Pedido de Venda #${sale.saleNumber || 'N/A'}</title>
+                    <title>${fileName}</title>
                     <style>
                         @page { size: A4; margin: 15mm; }
                         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -364,10 +367,16 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
                     ${printContent.innerHTML}
                     <script>
                         window.onload = function() {
+                            // Configurar para salvar como PDF
+                            document.title = '${fileName}';
+                            
+                            // Abrir diálogo de impressão (usuário deve selecionar "Salvar como PDF")
                             window.print();
+                            
+                            // Fechar janela após impressão/salvamento
                             setTimeout(function() {
                                 window.close();
-                            }, 100);
+                            }, 500);
                         }
                     </script>
                 </body>
