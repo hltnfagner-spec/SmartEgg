@@ -412,7 +412,6 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
                                         <div style={{ textAlign: 'right' }}>
                                             {settings?.phone && <div>{settings.phone}</div>}
                                             {settings?.email && <div>{settings.email}</div>}
-                                            {settings?.ownerName && <div>Aos cuidados de: {settings.ownerName}</div>}
                                         </div>
                                     </div>
                                 </td>
