@@ -102,6 +102,37 @@ const Settings: FC = () => {
         setSettings(prev => ({ ...prev, zipCode: formatted }));
     };
 
+    const handleLogoUpload = (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validar tipo de arquivo
+        if (!file.type.startsWith('image/')) {
+            setMessage({ type: 'error', text: 'Por favor, selecione uma imagem válida.' });
+            setTimeout(() => setMessage(null), 3000);
+            return;
+        }
+
+        // Validar tamanho (máximo 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            setMessage({ type: 'error', text: 'A imagem deve ter no máximo 2MB.' });
+            setTimeout(() => setMessage(null), 3000);
+            return;
+        }
+
+        // Converter para base64
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64String = reader.result as string;
+            setSettings(prev => ({ ...prev, logo: base64String }));
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleRemoveLogo = () => {
+        setSettings(prev => ({ ...prev, logo: '' }));
+    };
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         
@@ -188,6 +219,69 @@ const Settings: FC = () => {
                                 maxLength={18}
                                 className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"
                             />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Logo da Granja */}
+                <div className="space-y-4">
+                    <h2 className="text-lg font-semibold text-stone-700 border-b border-stone-200 pb-2">
+                        🖼️ Logo da Granja
+                    </h2>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-stone-600 mb-2">
+                                Upload da Logo (será exibida no recibo)
+                            </label>
+                            <div className="flex items-start space-x-4">
+                                {/* Preview da Logo */}
+                                <div className="flex-shrink-0">
+                                    {settings.logo ? (
+                                        <div className="relative">
+                                            <img 
+                                                src={settings.logo} 
+                                                alt="Logo da Granja" 
+                                                className="w-32 h-32 object-contain border-2 border-stone-300 rounded-lg bg-white p-2"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveLogo}
+                                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 shadow-md"
+                                                title="Remover logo"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="w-32 h-32 border-2 border-dashed border-stone-300 rounded-lg flex items-center justify-center bg-stone-50">
+                                            <span className="text-stone-400 text-xs text-center px-2">Sem logo</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Botão de Upload */}
+                                <div className="flex-1">
+                                    <input
+                                        type="file"
+                                        id="logoUpload"
+                                        accept="image/*"
+                                        onChange={handleLogoUpload}
+                                        className="hidden"
+                                    />
+                                    <label
+                                        htmlFor="logoUpload"
+                                        className="inline-flex items-center px-4 py-2 border border-stone-300 rounded-md shadow-sm text-sm font-medium text-stone-700 bg-white hover:bg-stone-50 cursor-pointer"
+                                    >
+                                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        Escolher Imagem
+                                    </label>
+                                    <p className="mt-2 text-xs text-stone-500">
+                                        Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 2MB
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
