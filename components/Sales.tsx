@@ -356,7 +356,7 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 sm:p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
                 <div className="p-4 border-b flex justify-between items-center flex-shrink-0">
                     <h2 className="text-lg font-bold text-stone-800">Pedido de Venda</h2>
@@ -364,7 +364,7 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
                 </div>
                 
                 {/* Preview do Recibo */}
-                <div ref={receiptRef} className="p-6 bg-white overflow-y-auto flex-1" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
+                <div ref={receiptRef} className="p-3 sm:p-6 bg-white overflow-y-auto flex-1" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
                     {/* Cabeçalho com Logo e Dados da Granja */}
                     <table style={{ width: '100%', border: '2px solid #999', marginBottom: '6px' }}>
                         <tbody>
