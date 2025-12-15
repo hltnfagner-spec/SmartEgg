@@ -71,7 +71,11 @@ export interface Client {
     name: string;
     phone: string;
     email: string;
+    document?: string; // CPF/CNPJ
     address: string;
+    city?: string;
+    neighborhood?: string; // Bairro
+    state?: string; // UF
     type: 'Atacado' | 'Varejo';
     notes?: string;
 }

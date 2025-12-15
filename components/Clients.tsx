@@ -25,7 +25,11 @@ const Clients: FC = () => {
         name: '',
         phone: '',
         email: '',
+        document: '',
         address: '',
+        city: '',
+        neighborhood: '',
+        state: '',
         type: 'Varejo',
         notes: ''
     });
@@ -36,7 +40,11 @@ const Clients: FC = () => {
             name: '',
             phone: '',
             email: '',
+            document: '',
             address: '',
+            city: '',
+            neighborhood: '',
+            state: '',
             type: 'Varejo',
             notes: ''
         });
@@ -49,7 +57,11 @@ const Clients: FC = () => {
             name: client.name,
             phone: client.phone,
             email: client.email,
+            document: client.document || '',
             address: client.address,
+            city: client.city || '',
+            neighborhood: client.neighborhood || '',
+            state: client.state || '',
             type: client.type,
             notes: client.notes || ''
         });
@@ -304,19 +316,37 @@ const Clients: FC = () => {
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Nome</label>
                                 <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Nome do cliente" className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
                             </div>
-                             <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">CPF/CNPJ</label>
+                                    <input type="text" value={formData.document} onChange={e => setFormData({...formData, document: e.target.value})} placeholder="000.000.000-00" className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                                </div>
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Telefone</label>
                                     <input type="text" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="(11) 99999-9999" className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-                                    <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="email@exemplo.com" className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
-                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                                <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="email@exemplo.com" className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Endereço</label>
-                                <input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} placeholder="Endereço completo" className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                                <input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} placeholder="Rua, número" className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                            </div>
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Cidade</label>
+                                    <input type="text" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} placeholder="Cidade" className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">UF</label>
+                                    <input type="text" maxLength={2} value={formData.state} onChange={e => setFormData({...formData, state: e.target.value.toUpperCase()})} placeholder="SP" className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Bairro</label>
+                                <input type="text" value={formData.neighborhood} onChange={e => setFormData({...formData, neighborhood: e.target.value})} placeholder="Bairro" className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de Cliente</label>
