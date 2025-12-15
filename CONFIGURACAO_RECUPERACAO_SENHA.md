@@ -23,7 +23,9 @@
 **Site URL:** Configure para o domínio onde sua aplicação está rodando
 
 - **Desenvolvimento:** `http://localhost:3001`
-- **Produção:** `https://seudominio.com.br`
+- **Produção:** `https://smartegg.app.br`
+
+⚠️ **IMPORTANTE:** Use `https://` para produção (com SSL)
 
 ### Passo 3: Configurar Redirect URLs
 
@@ -36,12 +38,15 @@ http://localhost:3001?type=recovery
 http://localhost:3001?type=signup
 ```
 
-**Para Produção:**
+**Para Produção (smartegg.app.br):**
 ```
-https://seudominio.com.br/**
-https://seudominio.com.br?type=recovery
-https://seudominio.com.br?type=signup
+https://smartegg.app.br/**
+https://smartegg.app.br?type=recovery
+https://smartegg.app.br?type=signup
+https://smartegg.app.br#access_token=*
 ```
+
+⚠️ **CRÍTICO:** Certifique-se de adicionar TODAS as URLs acima no Supabase Dashboard
 
 ### Passo 4: Configurar Email Template (Opcional)
 
