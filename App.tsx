@@ -30,10 +30,17 @@ function App() {
   const [authState, setAuthState] = useState<AuthState>('landing');
   
   // Verificar se é rota de confirmação de email ou recuperação de senha
+  // Supabase pode enviar tokens via query string (?) ou hash (#)
   const urlParams = new URLSearchParams(window.location.search);
-  const type = urlParams.get('type');
-  const isConfirmRoute = urlParams.has('token_hash') && type === 'signup';
-  const isRecoveryRoute = urlParams.has('token_hash') && type === 'recovery';
+  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  
+  const type = urlParams.get('type') || hashParams.get('type');
+  const hasTokenInQuery = urlParams.has('token_hash') || urlParams.has('access_token');
+  const hasTokenInHash = hashParams.has('token_hash') || hashParams.has('access_token');
+  const hasToken = hasTokenInQuery || hasTokenInHash;
+  
+  const isConfirmRoute = hasToken && type === 'signup';
+  const isRecoveryRoute = hasToken && type === 'recovery';
   
   if (isConfirmRoute) {
     return <EmailConfirm />;
