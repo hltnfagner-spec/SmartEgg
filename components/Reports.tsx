@@ -1,4 +1,4 @@
-import { useState, FC, useMemo, useCallback } from 'react';
+import { useState, FC, useMemo, useCallback, useEffect } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { generateProductionReport, generateFinancialReport } from '../services/reportGenerator.ts';
 import { ReportIcon } from './icons';
@@ -251,6 +251,15 @@ const Reports: FC = () => {
 			setIsLoading(false);
 		}
 	};
+
+	// Atualizar relatório automaticamente quando o filtro de lote mudar (se já houver um relatório gerado)
+	useEffect(() => {
+		if (reportData && reportType) {
+			// Regenerar o relatório com o novo filtro de lote
+			handleGenerateReport(reportType);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [selectedFlockId]);
 
 	const handleDownloadPdf = () => {
 		if (!reportData) return;
