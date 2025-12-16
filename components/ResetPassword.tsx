@@ -13,8 +13,12 @@ const ResetPassword: FC<ResetPasswordProps> = ({ onSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Debug: Log quando o componente monta
+  console.log('[ResetPassword] Component rendered, isLoading:', isLoading);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    console.log('[ResetPassword] Form submitted');
     setIsLoading(true);
     setError('');
 
@@ -32,20 +36,35 @@ const ResetPassword: FC<ResetPasswordProps> = ({ onSuccess }) => {
     }
 
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: formData.password
-      });
-
-      if (updateError) {
-        setError('Erro ao redefinir senha. Tente novamente.');
+      // Verificar se há sessão ativa
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log('[ResetPassword] Current session:', !!sessionData.session);
+      
+      if (!sessionData.session) {
+        console.log('[ResetPassword] No session found, cannot update password');
+        setError('Sessão expirada. Por favor, solicite um novo link de recuperação.');
         setIsLoading(false);
         return;
       }
 
+      console.log('[ResetPassword] Calling updateUser...');
+      const { data, error: updateError } = await supabase.auth.updateUser({
+        password: formData.password
+      });
+      console.log('[ResetPassword] updateUser result:', { data, error: updateError });
+
+      if (updateError) {
+        console.error('[ResetPassword] Update error:', updateError);
+        setError(`Erro ao redefinir senha: ${updateError.message}`);
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('[ResetPassword] Password updated successfully!');
       setIsLoading(false);
       onSuccess();
     } catch (err) {
-      console.error(err);
+      console.error('[ResetPassword] Catch error:', err);
       setIsLoading(false);
       setError('Erro ao processar solicitação. Tente novamente mais tarde.');
     }
