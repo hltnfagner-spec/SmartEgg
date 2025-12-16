@@ -207,7 +207,6 @@ const FeedCalculator: FC = () => {
                                       <tr className="bg-white hover:bg-slate-50">
                                           <td className="px-4 lg:px-6 pt-4 pb-1 font-medium text-slate-900 border-t border-slate-100">
                                               {formula.name}
-                                              {formula.notes && <p className="text-xs text-slate-400 font-normal truncate max-w-xs">{formula.notes}</p>}
                                           </td>
                                           <td className="px-4 lg:px-6 pt-4 pb-1 border-t border-slate-100">
                                               <span className={`px-2 py-1 rounded-full text-xs font-medium 
@@ -230,6 +229,12 @@ const FeedCalculator: FC = () => {
                                       <tr className="bg-white hover:bg-slate-50">
                                           <td colSpan={6} className="px-4 lg:px-6 pb-4 pt-2">
                                               <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                                                  {formula.notes && (
+                                                      <div className="mb-3 pb-2 border-b border-slate-200">
+                                                          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Observações:</span>
+                                                          <p className="text-sm text-slate-600 mt-1">{formula.notes}</p>
+                                                      </div>
+                                                  )}
                                                   <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Ingredientes:</span>
                                                   <div className="flex flex-wrap gap-2">
                                                       {formula.ingredients.map((ing, idx) => (
@@ -290,6 +295,12 @@ const FeedCalculator: FC = () => {
                                       <p className="font-bold text-orange-600">{formula.costPerKg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                                   </div>
                               </div>
+                              {formula.notes && (
+                                  <div className="bg-amber-50 rounded-lg p-2 border border-amber-100 mb-3">
+                                      <span className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Observações:</span>
+                                      <p className="text-sm text-slate-600 mt-1">{formula.notes}</p>
+                                  </div>
+                              )}
                               <div className="bg-slate-50 rounded-lg p-2 border border-slate-100">
                                   <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Ingredientes:</span>
                                   <div className="flex flex-wrap gap-1">
