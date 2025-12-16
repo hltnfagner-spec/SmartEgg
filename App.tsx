@@ -251,8 +251,11 @@ function App() {
   if (isRecoveryRoute) {
     return <ResetPassword 
       onSuccess={() => {
+        console.log('[App] Password reset success, redirecting...');
+        alert('Senha redefinida com sucesso! Você será redirecionado para o login.');
+        // Limpar URL e recarregar para ir ao estado inicial (com sessão ativa irá para app)
         window.history.replaceState(null, '', '/');
-        window.location.href = '/?reset=success';
+        window.location.reload();
       }}
     />;
   }
