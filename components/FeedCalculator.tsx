@@ -21,6 +21,10 @@ const FeedCalculator: FC = () => {
   const [quantityInputValue, setQuantityInputValue] = useState('');
   const [priceInputValue, setPriceInputValue] = useState('');
   
+  // Estado para edição inline de ingrediente
+  const [editingIngredientId, setEditingIngredientId] = useState<string | null>(null);
+  const [editingIngredient, setEditingIngredient] = useState({ name: '', pricePerKg: '', quantityKg: '' });
+  
   // Refs for inputs
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const priceInputRef = useRef<HTMLInputElement>(null);
@@ -90,6 +94,38 @@ const FeedCalculator: FC = () => {
   const removeIngredient = (id: string) => {
       setIngredients(ingredients.filter(i => i.id !== id));
   }
+
+  const startEditIngredient = (ingredient: FeedIngredient) => {
+    setEditingIngredientId(ingredient.id);
+    setEditingIngredient({
+      name: ingredient.name,
+      pricePerKg: ingredient.pricePerKg.toString(),
+      quantityKg: ingredient.quantityKg.toString()
+    });
+  };
+
+  const saveEditIngredient = () => {
+    if (!editingIngredientId) return;
+    
+    const price = parseFloat(editingIngredient.pricePerKg.replace(',', '.'));
+    const quantity = parseFloat(editingIngredient.quantityKg.replace(',', '.'));
+    
+    if (!editingIngredient.name || isNaN(price) || isNaN(quantity)) {
+      alert('Preencha todos os campos corretamente.');
+      return;
+    }
+    
+    setIngredients(ingredients.map(ing => 
+      ing.id === editingIngredientId 
+        ? { ...ing, name: editingIngredient.name, pricePerKg: price, quantityKg: quantity }
+        : ing
+    ));
+    setEditingIngredientId(null);
+  };
+
+  const cancelEditIngredient = () => {
+    setEditingIngredientId(null);
+  };
 
   // Formata número: inteiro se não tem decimais, senão mostra 3 casas decimais
   const formatQuantity = (num: number): string => {
@@ -376,17 +412,62 @@ const FeedCalculator: FC = () => {
                                 <tbody className="space-y-1">
                                     {ingredients.map(item => (
                                         <tr key={item.id} className="border-b border-slate-50">
-                                            <td className="px-4 py-3 font-medium text-slate-800">{item.name}</td>
-                                            <td className="px-4 py-3 text-right">R$ {item.pricePerKg.toFixed(2)}</td>
-                                            <td className="px-4 py-3 text-right">{formatQuantity(item.quantityKg)}</td>
-                                            <td className="px-4 py-3 text-right font-medium text-slate-800">
-                                                R$ {(item.pricePerKg * item.quantityKg).toFixed(2)}
-                                            </td>
-                                            <td className="px-4 py-3 text-center">
-                                                <button onClick={() => removeIngredient(item.id)} className="text-slate-400 hover:text-red-500 transition-colors">
-                                                    <TrashIcon />
-                                                </button>
-                                            </td>
+                                            {editingIngredientId === item.id ? (
+                                                <>
+                                                    <td className="px-4 py-2">
+                                                        <input 
+                                                            type="text"
+                                                            value={editingIngredient.name}
+                                                            onChange={e => setEditingIngredient({...editingIngredient, name: e.target.value})}
+                                                            className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
+                                                        />
+                                                    </td>
+                                                    <td className="px-4 py-2">
+                                                        <input 
+                                                            type="text"
+                                                            value={editingIngredient.pricePerKg}
+                                                            onChange={e => setEditingIngredient({...editingIngredient, pricePerKg: e.target.value.replace(/[^0-9.,]/g, '')})}
+                                                            className="w-20 px-2 py-1 border border-slate-300 rounded text-sm text-right"
+                                                        />
+                                                    </td>
+                                                    <td className="px-4 py-2">
+                                                        <input 
+                                                            type="text"
+                                                            value={editingIngredient.quantityKg}
+                                                            onChange={e => setEditingIngredient({...editingIngredient, quantityKg: e.target.value.replace(/[^0-9.,]/g, '')})}
+                                                            className="w-20 px-2 py-1 border border-slate-300 rounded text-sm text-right"
+                                                        />
+                                                    </td>
+                                                    <td className="px-4 py-2 text-right font-medium text-slate-400 text-sm">
+                                                        --
+                                                    </td>
+                                                    <td className="px-4 py-2 text-center space-x-1">
+                                                        <button onClick={saveEditIngredient} className="text-green-500 hover:text-green-600 text-xs font-medium">
+                                                            Salvar
+                                                        </button>
+                                                        <button onClick={cancelEditIngredient} className="text-slate-400 hover:text-slate-600 text-xs">
+                                                            Cancelar
+                                                        </button>
+                                                    </td>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <td className="px-4 py-3 font-medium text-slate-800">{item.name}</td>
+                                                    <td className="px-4 py-3 text-right">R$ {item.pricePerKg.toFixed(2)}</td>
+                                                    <td className="px-4 py-3 text-right">{formatQuantity(item.quantityKg)}</td>
+                                                    <td className="px-4 py-3 text-right font-medium text-slate-800">
+                                                        R$ {(item.pricePerKg * item.quantityKg).toFixed(2)}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center space-x-1">
+                                                        <button onClick={() => startEditIngredient(item)} className="text-slate-400 hover:text-orange-500 transition-colors">
+                                                            <EditIcon />
+                                                        </button>
+                                                        <button onClick={() => removeIngredient(item.id)} className="text-slate-400 hover:text-red-500 transition-colors">
+                                                            <TrashIcon />
+                                                        </button>
+                                                    </td>
+                                                </>
+                                            )}
                                         </tr>
                                     ))}
                                 </tbody>
