@@ -1,4 +1,4 @@
-import { useState, FC, FormEvent } from 'react';
+import { useState, FC, FormEvent, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 
 interface ForgotPasswordProps {
@@ -10,6 +10,18 @@ const ForgotPassword: FC<ForgotPasswordProps> = ({ onBack }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [showExpiredWarning, setShowExpiredWarning] = useState(false);
+
+  // Detectar se veio de um link expirado
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const errorCode = urlParams.get('error_code') || hashParams.get('error_code');
+    
+    if (errorCode === 'otp_expired') {
+      setShowExpiredWarning(true);
+    }
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -75,6 +87,18 @@ const ForgotPassword: FC<ForgotPasswordProps> = ({ onBack }) => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
+              {showExpiredWarning && (
+                <div className="bg-yellow-50 text-yellow-800 text-sm p-4 rounded-lg border border-yellow-200">
+                  <div className="flex items-start">
+                    <span className="text-2xl mr-3">⚠️</span>
+                    <div>
+                      <p className="font-semibold mb-1">Link de recuperação expirado</p>
+                      <p className="text-xs">O link que você clicou expirou. Links de recuperação são válidos por apenas 1 hora. Solicite um novo link abaixo.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {error && (
                 <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-100 text-center">
                   {error}

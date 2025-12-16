@@ -34,6 +34,11 @@ function App() {
   const urlParams = new URLSearchParams(window.location.search);
   const hashParams = new URLSearchParams(window.location.hash.substring(1));
   
+  // Detectar erros de token expirado ou inválido
+  const error = urlParams.get('error') || hashParams.get('error');
+  const errorCode = urlParams.get('error_code') || hashParams.get('error_code');
+  const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
+  
   const type = urlParams.get('type') || hashParams.get('type');
   const hasTokenInQuery = urlParams.has('token_hash') || urlParams.has('access_token');
   const hasTokenInHash = hashParams.has('token_hash') || hashParams.has('access_token');
@@ -41,6 +46,18 @@ function App() {
   
   const isConfirmRoute = hasToken && type === 'signup';
   const isRecoveryRoute = hasToken && type === 'recovery';
+  
+  // Se houver erro de token expirado, mostrar mensagem e redirecionar para recuperação
+  if (error === 'access_denied' && errorCode === 'otp_expired') {
+    window.history.replaceState(null, '', '/');
+    return (
+      <ForgotPassword 
+        onBack={() => {
+          window.location.href = '/';
+        }}
+      />
+    );
+  }
   
   if (isConfirmRoute) {
     return <EmailConfirm />;
