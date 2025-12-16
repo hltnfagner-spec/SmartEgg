@@ -16,6 +16,7 @@ const ResetPassword: FC<ResetPasswordProps> = ({ onSuccess }) => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    console.log('[ResetPassword] 1. Form submitted');
     setIsLoading(true);
     setError('');
 
@@ -32,9 +33,13 @@ const ResetPassword: FC<ResetPasswordProps> = ({ onSuccess }) => {
       return;
     }
 
+    console.log('[ResetPassword] 2. Validation passed');
+
     try {
       // Verificar se há sessão ativa
+      console.log('[ResetPassword] 3. Checking session...');
       const { data: sessionData } = await supabase.auth.getSession();
+      console.log('[ResetPassword] 4. Session check done:', !!sessionData.session);
       
       if (!sessionData.session) {
         setError('Sessão expirada. Por favor, solicite um novo link de recuperação.');
@@ -42,9 +47,11 @@ const ResetPassword: FC<ResetPasswordProps> = ({ onSuccess }) => {
         return;
       }
 
+      console.log('[ResetPassword] 5. Calling updateUser...');
       const { error: updateError } = await supabase.auth.updateUser({
         password: formData.password
       });
+      console.log('[ResetPassword] 6. updateUser returned, error:', updateError);
 
       if (updateError) {
         setError(`Erro ao redefinir senha: ${updateError.message}`);
@@ -53,18 +60,22 @@ const ResetPassword: FC<ResetPasswordProps> = ({ onSuccess }) => {
       }
 
       // Sucesso! Mostrar mensagem e fazer logout
+      console.log('[ResetPassword] 7. SUCCESS! Setting success state...');
       setIsLoading(false);
       setSuccess(true);
+      console.log('[ResetPassword] 8. Success state set, scheduling redirect...');
       
       // Fazer logout após 2 segundos e redirecionar para login
       setTimeout(async () => {
+        console.log('[ResetPassword] 9. Timeout fired, signing out...');
         await supabase.auth.signOut();
+        console.log('[ResetPassword] 10. Signed out, redirecting...');
         window.history.replaceState(null, '', '/');
         onSuccess();
       }, 2000);
       
     } catch (err) {
-      console.error('[ResetPassword] Error:', err);
+      console.error('[ResetPassword] CATCH Error:', err);
       setIsLoading(false);
       setError('Erro ao processar solicitação. Tente novamente mais tarde.');
     }
