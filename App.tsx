@@ -21,6 +21,7 @@ import Login from './components/Login';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 import EmailConfirm from './components/EmailConfirm';
+import RecoveryRedirect from './components/RecoveryRedirect';
 import { useFarm } from './context/FarmContext';
 import { supabase } from './services/supabaseClient';
 
@@ -33,6 +34,12 @@ function App() {
   // Supabase pode enviar tokens via query string (?) ou hash (#)
   const urlParams = new URLSearchParams(window.location.search);
   const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  
+  // Detectar link intermediário de recuperação (para evitar consumo por scanners de email)
+  const recoveryUrl = urlParams.get('recovery_url');
+  if (recoveryUrl) {
+    return <RecoveryRedirect confirmationUrl={decodeURIComponent(recoveryUrl)} />;
+  }
   
   // Detectar erros de token expirado ou inválido
   const error = urlParams.get('error') || hashParams.get('error');
