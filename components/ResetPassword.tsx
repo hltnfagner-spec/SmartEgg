@@ -81,6 +81,9 @@ const ResetPassword: FC<ResetPasswordProps> = ({ onSuccess }) => {
     }
   };
 
+  // Log para confirmar que o componente está renderizando
+  console.log('[ResetPassword] Rendering form, success:', success, 'isLoading:', isLoading);
+
   // Tela de sucesso
   if (success) {
     return (
@@ -155,6 +158,7 @@ const ResetPassword: FC<ResetPasswordProps> = ({ onSuccess }) => {
             <button 
               type="submit" 
               disabled={isLoading}
+              onClick={() => console.log('[ResetPassword] Button clicked!')}
               className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-lg transition-all transform hover:-translate-y-0.5 disabled:bg-slate-400"
             >
               {isLoading ? 'Redefinindo...' : 'Redefinir Senha'}
