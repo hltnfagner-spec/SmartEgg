@@ -192,7 +192,16 @@ const FeedCalculator: FC = () => {
                                       <tr className="bg-white hover:bg-slate-50">
                                           <td colSpan={6} className="px-6 pb-4 pt-2">
                                               <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
-                                                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Ingredientes:</span>
+                                                  <div className="flex justify-between items-center mb-2">
+                                                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ingredientes:</span>
+                                                      <button 
+                                                          onClick={() => handleEdit(formula)}
+                                                          className="text-xs text-orange-500 hover:text-orange-600 font-medium flex items-center gap-1"
+                                                      >
+                                                          <EditIcon />
+                                                          Editar Ingredientes
+                                                      </button>
+                                                  </div>
                                                   <div className="flex flex-wrap gap-2">
                                                       {formula.ingredients.map((ing, idx) => (
                                                           <span key={idx} className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-white text-slate-700 border border-slate-200 shadow-sm">
