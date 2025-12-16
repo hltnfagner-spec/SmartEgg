@@ -5,6 +5,7 @@ import NotificationBell from './NotificationBell';
 import { useFarm } from '../context/FarmContext';
 import { FeedIngredient, FeedFormulation } from '../types';
 
+// v1.1 - Added inline edit button for each ingredient
 const FeedCalculator: FC = () => {
   const { feedFormulations, addFeedFormulation, updateFeedFormulation, deleteFeedFormulation } = useFarm();
   const [activeTab, setActiveTab] = useState<'list' | 'editor'>('list');
