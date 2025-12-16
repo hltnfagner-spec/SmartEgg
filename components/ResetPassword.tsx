@@ -12,13 +12,10 @@ const ResetPassword: FC<ResetPasswordProps> = ({ onSuccess }) => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // Debug: Log quando o componente monta
-  console.log('[ResetPassword] Component rendered, isLoading:', isLoading);
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log('[ResetPassword] Form submitted');
     setIsLoading(true);
     setError('');
 
@@ -38,37 +35,62 @@ const ResetPassword: FC<ResetPasswordProps> = ({ onSuccess }) => {
     try {
       // Verificar se há sessão ativa
       const { data: sessionData } = await supabase.auth.getSession();
-      console.log('[ResetPassword] Current session:', !!sessionData.session);
       
       if (!sessionData.session) {
-        console.log('[ResetPassword] No session found, cannot update password');
         setError('Sessão expirada. Por favor, solicite um novo link de recuperação.');
         setIsLoading(false);
         return;
       }
 
-      console.log('[ResetPassword] Calling updateUser...');
-      const { data, error: updateError } = await supabase.auth.updateUser({
+      const { error: updateError } = await supabase.auth.updateUser({
         password: formData.password
       });
-      console.log('[ResetPassword] updateUser result:', { data, error: updateError });
 
       if (updateError) {
-        console.error('[ResetPassword] Update error:', updateError);
         setError(`Erro ao redefinir senha: ${updateError.message}`);
         setIsLoading(false);
         return;
       }
 
-      console.log('[ResetPassword] Password updated successfully!');
+      // Sucesso! Mostrar mensagem e fazer logout
       setIsLoading(false);
-      onSuccess();
+      setSuccess(true);
+      
+      // Fazer logout após 2 segundos e redirecionar para login
+      setTimeout(async () => {
+        await supabase.auth.signOut();
+        window.history.replaceState(null, '', '/');
+        onSuccess();
+      }, 2000);
+      
     } catch (err) {
-      console.error('[ResetPassword] Catch error:', err);
+      console.error('[ResetPassword] Error:', err);
       setIsLoading(false);
       setError('Erro ao processar solicitação. Tente novamente mais tarde.');
     }
   };
+
+  // Tela de sucesso
+  if (success) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden">
+          <div className="p-8 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Senha Redefinida!</h2>
+            <p className="text-slate-500 mb-4">Sua senha foi alterada com sucesso.</p>
+            <p className="text-sm text-slate-400">Redirecionando para o login...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
