@@ -33,19 +33,21 @@ function App() {
   
   // Verificar se é rota de confirmação de email ou recuperação de senha
   // Supabase pode enviar tokens via query string (?) ou hash (#)
-  const urlParams = new URLSearchParams(window.location.search);
-  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  // IMPORTANTE: Capturar na primeira renderização, pois o Supabase limpa o hash após processar
+  const [initialUrlParams] = useState(() => new URLSearchParams(window.location.search));
+  const [initialHashParams] = useState(() => new URLSearchParams(window.location.hash.substring(1)));
   
-  // Debug: Log URL parameters
-  // Evitar logar access_token por segurança, logar apenas a presença
-  console.log('[App] URL:', window.location.href);
+  // Debug: Log URL parameters (apenas na montagem)
+  useEffect(() => {
+    console.log('[App] Initial URL:', window.location.href);
+  }, []);
   
   // Detectar link intermediário de recuperação (para evitar consumo por scanners de email)
-  const recoveryUrl = urlParams.get('recovery_url');
+  const recoveryUrl = initialUrlParams.get('recovery_url');
   
   // Detectar erros de token expirado ou inválido
-  const error = urlParams.get('error') || hashParams.get('error');
-  const errorCode = urlParams.get('error_code') || hashParams.get('error_code');
+  const error = initialUrlParams.get('error') || initialHashParams.get('error');
+  const errorCode = initialUrlParams.get('error_code') || initialHashParams.get('error_code');
   
   // Efeito para capturar erro de token expirado e persistir no estado
   useEffect(() => {
@@ -57,15 +59,37 @@ function App() {
     }
   }, [error, errorCode]);
 
-  // Tokens de autenticação
-  const type = urlParams.get('type') || hashParams.get('type');
-  const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
-  const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
+  // Tokens de autenticação (usar valores iniciais capturados)
+  const type = initialUrlParams.get('type') || initialHashParams.get('type');
+  const accessToken = initialUrlParams.get('access_token') || initialHashParams.get('access_token');
+  const refreshToken = initialUrlParams.get('refresh_token') || initialHashParams.get('refresh_token');
   
-  // Determinar se é rota de recuperação
-  // A presença de access_token e refresh_token junto com type=recovery (ou mesmo sem type, inferido pelo contexto)
-  const isRecoveryRoute = (type === 'recovery' && (accessToken || refreshToken)) || (accessToken && refreshToken && window.location.hash.includes('type=recovery'));
-  const isConfirmRoute = (accessToken || refreshToken) && type === 'signup';
+  // Determinar se é rota de recuperação (calculado uma vez na montagem)
+  const [isRecoveryRoute] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const typeParam = urlParams.get('type') || hashParams.get('type');
+    const accessTokenParam = urlParams.get('access_token') || hashParams.get('access_token');
+    const refreshTokenParam = urlParams.get('refresh_token') || hashParams.get('refresh_token');
+    const hashIncludesRecovery = window.location.hash.includes('type=recovery');
+    
+    const isRecovery = (typeParam === 'recovery' && (accessTokenParam || refreshTokenParam)) || 
+                       (accessTokenParam && refreshTokenParam && hashIncludesRecovery);
+    
+    if (isRecovery) {
+      console.log('[App] Recovery route detected on mount!');
+    }
+    return isRecovery;
+  });
+  
+  const [isConfirmRoute] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const typeParam = urlParams.get('type') || hashParams.get('type');
+    const accessTokenParam = urlParams.get('access_token') || hashParams.get('access_token');
+    const refreshTokenParam = urlParams.get('refresh_token') || hashParams.get('refresh_token');
+    return (accessTokenParam || refreshTokenParam) && typeParam === 'signup';
+  });
 
   // Navigation state is now managed in FarmContext
   const { currentView, navigate, clearData } = useFarm();
