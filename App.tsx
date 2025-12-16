@@ -29,6 +29,7 @@ type AuthState = 'landing' | 'login' | 'register' | 'forgot-password' | 'reset-p
 function App() {
   const [authState, setAuthState] = useState<AuthState>('landing');
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  const [otpError, setOtpError] = useState(false);
   
   // Verificar se é rota de confirmação de email ou recuperação de senha
   // Supabase pode enviar tokens via query string (?) ou hash (#)
@@ -36,6 +37,7 @@ function App() {
   const hashParams = new URLSearchParams(window.location.hash.substring(1));
   
   // Debug: Log URL parameters
+  // Evitar logar access_token por segurança, logar apenas a presença
   console.log('[App] URL:', window.location.href);
   
   // Detectar link intermediário de recuperação (para evitar consumo por scanners de email)
@@ -45,6 +47,16 @@ function App() {
   const error = urlParams.get('error') || hashParams.get('error');
   const errorCode = urlParams.get('error_code') || hashParams.get('error_code');
   
+  // Efeito para capturar erro de token expirado e persistir no estado
+  useEffect(() => {
+    if (error === 'access_denied' && errorCode === 'otp_expired') {
+        console.log('[App] Token expirado detectado. Mostrando tela de recuperação.');
+        setOtpError(true);
+        // Limpar a URL para não processar o erro novamente num reload
+        window.history.replaceState(null, '', '/');
+    }
+  }, [error, errorCode]);
+
   // Tokens de autenticação
   const type = urlParams.get('type') || hashParams.get('type');
   const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
@@ -193,12 +205,15 @@ function App() {
   }
 
   // Se houver erro de token expirado, mostrar mensagem e redirecionar para recuperação
-  if (error === 'access_denied' && errorCode === 'otp_expired') {
-    window.history.replaceState(null, '', '/');
+  // Usar otpError (estado persistente) ou detecção direta da URL
+  if (otpError || (error === 'access_denied' && errorCode === 'otp_expired')) {
     return (
       <ForgotPassword 
+        showExpiredMessage={true}
         onBack={() => {
-          window.location.href = '/';
+          setOtpError(false);
+          setAuthState('landing');
+          window.history.replaceState(null, '', '/');
         }}
       />
     );

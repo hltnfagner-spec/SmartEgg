@@ -3,17 +3,23 @@ import { supabase } from '../services/supabaseClient';
 
 interface ForgotPasswordProps {
   onBack: () => void;
+  showExpiredMessage?: boolean;
 }
 
-const ForgotPassword: FC<ForgotPasswordProps> = ({ onBack }) => {
+const ForgotPassword: FC<ForgotPasswordProps> = ({ onBack, showExpiredMessage = false }) => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [showExpiredWarning, setShowExpiredWarning] = useState(false);
+  const [showExpiredWarning, setShowExpiredWarning] = useState(showExpiredMessage);
 
   // Detectar se veio de um link expirado
   useEffect(() => {
+    if (showExpiredMessage) {
+      setShowExpiredWarning(true);
+      return;
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const errorCode = urlParams.get('error_code') || hashParams.get('error_code');
@@ -21,7 +27,7 @@ const ForgotPassword: FC<ForgotPasswordProps> = ({ onBack }) => {
     if (errorCode === 'otp_expired') {
       setShowExpiredWarning(true);
     }
-  }, []);
+  }, [showExpiredMessage]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
