@@ -30,6 +30,9 @@ const ForgotPassword: FC<ForgotPasswordProps> = ({ onBack }) => {
     setSuccess(false);
 
     try {
+      // Fazer logout de qualquer sessão ativa antes de solicitar recuperação
+      await supabase.auth.signOut();
+      
       // Usar domínio de produção se disponível, senão usar origin atual
       const redirectUrl = window.location.hostname === 'smartegg.app.br' 
         ? 'https://smartegg.app.br?type=recovery'
