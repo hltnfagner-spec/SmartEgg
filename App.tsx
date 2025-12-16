@@ -29,11 +29,17 @@ type AuthState = 'landing' | 'login' | 'register' | 'forgot-password' | 'reset-p
 
 function App() {
   const [authState, setAuthState] = useState<AuthState>('landing');
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   
   // Verificar se é rota de confirmação de email ou recuperação de senha
   // Supabase pode enviar tokens via query string (?) ou hash (#)
   const urlParams = new URLSearchParams(window.location.search);
   const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  
+  // Debug: Log URL parameters
+  console.log('[App] URL:', window.location.href);
+  console.log('[App] Hash:', window.location.hash);
+  console.log('[App] Hash params:', Object.fromEntries(hashParams.entries()));
   
   // Detectar link intermediário de recuperação (para evitar consumo por scanners de email)
   const recoveryUrl = urlParams.get('recovery_url');
@@ -107,6 +113,22 @@ function App() {
     checkSession();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[App] Auth event:', event, 'Session:', !!session);
+      
+      // Detectar evento de recuperação de senha
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('[App] PASSWORD_RECOVERY detected!');
+        setIsPasswordRecovery(true);
+        setAuthState('reset-password');
+        return;
+      }
+      
+      // Se está em modo de recuperação de senha, não mudar estado automaticamente
+      if (isPasswordRecovery) {
+        console.log('[App] In password recovery mode, ignoring auth event');
+        return;
+      }
+      
       if (event === 'SIGNED_IN' && session) {
         setAuthState('app');
       } else if (event === 'SIGNED_OUT') {
