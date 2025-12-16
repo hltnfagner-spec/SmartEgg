@@ -188,27 +188,28 @@ const FeedCalculator: FC = () => {
               </div>
 
               <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                  <div className="overflow-x-auto">
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block overflow-x-auto">
                       <table className="w-full text-sm text-left text-slate-500">
                           <thead className="text-xs text-slate-700 uppercase bg-slate-50">
                               <tr>
-                                  <th className="px-6 py-3">Nome da Ração</th>
-                                  <th className="px-6 py-3">Fase</th>
-                                  <th className="px-6 py-3 text-right">Peso da Batida (kg)</th>
-                                  <th className="px-6 py-3 text-right">Custo Total</th>
-                                  <th className="px-6 py-3 text-right">Custo por Kg</th>
-                                  <th className="px-6 py-3 text-center">Ações</th>
+                                  <th className="px-4 lg:px-6 py-3">Nome da Ração</th>
+                                  <th className="px-4 lg:px-6 py-3">Fase</th>
+                                  <th className="px-4 lg:px-6 py-3 text-right">Peso (kg)</th>
+                                  <th className="px-4 lg:px-6 py-3 text-right">Custo Total</th>
+                                  <th className="px-4 lg:px-6 py-3 text-right">Custo/Kg</th>
+                                  <th className="px-4 lg:px-6 py-3 text-center">Ações</th>
                               </tr>
                           </thead>
                           <tbody>
                               {feedFormulations.length > 0 ? feedFormulations.map(formula => (
                                   <Fragment key={formula.id}>
                                       <tr className="bg-white hover:bg-slate-50">
-                                          <td className="px-6 pt-4 pb-1 font-medium text-slate-900 border-t border-slate-100">
+                                          <td className="px-4 lg:px-6 pt-4 pb-1 font-medium text-slate-900 border-t border-slate-100">
                                               {formula.name}
                                               {formula.notes && <p className="text-xs text-slate-400 font-normal truncate max-w-xs">{formula.notes}</p>}
                                           </td>
-                                          <td className="px-6 pt-4 pb-1 border-t border-slate-100">
+                                          <td className="px-4 lg:px-6 pt-4 pb-1 border-t border-slate-100">
                                               <span className={`px-2 py-1 rounded-full text-xs font-medium 
                                                   ${formula.phase === 'Pré-inicial' ? 'bg-indigo-100 text-indigo-700' :
                                                     formula.phase === 'Inicial' ? 'bg-blue-100 text-blue-700' :
@@ -218,27 +219,18 @@ const FeedCalculator: FC = () => {
                                                   {formula.phase}
                                               </span>
                                           </td>
-                                          <td className="px-6 pt-4 pb-1 text-right border-t border-slate-100">{formula.totalWeight} kg</td>
-                                          <td className="px-6 pt-4 pb-1 text-right border-t border-slate-100">{formula.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                                          <td className="px-6 pt-4 pb-1 text-right font-bold text-slate-800 border-t border-slate-100">{formula.costPerKg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                                          <td className="px-6 pt-4 pb-1 text-center space-x-2 border-t border-slate-100">
+                                          <td className="px-4 lg:px-6 pt-4 pb-1 text-right border-t border-slate-100">{formula.totalWeight} kg</td>
+                                          <td className="px-4 lg:px-6 pt-4 pb-1 text-right border-t border-slate-100">{formula.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                          <td className="px-4 lg:px-6 pt-4 pb-1 text-right font-bold text-slate-800 border-t border-slate-100">{formula.costPerKg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                          <td className="px-4 lg:px-6 pt-4 pb-1 text-center space-x-2 border-t border-slate-100">
                                               <button onClick={() => handleEdit(formula)} className="p-1 text-slate-400 hover:text-orange-500"><EditIcon /></button>
                                               <button onClick={() => handleDelete(formula.id)} className="p-1 text-slate-400 hover:text-red-500"><TrashIcon /></button>
                                           </td>
                                       </tr>
                                       <tr className="bg-white hover:bg-slate-50">
-                                          <td colSpan={6} className="px-6 pb-4 pt-2">
+                                          <td colSpan={6} className="px-4 lg:px-6 pb-4 pt-2">
                                               <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
-                                                  <div className="flex justify-between items-center mb-2">
-                                                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ingredientes:</span>
-                                                      <button 
-                                                          onClick={() => handleEdit(formula)}
-                                                          className="text-xs text-orange-500 hover:text-orange-600 font-medium flex items-center gap-1"
-                                                      >
-                                                          <EditIcon />
-                                                          Editar Ingredientes
-                                                      </button>
-                                                  </div>
+                                                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Ingredientes:</span>
                                                   <div className="flex flex-wrap gap-2">
                                                       {formula.ingredients.map((ing, idx) => (
                                                           <span key={idx} className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-white text-slate-700 border border-slate-200 shadow-sm">
@@ -261,6 +253,61 @@ const FeedCalculator: FC = () => {
                               )}
                           </tbody>
                       </table>
+                  </div>
+
+                  {/* Mobile Card View */}
+                  <div className="md:hidden divide-y divide-slate-100">
+                      {feedFormulations.length > 0 ? feedFormulations.map(formula => (
+                          <div key={formula.id} className="p-4">
+                              <div className="flex justify-between items-start mb-3">
+                                  <div className="flex-1 min-w-0">
+                                      <h3 className="font-semibold text-slate-900 truncate">{formula.name}</h3>
+                                      <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium 
+                                          ${formula.phase === 'Pré-inicial' ? 'bg-indigo-100 text-indigo-700' :
+                                            formula.phase === 'Inicial' ? 'bg-blue-100 text-blue-700' :
+                                            formula.phase === 'Crescimento' ? 'bg-green-100 text-green-700' :
+                                            formula.phase === 'Postura' ? 'bg-orange-100 text-orange-700' :
+                                            'bg-slate-100 text-slate-700'}`}>
+                                          {formula.phase}
+                                      </span>
+                                  </div>
+                                  <div className="flex space-x-1 ml-2">
+                                      <button onClick={() => handleEdit(formula)} className="p-2 text-slate-400 hover:text-orange-500 hover:bg-slate-100 rounded-lg"><EditIcon /></button>
+                                      <button onClick={() => handleDelete(formula.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-slate-100 rounded-lg"><TrashIcon /></button>
+                                  </div>
+                              </div>
+                              <div className="grid grid-cols-3 gap-2 text-sm mb-3">
+                                  <div className="bg-slate-50 rounded-lg p-2 text-center">
+                                      <p className="text-xs text-slate-500">Peso</p>
+                                      <p className="font-semibold text-slate-800">{formula.totalWeight} kg</p>
+                                  </div>
+                                  <div className="bg-slate-50 rounded-lg p-2 text-center">
+                                      <p className="text-xs text-slate-500">Custo Total</p>
+                                      <p className="font-semibold text-slate-800">{formula.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                  </div>
+                                  <div className="bg-orange-50 rounded-lg p-2 text-center">
+                                      <p className="text-xs text-orange-600">Custo/Kg</p>
+                                      <p className="font-bold text-orange-600">{formula.costPerKg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                  </div>
+                              </div>
+                              <div className="bg-slate-50 rounded-lg p-2 border border-slate-100">
+                                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Ingredientes:</span>
+                                  <div className="flex flex-wrap gap-1">
+                                      {formula.ingredients.map((ing, idx) => (
+                                          <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white text-slate-700 border border-slate-200">
+                                              {ing.name}: <span className="font-bold ml-1">{formatQuantity(ing.quantityKg)}kg</span>
+                                          </span>
+                                      ))}
+                                  </div>
+                              </div>
+                          </div>
+                      )) : (
+                          <div className="text-center py-10 text-slate-400">
+                              <CalculatorIcon className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                              <p>Nenhuma formulação cadastrada.</p>
+                              <button onClick={handleCreateNew} className="text-orange-500 font-medium hover:underline mt-2">Criar primeira fórmula</button>
+                          </div>
+                      )}
                   </div>
               </div>
           </div>
