@@ -1,4 +1,3 @@
-
 import { useState, FC, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -38,62 +37,80 @@ function App() {
   
   // Debug: Log URL parameters
   console.log('[App] URL:', window.location.href);
-  console.log('[App] Hash:', window.location.hash);
-  console.log('[App] Hash params:', Object.fromEntries(hashParams.entries()));
   
   // Detectar link intermediário de recuperação (para evitar consumo por scanners de email)
   const recoveryUrl = urlParams.get('recovery_url');
-  if (recoveryUrl) {
-    return <RecoveryRedirect confirmationUrl={decodeURIComponent(recoveryUrl)} />;
-  }
   
   // Detectar erros de token expirado ou inválido
   const error = urlParams.get('error') || hashParams.get('error');
   const errorCode = urlParams.get('error_code') || hashParams.get('error_code');
-  const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
   
+  // Tokens de autenticação
   const type = urlParams.get('type') || hashParams.get('type');
-  const hasTokenInQuery = urlParams.has('token_hash') || urlParams.has('access_token');
-  const hasTokenInHash = hashParams.has('token_hash') || hashParams.has('access_token');
-  const hasToken = hasTokenInQuery || hasTokenInHash;
+  const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
+  const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
   
-  // Verificar se há refresh_token no hash (indica recuperação de senha do Supabase)
-  const hasRefreshToken = hashParams.has('refresh_token');
-  
-  const isConfirmRoute = hasToken && type === 'signup';
-  // Se há token no hash e refresh_token, é recuperação de senha (mesmo sem type=recovery)
-  const isRecoveryRoute = (hasToken && type === 'recovery') || (hasTokenInHash && hasRefreshToken);
-  
-  // Se houver erro de token expirado, mostrar mensagem e redirecionar para recuperação
-  if (error === 'access_denied' && errorCode === 'otp_expired') {
-    window.history.replaceState(null, '', '/');
-    return (
-      <ForgotPassword 
-        onBack={() => {
-          window.location.href = '/';
-        }}
-      />
-    );
-  }
-  
-  if (isConfirmRoute) {
-    return <EmailConfirm />;
-  }
-  
-  if (isRecoveryRoute) {
-    return <ResetPassword 
-      onSuccess={() => {
-        window.history.replaceState(null, '', '/');
-        window.location.href = '/?reset=success';
-      }}
-    />;
-  }
-  
+  // Determinar se é rota de recuperação
+  // A presença de access_token e refresh_token junto com type=recovery (ou mesmo sem type, inferido pelo contexto)
+  const isRecoveryRoute = (type === 'recovery' && (accessToken || refreshToken)) || (accessToken && refreshToken && window.location.hash.includes('type=recovery'));
+  const isConfirmRoute = (accessToken || refreshToken) && type === 'signup';
+
   // Navigation state is now managed in FarmContext
   const { currentView, navigate, clearData } = useFarm();
 
+  const handleLoginSuccess = () => {
+    setAuthState('app');
+  };
+
+  const handleRegisterSuccess = () => {
+    // Limpa os dados da memória para o novo usuário
+    clearData();
+    setAuthState('app');
+  };
+
+  const handleLogout = async () => {
+    clearData(); // Limpa todos os dados da memória
+    
+    try {
+      // Forçar logout do Supabase
+      await supabase.auth.signOut();
+      
+      // Forçar mudança de estado imediatamente
+      setAuthState('landing');
+      
+      // Limpar URL
+      window.history.replaceState(null, '', '/');
+      
+      // Forçar reload para garantir limpeza completa
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+      
+    } catch (error) {
+      console.error('Erro no logout:', error);
+      // Mesmo com erro, forçar logout e reload
+      setAuthState('landing');
+      window.history.replaceState(null, '', '/');
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+    }
+  };
+
+  // Estado inicial baseado na URL para evitar flicker
+  useEffect(() => {
+    if (isRecoveryRoute) {
+      console.log('[App] Recovery route detected via URL params, forcing reset-password state');
+      setIsPasswordRecovery(true);
+      setAuthState('reset-password');
+    }
+  }, [isRecoveryRoute]);
+
   // Verifica se existe uma sessão ativa ao carregar a página e escuta mudanças de auth
   useEffect(() => {
+    // Se já detectamos recuperação via URL, não precisamos checar sessão inicial da mesma forma
+    if (isRecoveryRoute) return;
+
     const checkSession = async () => {
       const { data, error } = await supabase.auth.getSession();
       
@@ -115,6 +132,12 @@ function App() {
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[App] Auth event:', event, 'Session:', !!session);
       
+      // Se estamos numa rota de recuperação, ignorar eventos que nos tirariam dela
+      if (isRecoveryRoute) {
+         console.log('[App] Ignoring auth event due to forced recovery route');
+         return;
+      }
+
       // Detectar evento de recuperação de senha
       if (event === 'PASSWORD_RECOVERY') {
         console.log('[App] PASSWORD_RECOVERY detected!');
@@ -141,46 +164,7 @@ function App() {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [navigate]);
-
-  const handleLoginSuccess = () => {
-      setAuthState('app');
-  };
-
-  const handleRegisterSuccess = () => {
-      // Limpa os dados da memória para o novo usuário
-      clearData();
-      setAuthState('app');
-  };
-
-  const handleLogout = async () => {
-      clearData(); // Limpa todos os dados da memória
-      
-      try {
-        // Forçar logout do Supabase
-        await supabase.auth.signOut();
-        
-        // Forçar mudança de estado imediatamente
-        setAuthState('landing');
-        
-        // Limpar URL
-        window.history.replaceState(null, '', '/');
-        
-        // Forçar reload para garantir limpeza completa
-        setTimeout(() => {
-          window.location.reload();
-        }, 100);
-        
-      } catch (error) {
-        console.error('Erro no logout:', error);
-        // Mesmo com erro, forçar logout e reload
-        setAuthState('landing');
-        window.history.replaceState(null, '', '/');
-        setTimeout(() => {
-          window.location.reload();
-        }, 100);
-      }
-  };
+  }, [navigate, isRecoveryRoute, isPasswordRecovery]);
 
   const renderView = () => {
     switch (currentView) {
@@ -201,6 +185,38 @@ function App() {
       default: return <Dashboard />;
     }
   };
+
+  // Condicionais de retorno (Renderização)
+
+  if (recoveryUrl) {
+    return <RecoveryRedirect confirmationUrl={decodeURIComponent(recoveryUrl)} />;
+  }
+
+  // Se houver erro de token expirado, mostrar mensagem e redirecionar para recuperação
+  if (error === 'access_denied' && errorCode === 'otp_expired') {
+    window.history.replaceState(null, '', '/');
+    return (
+      <ForgotPassword 
+        onBack={() => {
+          window.location.href = '/';
+        }}
+      />
+    );
+  }
+
+  if (isConfirmRoute) {
+    return <EmailConfirm />;
+  }
+
+  // Se for rota de recuperação detectada via URL, renderizar ResetPassword diretamente
+  if (isRecoveryRoute) {
+    return <ResetPassword 
+      onSuccess={() => {
+        window.history.replaceState(null, '', '/');
+        window.location.href = '/?reset=success';
+      }}
+    />;
+  }
 
   if (authState === 'landing') {
     return (
