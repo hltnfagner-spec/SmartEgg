@@ -44,8 +44,12 @@ function App() {
   const hasTokenInHash = hashParams.has('token_hash') || hashParams.has('access_token');
   const hasToken = hasTokenInQuery || hasTokenInHash;
   
+  // Verificar se há refresh_token no hash (indica recuperação de senha do Supabase)
+  const hasRefreshToken = hashParams.has('refresh_token');
+  
   const isConfirmRoute = hasToken && type === 'signup';
-  const isRecoveryRoute = hasToken && type === 'recovery';
+  // Se há token no hash e refresh_token, é recuperação de senha (mesmo sem type=recovery)
+  const isRecoveryRoute = (hasToken && type === 'recovery') || (hasTokenInHash && hasRefreshToken);
   
   // Se houver erro de token expirado, mostrar mensagem e redirecionar para recuperação
   if (error === 'access_denied' && errorCode === 'otp_expired') {
