@@ -33,10 +33,10 @@ const ForgotPassword: FC<ForgotPasswordProps> = ({ onBack }) => {
       // Fazer logout de qualquer sessão ativa antes de solicitar recuperação
       await supabase.auth.signOut();
       
-      // Usar domínio de produção se disponível, senão usar origin atual
+      // Usar domínio de produção sem type=recovery para evitar conflito com confirm email
       const redirectUrl = window.location.hostname === 'smartegg.app.br' 
-        ? 'https://smartegg.app.br?type=recovery'
-        : `${window.location.origin}?type=recovery`;
+        ? 'https://smartegg.app.br'
+        : `${window.location.origin}`;
       
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,
