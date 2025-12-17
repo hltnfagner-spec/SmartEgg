@@ -111,24 +111,44 @@ function App() {
       // Forçar logout do Supabase
       await supabase.auth.signOut();
       
+      // Limpar localStorage (exceto itens essenciais do sistema)
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key) keysToRemove.push(key);
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // Limpar sessionStorage
+      sessionStorage.clear();
+      
+      // Limpar caches do Service Worker se existir
+      if ('caches' in window) {
+        caches.keys().then(names => {
+          names.forEach(name => caches.delete(name));
+        });
+      }
+      
       // Forçar mudança de estado imediatamente
       setAuthState('landing');
       
       // Limpar URL
       window.history.replaceState(null, '', '/');
       
-      // Forçar reload para garantir limpeza completa
+      // Forçar reload com cache limpo
       setTimeout(() => {
-        window.location.reload();
+        window.location.href = window.location.origin;
       }, 100);
       
     } catch (error) {
       console.error('Erro no logout:', error);
-      // Mesmo com erro, forçar logout e reload
+      // Mesmo com erro, forçar logout
+      localStorage.clear();
+      sessionStorage.clear();
       setAuthState('landing');
       window.history.replaceState(null, '', '/');
       setTimeout(() => {
-        window.location.reload();
+        window.location.href = window.location.origin;
       }, 100);
     }
   };
