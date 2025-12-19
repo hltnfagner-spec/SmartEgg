@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.9 - Add Auto-Retry for Chrome/Edge Query Timeout";
+const FARM_CONTEXT_VERSION = "v1.0.10 - Add Session Recreation Fallback for Chrome/Edge";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -186,8 +186,30 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             shedsError = retryResult.error;
             console.log('[FarmContext] 🔄 Retry bem-sucedido!');
           } catch (retryErr: any) {
-            console.error('[FarmContext] ❌ Retry também falhou:', retryErr);
-            shedsError = retryErr;
+            console.error('[FarmContext] ❌ Retry também falhou - tentando recriar sessão...');
+            
+            // Fallback: recriar sessão do Supabase
+            try {
+              const { data: sessionData } = await supabase.auth.getSession();
+              if (sessionData.session) {
+                console.log('[FarmContext] 🔄 Sessão recriada, tentando query final...');
+                const finalResult = await supabase
+                  .from('sheds')
+                  .select('*')
+                  .eq('user_id', currentUserId)
+                  .order('created_at', { ascending: true });
+                
+                shedsData = finalResult.data;
+                shedsError = finalResult.error;
+                console.log('[FarmContext] ✅ Query final bem-sucedida após recriar sessão!');
+              } else {
+                console.error('[FarmContext] ❌ Sem sessão ativa após recriar');
+                shedsError = new Error('No session after retry');
+              }
+            } catch (finalErr: any) {
+              console.error('[FarmContext] ❌ Todas as tentativas falharam:', finalErr);
+              shedsError = finalErr;
+            }
           }
         } else {
           console.error('[FarmContext] ⚠️ Erro ou timeout ao carregar sheds:', err);
