@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.15 - Detailed Query Logging";
+const FARM_CONTEXT_VERSION = "v1.0.16 - Force Async Execution with setTimeout";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -138,33 +138,22 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       // Carregar tudo em PARALELO para acelerar
       console.log('[FarmContext] 🚀 Carregando todas as tabelas em paralelo...');
       
-      // Criar queries individuais com log
-      console.log('[FarmContext] 📤 Iniciando query: sheds');
-      const shedsPromise = supabase.from('sheds').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true });
-      
-      console.log('[FarmContext] 📤 Iniciando query: flocks');
-      const flocksPromise = supabase.from('flocks').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true });
-      
-      console.log('[FarmContext] 📤 Iniciando query: daily_records');
-      const recordsPromise = supabase.from('daily_records').select('*').eq('user_id', currentUserId).order('date', { ascending: true });
-      
-      console.log('[FarmContext] 📤 Iniciando query: inventory');
-      const inventoryPromise = supabase.from('inventory').select('*').eq('user_id', currentUserId).order('last_updated', { ascending: false });
-      
-      console.log('[FarmContext] 📤 Iniciando query: expenses');
-      const expensesPromise = supabase.from('expenses').select('*').eq('user_id', currentUserId).order('date', { ascending: false });
-      
-      console.log('[FarmContext] 📤 Iniciando query: sales');
-      const salesPromise = supabase.from('sales').select('*').eq('user_id', currentUserId).order('date', { ascending: false });
-      
-      console.log('[FarmContext] 📤 Iniciando query: clients');
-      const clientsPromise = supabase.from('clients').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true });
-      
-      console.log('[FarmContext] 📤 Iniciando query: tasks');
-      const tasksPromise = supabase.from('tasks').select('*').eq('user_id', currentUserId).order('due_date', { ascending: true });
-      
-      console.log('[FarmContext] 📤 Iniciando query: feed_formulations');
-      const formulationsPromise = supabase.from('feed_formulations').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true });
+      // Forçar execução assíncrona com setTimeout para evitar travamento
+      const createAsyncQuery = (queryFn: () => any, name: string): Promise<any> => {
+        return new Promise((resolve) => {
+          setTimeout(async () => {
+            try {
+              console.log(`[FarmContext] 📤 Executando query: ${name}`);
+              const result = await queryFn();
+              console.log(`[FarmContext] ✅ Query ${name} completou`);
+              resolve(result);
+            } catch (error) {
+              console.error(`[FarmContext] ❌ Query ${name} falhou:`, error);
+              resolve({ data: null, error });
+            }
+          }, 0);
+        });
+      };
       
       console.log('[FarmContext] ⏳ Aguardando Promise.allSettled...');
       
@@ -179,15 +168,15 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         tasksResult,
         formulationsResult
       ] = await Promise.allSettled([
-        shedsPromise,
-        flocksPromise,
-        recordsPromise,
-        inventoryPromise,
-        expensesPromise,
-        salesPromise,
-        clientsPromise,
-        tasksPromise,
-        formulationsPromise
+        createAsyncQuery(() => supabase.from('sheds').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'sheds'),
+        createAsyncQuery(() => supabase.from('flocks').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'flocks'),
+        createAsyncQuery(() => supabase.from('daily_records').select('*').eq('user_id', currentUserId).order('date', { ascending: true }), 'records'),
+        createAsyncQuery(() => supabase.from('inventory').select('*').eq('user_id', currentUserId).order('last_updated', { ascending: false }), 'inventory'),
+        createAsyncQuery(() => supabase.from('expenses').select('*').eq('user_id', currentUserId).order('date', { ascending: false }), 'expenses'),
+        createAsyncQuery(() => supabase.from('sales').select('*').eq('user_id', currentUserId).order('date', { ascending: false }), 'sales'),
+        createAsyncQuery(() => supabase.from('clients').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'clients'),
+        createAsyncQuery(() => supabase.from('tasks').select('*').eq('user_id', currentUserId).order('due_date', { ascending: true }), 'tasks'),
+        createAsyncQuery(() => supabase.from('feed_formulations').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'formulations')
       ]);
       
       console.log('[FarmContext] ✅ Promise.allSettled completou!');
