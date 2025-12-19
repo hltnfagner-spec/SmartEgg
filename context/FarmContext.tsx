@@ -96,6 +96,14 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   const [eggMovements, setEggMovements] = useState<EggMovement[]>([]);
 
+  // Rastrear mudanças no estado de sheds
+  useEffect(() => {
+    console.log('[FarmContext] 📊 Estado de sheds mudou:', sheds.length, 'registros');
+    if (sheds.length === 0) {
+      console.trace('[FarmContext] Stack trace: sheds foi zerado');
+    }
+  }, [sheds]);
+
   // Função auxiliar para carregar sheds, flocks, registros diários, estoque e despesas para um usuário específico
   const loadDataForUser = useCallback(async (currentUserId: string) => {
     try {
