@@ -128,8 +128,10 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           capacity: s.capacity,
           notes: s.notes ?? undefined,
         }));
-        console.log('[FarmContext] 📝 setSheds chamado com', mappedSheds.length, 'registros');
+        console.log('[FarmContext] 📝 Antes de setSheds:', mappedSheds.length, 'registros');
+        console.log('[FarmContext] 📝 Dados a serem setados:', mappedSheds);
         setSheds(mappedSheds);
+        console.log('[FarmContext] 📝 Depois de setSheds chamado');
       }
 
       // Carregar flocks
