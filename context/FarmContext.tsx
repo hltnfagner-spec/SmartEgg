@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.16 - Force Async Execution with setTimeout";
+const FARM_CONTEXT_VERSION = "v1.0.17 - Critical Debug Checkpoints";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -156,18 +156,9 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       };
       
       console.log('[FarmContext] ⏳ Aguardando Promise.allSettled...');
+      console.log('[FarmContext] 🚨 CHECKPOINT: Prestes a chamar Promise.allSettled');
       
-      const [
-        shedsResult,
-        flocksResult,
-        recordsResult,
-        inventoryResult,
-        expensesResult,
-        salesResult,
-        clientsResult,
-        tasksResult,
-        formulationsResult
-      ] = await Promise.allSettled([
+      const results = await Promise.allSettled([
         createAsyncQuery(() => supabase.from('sheds').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'sheds'),
         createAsyncQuery(() => supabase.from('flocks').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'flocks'),
         createAsyncQuery(() => supabase.from('daily_records').select('*').eq('user_id', currentUserId).order('date', { ascending: true }), 'records'),
@@ -179,7 +170,20 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         createAsyncQuery(() => supabase.from('feed_formulations').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'formulations')
       ]);
       
+      console.log('[FarmContext] 🚨 CHECKPOINT: Promise.allSettled RETORNOU');
       console.log('[FarmContext] ✅ Promise.allSettled completou!');
+      
+      const [
+        shedsResult,
+        flocksResult,
+        recordsResult,
+        inventoryResult,
+        expensesResult,
+        salesResult,
+        clientsResult,
+        tasksResult,
+        formulationsResult
+      ] = results;
 
       // Verificação CRÍTICA: O usuário mudou durante a requisição? (Principal causa do problema)
       if (activeUserIdRef.current !== currentUserId) {
@@ -370,9 +374,13 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     let isMounted = true;
     let hasLoadedData = false; // Flag para evitar carregamento duplicado
     
+    console.log('[FarmContext] 🔧 useEffect de auth montado');
+    
     // Removido init() - usar apenas onAuthStateChange para evitar race condition
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[FarmContext] 🔔 onAuthStateChange DISPARADO - event:', event, 'session:', !!session);
+      
       if (!isMounted) return;
       
       console.log('[FarmContext] 🔔 Auth state changed:', event, 'Session:', !!session, 'User:', session?.user?.id);
