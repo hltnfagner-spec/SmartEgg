@@ -99,7 +99,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Função auxiliar para carregar sheds, flocks, registros diários, estoque e despesas para um usuário específico
   const loadDataForUser = useCallback(async (currentUserId: string) => {
     try {
-      console.log('[FarmContext] Iniciando carregamento de dados para usuário:', currentUserId);
+      console.log('[FarmContext] 🚀 INICIANDO loadDataForUser para:', currentUserId);
+      const startTime = Date.now();
       
       // Carregar sheds
       console.log('[FarmContext] Carregando sheds...');
@@ -330,9 +331,10 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       } else if (formulationsError) {
         console.error('[FarmContext] ✗ Erro ao carregar formulações:', formulationsError);
       }
-      console.log('[FarmContext] ✓ Todos os dados carregados com sucesso!');
+      const endTime = Date.now();
+      console.log('[FarmContext] ✅ CONCLUÍDO loadDataForUser em', endTime - startTime, 'ms');
     } catch (error) {
-      console.error('[FarmContext] ✗ Erro ao carregar dados do Supabase:', error);
+      console.error('[FarmContext] ❌ ERRO em loadDataForUser:', error);
     }
   }, []);
 
