@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.7 - Fix User Switch Race Condition";
+const FARM_CONTEXT_VERSION = "v1.0.8 - Add AbortController for Query Cancellation";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -84,6 +84,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Ref para controlar race conditions de carregamento de usuário
   const activeUserIdRef = useRef<string | null>(null);
   const isLoadingRef = useRef<boolean>(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const [sheds, setSheds] = useState<Shed[]>([]);
 
@@ -117,6 +118,16 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   // Função auxiliar para carregar sheds, flocks, registros diários, estoque e despesas para um usuário específico
   const loadDataForUser = useCallback(async (currentUserId: string) => {
+    // Cancelar qualquer carregamento anterior em andamento
+    if (abortControllerRef.current) {
+      console.log('[FarmContext] 🛑 Cancelando carregamento anterior');
+      abortControllerRef.current.abort();
+    }
+    
+    // Criar novo AbortController para este carregamento
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+    
     // Se o usuário mudou enquanto esperávamos para chamar esta função, abortar
     if (activeUserIdRef.current && activeUserIdRef.current !== currentUserId) {
       console.log(`[FarmContext] 🛑 Abortando loadDataForUser para ${currentUserId} (Atual: ${activeUserIdRef.current})`);
@@ -130,6 +141,12 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       // Carregar sheds
       console.log('[FarmContext] Carregando sheds...');
       
+      // Verificar se foi abortado antes de iniciar
+      if (abortController.signal.aborted) {
+        console.log('[FarmContext] 🛑 Carregamento abortado antes de sheds');
+        return;
+      }
+      
       let shedsData = null;
       let shedsError = null;
       
@@ -142,12 +159,19 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             .order('created_at', { ascending: true }),
           new Promise((_, reject) => 
             setTimeout(() => reject(new Error('Query timeout')), 10000)
-          )
+          ),
+          new Promise((_, reject) => {
+            abortController.signal.addEventListener('abort', () => reject(new Error('Aborted')));
+          })
         ]);
         
         shedsData = (result as any).data;
         shedsError = (result as any).error;
       } catch (err: any) {
+        if (err.message === 'Aborted') {
+          console.log('[FarmContext] 🛑 Query sheds foi abortada');
+          return;
+        }
         console.error('[FarmContext] ⚠️ Erro ou timeout ao carregar sheds:', err);
         shedsError = err;
       }
