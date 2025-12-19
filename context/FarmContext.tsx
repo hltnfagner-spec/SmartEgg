@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.10 - Add Session Recreation Fallback for Chrome/Edge";
+const FARM_CONTEXT_VERSION = "v1.0.11 - Parallel Loading (12s → 2-3s)";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -138,332 +138,172 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       console.log('[FarmContext] 🚀 INICIANDO loadDataForUser para:', currentUserId);
       const startTime = Date.now();
       
-      // Carregar sheds
-      console.log('[FarmContext] Carregando sheds...');
+      // Carregar tudo em PARALELO para acelerar
+      console.log('[FarmContext] 🚀 Carregando todas as tabelas em paralelo...');
       
-      // Verificar se foi abortado antes de iniciar
+      const [
+        shedsResult,
+        flocksResult,
+        recordsResult,
+        inventoryResult,
+        expensesResult,
+        salesResult,
+        clientsResult,
+        tasksResult,
+        formulationsResult
+      ] = await Promise.allSettled([
+        // Sheds (com retry e fallback)
+        (async () => {
+          try {
+            const result = await Promise.race([
+              supabase.from('sheds').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Query timeout')), 10000)),
+              new Promise((_, reject) => {
+                abortController.signal.addEventListener('abort', () => reject(new Error('Aborted')));
+              })
+            ]);
+            return { data: (result as any).data, error: (result as any).error };
+          } catch (err: any) {
+            if (err.message === 'Aborted') return { data: null, error: new Error('Aborted') };
+            if (err.message === 'Query timeout') {
+              console.error('[FarmContext] ⏰ Query timeout - retry...');
+              try {
+                const retry = await supabase.from('sheds').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true });
+                return { data: retry.data, error: retry.error };
+              } catch {
+                const { data: sessionData } = await supabase.auth.getSession();
+                if (sessionData.session) {
+                  const final = await supabase.from('sheds').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true });
+                  return { data: final.data, error: final.error };
+                }
+              }
+            }
+            return { data: null, error: err };
+          }
+        })(),
+        
+        // Demais tabelas (simples, em paralelo)
+        supabase.from('flocks').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }),
+        supabase.from('daily_records').select('*').eq('user_id', currentUserId).order('date', { ascending: true }),
+        supabase.from('inventory').select('*').eq('user_id', currentUserId).order('last_updated', { ascending: false }),
+        supabase.from('expenses').select('*').eq('user_id', currentUserId).order('date', { ascending: false }),
+        supabase.from('sales').select('*').eq('user_id', currentUserId).order('date', { ascending: false }),
+        supabase.from('clients').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }),
+        supabase.from('tasks').select('*').eq('user_id', currentUserId).order('due_date', { ascending: true }),
+        supabase.from('feed_formulations').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true })
+      ]);
+
+      // Verificar se foi abortado durante o carregamento paralelo
       if (abortController.signal.aborted) {
-        console.log('[FarmContext] 🛑 Carregamento abortado antes de sheds');
+        console.log('[FarmContext] 🛑 Carregamento abortado durante paralelo');
         return;
       }
-      
-      let shedsData = null;
-      let shedsError = null;
-      
-      try {
-        const result = await Promise.race([
-          supabase
-            .from('sheds')
-            .select('*')
-            .eq('user_id', currentUserId)
-            .order('created_at', { ascending: true }),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Query timeout')), 10000)
-          ),
-          new Promise((_, reject) => {
-            abortController.signal.addEventListener('abort', () => reject(new Error('Aborted')));
-          })
-        ]);
-        
-        shedsData = (result as any).data;
-        shedsError = (result as any).error;
-      } catch (err: any) {
-        if (err.message === 'Aborted') {
-          console.log('[FarmContext] 🛑 Query sheds foi abortada');
-          return;
-        }
-        if (err.message === 'Query timeout') {
-          console.error('[FarmContext] ⏰ Query timeout no Chrome/Edge - tentando novamente...');
-          // Retry automático para Chrome/Edge
-          try {
-            const retryResult = await supabase
-              .from('sheds')
-              .select('*')
-              .eq('user_id', currentUserId)
-              .order('created_at', { ascending: true });
-            
-            shedsData = retryResult.data;
-            shedsError = retryResult.error;
-            console.log('[FarmContext] 🔄 Retry bem-sucedido!');
-          } catch (retryErr: any) {
-            console.error('[FarmContext] ❌ Retry também falhou - tentando recriar sessão...');
-            
-            // Fallback: recriar sessão do Supabase
-            try {
-              const { data: sessionData } = await supabase.auth.getSession();
-              if (sessionData.session) {
-                console.log('[FarmContext] 🔄 Sessão recriada, tentando query final...');
-                const finalResult = await supabase
-                  .from('sheds')
-                  .select('*')
-                  .eq('user_id', currentUserId)
-                  .order('created_at', { ascending: true });
-                
-                shedsData = finalResult.data;
-                shedsError = finalResult.error;
-                console.log('[FarmContext] ✅ Query final bem-sucedida após recriar sessão!');
-              } else {
-                console.error('[FarmContext] ❌ Sem sessão ativa após recriar');
-                shedsError = new Error('No session after retry');
-              }
-            } catch (finalErr: any) {
-              console.error('[FarmContext] ❌ Todas as tentativas falharam:', finalErr);
-              shedsError = finalErr;
-            }
-          }
-        } else {
-          console.error('[FarmContext] ⚠️ Erro ou timeout ao carregar sheds:', err);
-          shedsError = err;
-        }
-      }
 
-      console.log('[FarmContext] 🔍 Query sheds retornou:', { hasData: !!shedsData, hasError: !!shedsError, dataLength: shedsData?.length });
+      // Processar resultados e atualizar estado IMEDIATAMENTE
+      console.log('[FarmContext] 📊 Processando resultados paralelos...');
 
-      // Verificação de segurança: O usuário mudou durante a requisição?
-      if (activeUserIdRef.current !== currentUserId) {
-         console.log('[FarmContext] 🛑 Usuário mudou durante carregamento de sheds. Abortando.');
-         return;
-      }
-
-      if (shedsError) {
-        console.error('[FarmContext] ✗ Erro ao carregar sheds:', shedsError.message, shedsError.code);
-      } else {
-        console.log('[FarmContext] ✓ Sheds carregados:', shedsData?.length ?? 0, 'registros');
-        const mappedSheds: Shed[] = (shedsData || []).map((s: any) => ({
-          id: s.id,
-          name: s.name,
-          capacity: s.capacity,
-          notes: s.notes ?? undefined,
+      // Sheds
+      if (shedsResult.status === 'fulfilled' && !shedsResult.value.error && shedsResult.value.data) {
+        console.log('[FarmContext] ✓ Sheds carregados:', shedsResult.value.data.length, 'registros');
+        const mappedSheds: Shed[] = shedsResult.value.data.map((s: any) => ({
+          id: s.id, name: s.name, capacity: s.capacity, notes: s.notes ?? undefined,
         }));
-        console.log('[FarmContext] 📝 Antes de setSheds:', mappedSheds.length, 'registros');
-        console.log('[FarmContext] 📝 Dados a serem setados:', mappedSheds);
         setSheds(mappedSheds);
-        console.log('[FarmContext] 📝 Depois de setSheds chamado');
+      } else if (shedsResult.status === 'rejected' || shedsResult.value.error) {
+        console.error('[FarmContext] ✗ Erro ao carregar sheds:', shedsResult.reason || shedsResult.value.error);
       }
 
-      // Carregar flocks
-      console.log('[FarmContext] Carregando flocks...');
-      const { data: flocksData, error: flocksError } = await supabase
-        .from('flocks')
-        .select('*')
-        .eq('user_id', currentUserId)
-        .order('created_at', { ascending: true });
-
-      if (activeUserIdRef.current !== currentUserId) return;
-
-      if (!flocksError && flocksData) {
-        console.log('[FarmContext] ✓ Flocks carregados:', flocksData.length, 'registros');
-        const mappedFlocks: Flock[] = flocksData.map((f: any) => ({
-          id: f.id,
-          shedId: f.shed_id,
-          name: f.name,
-          breed: f.breed,
-          birthDate: f.birth_date,
-          arrivalDate: f.arrival_date,
-          plannedDisposalDate: f.planned_disposal_date,
-          initialHenCount: f.initial_hen_count,
-          status: f.status,
+      // Flocks
+      if (flocksResult.status === 'fulfilled' && !flocksResult.value.error && flocksResult.value.data) {
+        console.log('[FarmContext] ✓ Flocks carregados:', flocksResult.value.data.length, 'registros');
+        const mappedFlocks: Flock[] = flocksResult.value.data.map((f: any) => ({
+          id: f.id, shedId: f.shed_id, name: f.name, breed: f.breed, birthDate: f.birth_date,
+          arrivalDate: f.arrival_date, plannedDisposalDate: f.planned_disposal_date,
+          initialHenCount: f.initial_hen_count, status: f.status,
         }));
         setFlocks(mappedFlocks);
-      } else if (flocksError) {
-        console.error('[FarmContext] ✗ Erro ao carregar flocks:', flocksError);
       }
 
-      // Carregar registros diários
-      console.log('[FarmContext] Carregando registros diários...');
-      const { data: recordsData, error: recordsError } = await supabase
-        .from('daily_records')
-        .select('*')
-        .eq('user_id', currentUserId)
-        .order('date', { ascending: true });
-
-      if (activeUserIdRef.current !== currentUserId) return;
-
-      if (!recordsError && recordsData) {
-        console.log('[FarmContext] ✓ Registros diários carregados:', recordsData.length, 'registros');
-        const mappedRecords: DailyRecord[] = recordsData.map((r: any) => ({
-          id: r.id,
-          flockId: r.flock_id,
-          date: r.date,
-          eggsCollected: r.eggs_collected,
-          brokenEggs: r.broken_eggs,
-          feedConsumedKg: parseFloat(r.feed_consumed_kg),
-          mortality: r.mortality,
-          notes: r.notes ?? undefined,
-          createdAt: r.created_at ?? undefined, // Timestamp de criação do Supabase
+      // Records
+      if (recordsResult.status === 'fulfilled' && !recordsResult.value.error && recordsResult.value.data) {
+        console.log('[FarmContext] ✓ Registros diários carregados:', recordsResult.value.data.length, 'registros');
+        const mappedRecords: DailyRecord[] = recordsResult.value.data.map((r: any) => ({
+          id: r.id, flockId: r.flock_id, date: r.date, eggsCollected: r.eggs_collected,
+          brokenEggs: r.broken_eggs, feedConsumedKg: parseFloat(r.feed_consumed_kg),
+          mortality: r.mortality, notes: r.notes ?? undefined, createdAt: r.created_at ?? undefined,
         }));
         setRecords(mappedRecords);
-      } else if (recordsError) {
-        console.error('[FarmContext] ✗ Erro ao carregar registros diários:', recordsError);
       }
 
-      // Carregar estoque
-      console.log('[FarmContext] Carregando estoque...');
-      const { data: inventoryData, error: inventoryError } = await supabase
-        .from('inventory')
-        .select('*')
-        .eq('user_id', currentUserId)
-        .order('last_updated', { ascending: false });
-
-      if (activeUserIdRef.current !== currentUserId) return;
-
-      if (!inventoryError && inventoryData) {
-        console.log('[FarmContext] ✓ Estoque carregado:', inventoryData.length, 'registros');
-        const mappedInventory: InventoryItem[] = inventoryData.map((i: any) => ({
-          id: i.id,
-          name: i.name,
-          category: i.category,
-          quantity: parseFloat(i.quantity),
-          unit: i.unit,
-          minThreshold: parseFloat(i.min_threshold),
-          costPerUnit: parseFloat(i.cost_per_unit),
+      // Inventory
+      if (inventoryResult.status === 'fulfilled' && !inventoryResult.value.error && inventoryResult.value.data) {
+        console.log('[FarmContext] ✓ Estoque carregado:', inventoryResult.value.data.length, 'registros');
+        const mappedInventory: InventoryItem[] = inventoryResult.value.data.map((i: any) => ({
+          id: i.id, name: i.name, category: i.category, quantity: parseFloat(i.quantity),
+          unit: i.unit, minThreshold: parseFloat(i.min_threshold), costPerUnit: parseFloat(i.cost_per_unit),
           lastUpdated: i.last_updated,
         }));
         setInventory(mappedInventory);
-      } else if (inventoryError) {
-        console.error('[FarmContext] ✗ Erro ao carregar estoque:', inventoryError);
       }
 
-      // Carregar despesas
-      console.log('[FarmContext] Carregando despesas...');
-      const { data: expensesData, error: expensesError } = await supabase
-        .from('expenses')
-        .select('*')
-        .eq('user_id', currentUserId)
-        .order('date', { ascending: false });
-
-      if (activeUserIdRef.current !== currentUserId) return;
-
-      if (!expensesError && expensesData) {
-        console.log('[FarmContext] ✓ Despesas carregadas:', expensesData.length, 'registros');
-        const mappedExpenses: Expense[] = expensesData.map((e: any) => ({
-          id: e.id,
-          flockId: e.flock_id,
-          date: e.date,
-          description: e.description,
-          category: e.category,
-          amount: parseFloat(e.amount),
+      // Expenses
+      if (expensesResult.status === 'fulfilled' && !expensesResult.value.error && expensesResult.value.data) {
+        console.log('[FarmContext] ✓ Despesas carregadas:', expensesResult.value.data.length, 'registros');
+        const mappedExpenses: Expense[] = expensesResult.value.data.map((e: any) => ({
+          id: e.id, flockId: e.flock_id, date: e.date, description: e.description,
+          category: e.category, amount: parseFloat(e.amount),
         }));
         setExpenses(mappedExpenses);
-      } else if (expensesError) {
-        console.error('[FarmContext] ✗ Erro ao carregar despesas:', expensesError);
       }
 
-      // Carregar vendas
-      console.log('[FarmContext] Carregando vendas...');
-      const { data: salesData, error: salesError } = await supabase
-        .from('sales')
-        .select('*')
-        .eq('user_id', currentUserId)
-        .order('date', { ascending: false });
-
-      if (activeUserIdRef.current !== currentUserId) return;
-
-      if (!salesError && salesData) {
-        console.log('[FarmContext] ✓ Vendas carregadas:', salesData.length, 'registros');
-        const mappedSales: Sale[] = salesData.map((s: any, index: number) => ({
-          id: s.id,
-          saleNumber: s.sale_number || index + 1,
-          flockId: s.flock_id,
-          clientId: s.client_id,
-          date: s.date,
-          productType: s.product_type,
-          saleType: s.sale_type,
-          paymentMethod: s.payment_method,
-          paymentStatus: s.payment_status,
-          quantity: parseFloat(s.quantity),
-          pricePerUnit: parseFloat(s.price_per_unit),
-          totalAmount: parseFloat(s.total_amount),
-          deliveryDate: s.delivery_date,
-          deliveryStatus: s.delivery_status,
-          deliveryAddress: s.delivery_address,
+      // Sales
+      if (salesResult.status === 'fulfilled' && !salesResult.value.error && salesResult.value.data) {
+        console.log('[FarmContext] ✓ Vendas carregadas:', salesResult.value.data.length, 'registros');
+        const mappedSales: Sale[] = salesResult.value.data.map((s: any, index: number) => ({
+          id: s.id, saleNumber: s.sale_number || index + 1, flockId: s.flock_id, clientId: s.client_id,
+          date: s.date, productType: s.product_type, saleType: s.sale_type,
+          paymentMethod: s.payment_method, paymentStatus: s.payment_status,
+          quantity: parseFloat(s.quantity), pricePerUnit: parseFloat(s.price_per_unit),
+          totalAmount: parseFloat(s.total_amount), deliveryDate: s.delivery_date,
+          deliveryStatus: s.delivery_status, deliveryAddress: s.delivery_address,
           deliveryNotes: s.delivery_notes,
         }));
         setSales(mappedSales);
-      } else if (salesError) {
-        console.error('[FarmContext] ✗ Erro ao carregar vendas:', salesError);
       }
 
-      // Carregar clientes
-      console.log('[FarmContext] Carregando clientes...');
-      const { data: clientsData, error: clientsError } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('user_id', currentUserId)
-        .order('created_at', { ascending: true });
-
-      if (activeUserIdRef.current !== currentUserId) return;
-
-      if (!clientsError && clientsData) {
-        console.log('[FarmContext] ✓ Clientes carregados:', clientsData.length, 'registros');
-        const mappedClients: Client[] = clientsData.map((c: any) => ({
-          id: c.id,
-          name: c.name,
-          phone: c.phone,
-          email: c.email,
-          address: c.address,
-          type: c.type,
-          notes: c.notes,
+      // Clients
+      if (clientsResult.status === 'fulfilled' && !clientsResult.value.error && clientsResult.value.data) {
+        console.log('[FarmContext] ✓ Clientes carregados:', clientsResult.value.data.length, 'registros');
+        const mappedClients: Client[] = clientsResult.value.data.map((c: any) => ({
+          id: c.id, name: c.name, phone: c.phone, email: c.email,
+          address: c.address, type: c.type, notes: c.notes,
         }));
         setClients(mappedClients);
-      } else if (clientsError) {
-        console.error('[FarmContext] ✗ Erro ao carregar clientes:', clientsError);
       }
 
-      // Carregar tarefas
-      console.log('[FarmContext] Carregando tarefas...');
-      const { data: tasksData, error: tasksError } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('user_id', currentUserId)
-        .order('due_date', { ascending: true });
-
-      if (activeUserIdRef.current !== currentUserId) return;
-
-      if (!tasksError && tasksData) {
-        console.log('[FarmContext] ✓ Tarefas carregadas:', tasksData.length, 'registros');
-        const mappedTasks: FlockTask[] = tasksData.map((t: any) => ({
-          id: t.id,
-          flockId: t.flock_id,
-          taskType: t.task_type,
-          dueDate: t.due_date,
-          notes: t.notes,
-          isCompleted: t.is_completed,
+      // Tasks
+      if (tasksResult.status === 'fulfilled' && !tasksResult.value.error && tasksResult.value.data) {
+        console.log('[FarmContext] ✓ Tarefas carregadas:', tasksResult.value.data.length, 'registros');
+        const mappedTasks: FlockTask[] = tasksResult.value.data.map((t: any) => ({
+          id: t.id, flockId: t.flock_id, taskType: t.task_type, dueDate: t.due_date,
+          notes: t.notes, isCompleted: t.is_completed,
         }));
         setTasks(mappedTasks);
-      } else if (tasksError) {
-        console.error('[FarmContext] ✗ Erro ao carregar tarefas:', tasksError);
       }
 
-      // Carregar formulações de ração
-      console.log('[FarmContext] Carregando formulações de ração...');
-      const { data: formulationsData, error: formulationsError } = await supabase
-        .from('feed_formulations')
-        .select('*')
-        .eq('user_id', currentUserId)
-        .order('created_at', { ascending: true });
-
-      if (activeUserIdRef.current !== currentUserId) return;
-
-      if (!formulationsError && formulationsData) {
-        console.log('[FarmContext] ✓ Formulações carregadas:', formulationsData.length, 'registros');
-        const mappedFormulations: FeedFormulation[] = formulationsData.map((f: any) => {
-          // A formulação está armazenada no campo 'data' como JSON
+      // Formulations
+      if (formulationsResult.status === 'fulfilled' && !formulationsResult.value.error && formulationsResult.value.data) {
+        console.log('[FarmContext] ✓ Formulações carregadas:', formulationsResult.value.data.length, 'registros');
+        const mappedFormulations: FeedFormulation[] = formulationsResult.value.data.map((f: any) => {
           const formData = f.data || {};
           return {
-            id: f.id,
-            name: f.name,
-            phase: formData.phase || 'Outra',
-            ingredients: formData.ingredients || [],
-            totalWeight: formData.totalWeight || 0,
-            totalCost: formData.totalCost || 0,
-            costPerKg: formData.costPerKg || 0,
+            id: f.id, name: f.name, phase: formData.phase || 'Outra',
+            ingredients: formData.ingredients || [], totalWeight: formData.totalWeight || 0,
+            totalCost: formData.totalCost || 0, costPerKg: formData.costPerKg || 0,
             notes: f.description,
           };
         });
         setFeedFormulations(mappedFormulations);
-      } else if (formulationsError) {
-        console.error('[FarmContext] ✗ Erro ao carregar formulações:', formulationsError);
       }
       const endTime = Date.now();
       console.log('[FarmContext] ✅ CONCLUÍDO loadDataForUser em', endTime - startTime, 'ms');
