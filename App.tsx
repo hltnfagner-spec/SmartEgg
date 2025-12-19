@@ -64,29 +64,14 @@ function App() {
   const accessToken = initialUrlParams.get('access_token') || initialHashParams.get('access_token');
   const refreshToken = initialUrlParams.get('refresh_token') || initialHashParams.get('refresh_token');
   
-  // Determinar se é rota de recuperação (calculado uma vez na montagem)
-  const [isRecoveryRoute] = useState(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const typeParam = urlParams.get('type') || hashParams.get('type');
-    const accessTokenParam = urlParams.get('access_token') || hashParams.get('access_token');
-    const refreshTokenParam = urlParams.get('refresh_token') || hashParams.get('refresh_token');
-    const hashIncludesRecovery = window.location.hash.includes('type=recovery');
-    
-    const isRecovery = (typeParam === 'recovery' && (accessTokenParam || refreshTokenParam)) || 
-                       (accessTokenParam && refreshTokenParam && hashIncludesRecovery);
-    
-    if (isRecovery) {
-      console.log('[App] Recovery route detected on mount!');
-    }
-    return isRecovery;
-  });
-  
+  // Determinar se é rota de confirmação de email (calculado uma vez na montagem)
   const [isConfirmRoute] = useState(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const typeParam = urlParams.get('type') || hashParams.get('type');
     const tokenHashParam = urlParams.get('token_hash') || hashParams.get('token_hash');
+    
+    // Confirmação de email: type=email E token_hash presente
     const isConfirm = typeParam === 'email' && tokenHashParam;
     
     if (isConfirm) {
@@ -94,6 +79,24 @@ function App() {
     }
     
     return isConfirm;
+  });
+  
+  // Determinar se é rota de recuperação de senha (calculado uma vez na montagem)
+  const [isRecoveryRoute] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const typeParam = urlParams.get('type') || hashParams.get('type');
+    const accessTokenParam = urlParams.get('access_token') || hashParams.get('access_token');
+    const refreshTokenParam = urlParams.get('refresh_token') || hashParams.get('refresh_token');
+    
+    // Recuperação de senha: type=recovery E (access_token OU refresh_token)
+    // NÃO é confirmação de email (type !== 'email')
+    const isRecovery = typeParam === 'recovery' && (accessTokenParam || refreshTokenParam);
+    
+    if (isRecovery) {
+      console.log('[App] Recovery route detected on mount!');
+    }
+    return isRecovery;
   });
 
   // Navigation state is now managed in FarmContext
