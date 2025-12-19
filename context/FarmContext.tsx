@@ -102,6 +102,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       console.log('[FarmContext] Iniciando carregamento de dados para usuário:', currentUserId);
       
       // Carregar sheds
+      console.log('[FarmContext] Carregando sheds...');
       const { data: shedsData, error: shedsError } = await supabase
         .from('sheds')
         .select('*')
@@ -109,7 +110,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .order('created_at', { ascending: true });
 
       if (!shedsError && shedsData) {
-        console.log('[FarmContext] Sheds carregados:', shedsData.length);
+        console.log('[FarmContext] ✓ Sheds carregados:', shedsData.length, 'registros');
         const mappedSheds: Shed[] = shedsData.map((s: any) => ({
           id: s.id,
           name: s.name,
@@ -118,10 +119,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         }));
         setSheds(mappedSheds);
       } else if (shedsError) {
-        console.error('[FarmContext] Erro ao carregar sheds do Supabase:', shedsError);
+        console.error('[FarmContext] ✗ Erro ao carregar sheds:', shedsError);
       }
 
       // Carregar flocks
+      console.log('[FarmContext] Carregando flocks...');
       const { data: flocksData, error: flocksError } = await supabase
         .from('flocks')
         .select('*')
@@ -129,6 +131,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .order('created_at', { ascending: true });
 
       if (!flocksError && flocksData) {
+        console.log('[FarmContext] ✓ Flocks carregados:', flocksData.length, 'registros');
         const mappedFlocks: Flock[] = flocksData.map((f: any) => ({
           id: f.id,
           shedId: f.shed_id,
@@ -142,10 +145,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         }));
         setFlocks(mappedFlocks);
       } else if (flocksError) {
-        console.error('[FarmContext] Erro ao carregar flocks do Supabase:', flocksError);
+        console.error('[FarmContext] ✗ Erro ao carregar flocks:', flocksError);
       }
 
       // Carregar registros diários
+      console.log('[FarmContext] Carregando registros diários...');
       const { data: recordsData, error: recordsError } = await supabase
         .from('daily_records')
         .select('*')
@@ -153,6 +157,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .order('date', { ascending: true });
 
       if (!recordsError && recordsData) {
+        console.log('[FarmContext] ✓ Registros diários carregados:', recordsData.length, 'registros');
         const mappedRecords: DailyRecord[] = recordsData.map((r: any) => ({
           id: r.id,
           flockId: r.flock_id,
@@ -166,10 +171,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         }));
         setRecords(mappedRecords);
       } else if (recordsError) {
-        console.error('[FarmContext] Erro ao carregar registros diários do Supabase:', recordsError);
+        console.error('[FarmContext] ✗ Erro ao carregar registros diários:', recordsError);
       }
 
       // Carregar estoque
+      console.log('[FarmContext] Carregando estoque...');
       const { data: inventoryData, error: inventoryError } = await supabase
         .from('inventory')
         .select('*')
@@ -177,6 +183,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .order('last_updated', { ascending: false });
 
       if (!inventoryError && inventoryData) {
+        console.log('[FarmContext] ✓ Estoque carregado:', inventoryData.length, 'registros');
         const mappedInventory: InventoryItem[] = inventoryData.map((i: any) => ({
           id: i.id,
           name: i.name,
@@ -189,10 +196,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         }));
         setInventory(mappedInventory);
       } else if (inventoryError) {
-        console.error('[FarmContext] Erro ao carregar estoque do Supabase:', inventoryError);
+        console.error('[FarmContext] ✗ Erro ao carregar estoque:', inventoryError);
       }
 
       // Carregar despesas
+      console.log('[FarmContext] Carregando despesas...');
       const { data: expensesData, error: expensesError } = await supabase
         .from('expenses')
         .select('*')
@@ -200,6 +208,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .order('date', { ascending: false });
 
       if (!expensesError && expensesData) {
+        console.log('[FarmContext] ✓ Despesas carregadas:', expensesData.length, 'registros');
         const mappedExpenses: Expense[] = expensesData.map((e: any) => ({
           id: e.id,
           flockId: e.flock_id,
@@ -210,10 +219,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         }));
         setExpenses(mappedExpenses);
       } else if (expensesError) {
-        console.error('[FarmContext] Erro ao carregar despesas do Supabase:', expensesError);
+        console.error('[FarmContext] ✗ Erro ao carregar despesas:', expensesError);
       }
 
       // Carregar vendas
+      console.log('[FarmContext] Carregando vendas...');
       const { data: salesData, error: salesError } = await supabase
         .from('sales')
         .select('*')
@@ -221,7 +231,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .order('date', { ascending: false });
 
       if (!salesError && salesData) {
-        console.log('[FarmContext] Vendas carregadas:', salesData.length);
+        console.log('[FarmContext] ✓ Vendas carregadas:', salesData.length, 'registros');
         const mappedSales: Sale[] = salesData.map((s: any, index: number) => ({
           id: s.id,
           saleNumber: s.sale_number || index + 1,
@@ -242,10 +252,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         }));
         setSales(mappedSales);
       } else if (salesError) {
-        console.error('[FarmContext] Erro ao carregar vendas do Supabase:', salesError);
+        console.error('[FarmContext] ✗ Erro ao carregar vendas:', salesError);
       }
 
       // Carregar clientes
+      console.log('[FarmContext] Carregando clientes...');
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
         .select('*')
@@ -253,7 +264,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .order('created_at', { ascending: true });
 
       if (!clientsError && clientsData) {
-        console.log('[FarmContext] Clientes carregados:', clientsData.length);
+        console.log('[FarmContext] ✓ Clientes carregados:', clientsData.length, 'registros');
         const mappedClients: Client[] = clientsData.map((c: any) => ({
           id: c.id,
           name: c.name,
@@ -265,10 +276,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         }));
         setClients(mappedClients);
       } else if (clientsError) {
-        console.error('[FarmContext] Erro ao carregar clientes do Supabase:', clientsError);
+        console.error('[FarmContext] ✗ Erro ao carregar clientes:', clientsError);
       }
 
       // Carregar tarefas
+      console.log('[FarmContext] Carregando tarefas...');
       const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
         .select('*')
@@ -276,7 +288,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .order('due_date', { ascending: true });
 
       if (!tasksError && tasksData) {
-        console.log('[FarmContext] Tarefas carregadas:', tasksData.length);
+        console.log('[FarmContext] ✓ Tarefas carregadas:', tasksData.length, 'registros');
         const mappedTasks: FlockTask[] = tasksData.map((t: any) => ({
           id: t.id,
           flockId: t.flock_id,
@@ -287,10 +299,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         }));
         setTasks(mappedTasks);
       } else if (tasksError) {
-        console.error('[FarmContext] Erro ao carregar tarefas do Supabase:', tasksError);
+        console.error('[FarmContext] ✗ Erro ao carregar tarefas:', tasksError);
       }
 
       // Carregar formulações de ração
+      console.log('[FarmContext] Carregando formulações de ração...');
       const { data: formulationsData, error: formulationsError } = await supabase
         .from('feed_formulations')
         .select('*')
@@ -298,7 +311,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .order('created_at', { ascending: true });
 
       if (!formulationsError && formulationsData) {
-        console.log('[FarmContext] Formulações carregadas:', formulationsData.length);
+        console.log('[FarmContext] ✓ Formulações carregadas:', formulationsData.length, 'registros');
         const mappedFormulations: FeedFormulation[] = formulationsData.map((f: any) => {
           // A formulação está armazenada no campo 'data' como JSON
           const formData = f.data || {};
@@ -315,10 +328,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         });
         setFeedFormulations(mappedFormulations);
       } else if (formulationsError) {
-        console.error('[FarmContext] Erro ao carregar formulações do Supabase:', formulationsError);
+        console.error('[FarmContext] ✗ Erro ao carregar formulações:', formulationsError);
       }
+      console.log('[FarmContext] ✓ Todos os dados carregados com sucesso!');
     } catch (error) {
-      console.error('[FarmContext] Erro ao carregar dados do Supabase:', error);
+      console.error('[FarmContext] ✗ Erro ao carregar dados do Supabase:', error);
     }
   }, []);
 
@@ -399,16 +413,18 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           console.log('[FarmContext] Sessão detectada ao inicializar:', currentUserId);
           setUserId(currentUserId);
           
-          // Limpar localStorage e sessionStorage ao inicializar para evitar dados corrompidos
+          // Carregar dados do BD PRIMEIRO
+          console.log('[FarmContext] Carregando dados do BD...');
+          await loadDataForUser(currentUserId);
+          
+          // DEPOIS limpar cache para evitar dados corrompidos
           try {
             localStorage.clear();
             sessionStorage.clear();
-            console.log('[FarmContext] Cache local limpo ao inicializar');
+            console.log('[FarmContext] Cache local limpo após carregar dados');
           } catch (error) {
             console.error('[FarmContext] Erro ao limpar cache:', error);
           }
-          
-          await loadDataForUser(currentUserId);
         } else if (sessionError) {
           console.error('[FarmContext] Erro ao verificar sessão inicial:', sessionError);
         }
