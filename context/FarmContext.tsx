@@ -1,5 +1,5 @@
 
-import { createContext, useState, useEffect, useContext, ReactNode, useCallback, FC } from 'react';
+import { createContext, useState, useEffect, useContext, ReactNode, useCallback, FC, useRef } from 'react';
 import { Flock, DailyRecord, Expense, Sale, FlockTask, Shed, Client, InventoryItem, FeedFormulation, View, EggMovement, EggMovementType, EggMovementReason, CompanySettings } from '../types';
 import { supabase } from '../services/supabaseClient';
 
@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.6 - Fix Non-blocking Contacts Check";
+const FARM_CONTEXT_VERSION = "v1.0.7 - Fix User Switch Race Condition";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -80,6 +80,10 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   // Usuário atual (para filtrar dados no Supabase)
   const [userId, setUserId] = useState<string | null>(null);
+  
+  // Ref para controlar race conditions de carregamento de usuário
+  const activeUserIdRef = useRef<string | null>(null);
+  const isLoadingRef = useRef<boolean>(false);
 
   const [sheds, setSheds] = useState<Shed[]>([]);
 
@@ -113,6 +117,12 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   // Função auxiliar para carregar sheds, flocks, registros diários, estoque e despesas para um usuário específico
   const loadDataForUser = useCallback(async (currentUserId: string) => {
+    // Se o usuário mudou enquanto esperávamos para chamar esta função, abortar
+    if (activeUserIdRef.current && activeUserIdRef.current !== currentUserId) {
+      console.log(`[FarmContext] 🛑 Abortando loadDataForUser para ${currentUserId} (Atual: ${activeUserIdRef.current})`);
+      return;
+    }
+
     try {
       console.log('[FarmContext] 🚀 INICIANDO loadDataForUser para:', currentUserId);
       const startTime = Date.now();
@@ -124,6 +134,12 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .select('*')
         .eq('user_id', currentUserId)
         .order('created_at', { ascending: true });
+
+      // Verificação de segurança: O usuário mudou durante a requisição?
+      if (activeUserIdRef.current !== currentUserId) {
+         console.log('[FarmContext] 🛑 Usuário mudou durante carregamento de sheds. Abortando.');
+         return;
+      }
 
       if (shedsError) {
         console.error('[FarmContext] ✗ Erro ao carregar sheds:', shedsError.message, shedsError.code);
@@ -148,6 +164,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .select('*')
         .eq('user_id', currentUserId)
         .order('created_at', { ascending: true });
+
+      if (activeUserIdRef.current !== currentUserId) return;
 
       if (!flocksError && flocksData) {
         console.log('[FarmContext] ✓ Flocks carregados:', flocksData.length, 'registros');
@@ -175,6 +193,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .eq('user_id', currentUserId)
         .order('date', { ascending: true });
 
+      if (activeUserIdRef.current !== currentUserId) return;
+
       if (!recordsError && recordsData) {
         console.log('[FarmContext] ✓ Registros diários carregados:', recordsData.length, 'registros');
         const mappedRecords: DailyRecord[] = recordsData.map((r: any) => ({
@@ -201,6 +221,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .eq('user_id', currentUserId)
         .order('last_updated', { ascending: false });
 
+      if (activeUserIdRef.current !== currentUserId) return;
+
       if (!inventoryError && inventoryData) {
         console.log('[FarmContext] ✓ Estoque carregado:', inventoryData.length, 'registros');
         const mappedInventory: InventoryItem[] = inventoryData.map((i: any) => ({
@@ -226,6 +248,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .eq('user_id', currentUserId)
         .order('date', { ascending: false });
 
+      if (activeUserIdRef.current !== currentUserId) return;
+
       if (!expensesError && expensesData) {
         console.log('[FarmContext] ✓ Despesas carregadas:', expensesData.length, 'registros');
         const mappedExpenses: Expense[] = expensesData.map((e: any) => ({
@@ -248,6 +272,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .select('*')
         .eq('user_id', currentUserId)
         .order('date', { ascending: false });
+
+      if (activeUserIdRef.current !== currentUserId) return;
 
       if (!salesError && salesData) {
         console.log('[FarmContext] ✓ Vendas carregadas:', salesData.length, 'registros');
@@ -282,6 +308,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .eq('user_id', currentUserId)
         .order('created_at', { ascending: true });
 
+      if (activeUserIdRef.current !== currentUserId) return;
+
       if (!clientsError && clientsData) {
         console.log('[FarmContext] ✓ Clientes carregados:', clientsData.length, 'registros');
         const mappedClients: Client[] = clientsData.map((c: any) => ({
@@ -306,6 +334,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .eq('user_id', currentUserId)
         .order('due_date', { ascending: true });
 
+      if (activeUserIdRef.current !== currentUserId) return;
+
       if (!tasksError && tasksData) {
         console.log('[FarmContext] ✓ Tarefas carregadas:', tasksData.length, 'registros');
         const mappedTasks: FlockTask[] = tasksData.map((t: any) => ({
@@ -328,6 +358,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .select('*')
         .eq('user_id', currentUserId)
         .order('created_at', { ascending: true });
+
+      if (activeUserIdRef.current !== currentUserId) return;
 
       if (!formulationsError && formulationsData) {
         console.log('[FarmContext] ✓ Formulações carregadas:', formulationsData.length, 'registros');
@@ -421,7 +453,6 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Carrega dados iniciais e reage a mudanças de autenticação do Supabase
   useEffect(() => {
     let isMounted = true;
-    let isLoadingData = false;
     
     const init = async () => {
       try {
@@ -433,12 +464,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           const currentUserId = sessionData.session.user.id;
           console.log('[FarmContext] Sessão detectada ao inicializar:', currentUserId);
           setUserId(currentUserId);
+          activeUserIdRef.current = currentUserId;
           
           // Carregar dados do BD
           console.log('[FarmContext] Carregando dados do BD para usuário:', currentUserId);
-          isLoadingData = true;
           await loadDataForUser(currentUserId);
-          isLoadingData = false;
         } else if (sessionError) {
           console.error('[FarmContext] Erro ao verificar sessão inicial:', sessionError);
         }
@@ -456,6 +486,13 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       
       if (session) {
         const currentUserId = session.user.id;
+        
+        // Se o usuário mudou, atualizamos o ref imediatamente
+        if (activeUserIdRef.current !== currentUserId) {
+            console.log(`[FarmContext] 🔄 Mudança de usuário detectada: ${activeUserIdRef.current} -> ${currentUserId}`);
+            activeUserIdRef.current = currentUserId;
+        }
+
         console.log('[FarmContext] 👤 Definindo userId:', currentUserId);
         setUserId(currentUserId);
         
@@ -481,25 +518,20 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           }
         }
         
-        // Carregar dados apenas se não estiver já carregando
-        if (!isLoadingData) {
-          console.log('[FarmContext] 📥 Carregando dados para evento:', event);
-          isLoadingData = true;
-          try {
-            await loadDataForUser(currentUserId);
-            console.log('[FarmContext] ✅ Dados carregados com sucesso');
-          } catch (error) {
-            console.error('[FarmContext] ❌ Erro ao chamar loadDataForUser:', error);
-          } finally {
-            isLoadingData = false;
-          }
-        } else {
-          console.log('[FarmContext] ⏭️ Pulando carregamento (já em progresso)');
+        // Carregar dados para TODOS os eventos (SIGNED_IN, INITIAL_SESSION, etc)
+        // A proteção contra race condition agora está dentro de loadDataForUser (activeUserIdRef)
+        console.log('[FarmContext] 📥 Carregando dados para evento:', event);
+        try {
+          await loadDataForUser(currentUserId);
+          console.log('[FarmContext] ✅ Dados carregados com sucesso');
+        } catch (error) {
+          console.error('[FarmContext] ❌ Erro ao chamar loadDataForUser:', error);
         }
       } else {
         // Usuário fez logout - limpar todos os dados
         console.log('[FarmContext] 🚪 Limpando dados após logout');
         console.trace('[FarmContext] Stack trace do logout');
+        activeUserIdRef.current = null;
         setUserId(null);
         setSheds([]);
         setFlocks([]);
