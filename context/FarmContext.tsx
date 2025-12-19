@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.13 - Double Protection Against Multiple INITIAL_SESSION";
+const FARM_CONTEXT_VERSION = "v1.0.14 - Single Load Per Session (No Duplicate Calls)";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -350,31 +350,9 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Carrega dados iniciais e reage a mudanças de autenticação do Supabase
   useEffect(() => {
     let isMounted = true;
+    let hasLoadedData = false; // Flag para evitar carregamento duplicado
     
-    const init = async () => {
-      try {
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        
-        if (!isMounted) return;
-        
-        if (!sessionError && sessionData.session) {
-          const currentUserId = sessionData.session.user.id;
-          console.log('[FarmContext] Sessão detectada ao inicializar:', currentUserId);
-          setUserId(currentUserId);
-          activeUserIdRef.current = currentUserId;
-          
-          // Carregar dados do BD
-          console.log('[FarmContext] Carregando dados do BD para usuário:', currentUserId);
-          await loadDataForUser(currentUserId);
-        } else if (sessionError) {
-          console.error('[FarmContext] Erro ao verificar sessão inicial:', sessionError);
-        }
-      } catch (error) {
-        console.error('[FarmContext] Erro na inicialização:', error);
-      }
-    };
-
-    init();
+    // Removido init() - usar apenas onAuthStateChange para evitar race condition
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
@@ -388,6 +366,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         if (activeUserIdRef.current !== currentUserId) {
             console.log(`[FarmContext] 🔄 Mudança de usuário detectada: ${activeUserIdRef.current} -> ${currentUserId}`);
             activeUserIdRef.current = currentUserId;
+            hasLoadedData = false; // Reset para novo usuário
         }
 
         console.log('[FarmContext] 👤 Definindo userId:', currentUserId);
@@ -415,20 +394,26 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           }
         }
         
-        // Carregar dados para TODOS os eventos (SIGNED_IN, INITIAL_SESSION, etc)
-        // A proteção contra race condition agora está dentro de loadDataForUser (activeUserIdRef)
-        console.log('[FarmContext] 📥 Carregando dados para evento:', event);
-        try {
-          await loadDataForUser(currentUserId);
-          console.log('[FarmContext] ✅ Dados carregados com sucesso');
-        } catch (error) {
-          console.error('[FarmContext] ❌ Erro ao chamar loadDataForUser:', error);
+        // Carregar dados apenas UMA VEZ por sessão de usuário
+        if (!hasLoadedData && !isLoadingRef.current) {
+          console.log('[FarmContext] 📥 Carregando dados para evento:', event);
+          hasLoadedData = true;
+          try {
+            await loadDataForUser(currentUserId);
+            console.log('[FarmContext] ✅ Dados carregados com sucesso');
+          } catch (error) {
+            console.error('[FarmContext] ❌ Erro ao chamar loadDataForUser:', error);
+            hasLoadedData = false; // Permitir retry em caso de erro
+          }
+        } else {
+          console.log('[FarmContext] ⏭️ Pulando carregamento duplicado (hasLoadedData:', hasLoadedData, 'isLoading:', isLoadingRef.current, ')');
         }
       } else {
         // Usuário fez logout - limpar todos os dados
         console.log('[FarmContext] 🚪 Limpando dados após logout');
         console.trace('[FarmContext] Stack trace do logout');
         activeUserIdRef.current = null;
+        hasLoadedData = false;
         setUserId(null);
         setSheds([]);
         setFlocks([]);
