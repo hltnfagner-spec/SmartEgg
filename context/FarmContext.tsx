@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.18 - Session Check Before Queries";
+const FARM_CONTEXT_VERSION = "v1.0.19 - 100ms Delay Before Queries";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -135,18 +135,10 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       console.log('[FarmContext] 🚀 INICIANDO loadDataForUser para:', currentUserId);
       const startTime = Date.now();
       
-      // CRÍTICO: Verificar e renovar sessão Supabase antes de queries (fix para Chrome/Edge após F5)
-      console.log('[FarmContext] 🔄 Verificando sessão Supabase...');
-      try {
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-          console.error('[FarmContext] ❌ Erro ao verificar sessão:', sessionError);
-        } else {
-          console.log('[FarmContext] ✅ Sessão Supabase válida');
-        }
-      } catch (sessionCheckError) {
-        console.error('[FarmContext] ❌ Erro ao verificar sessão:', sessionCheckError);
-      }
+      // CRÍTICO: Pequeno delay para dar tempo do Supabase "acordar" após F5 no Chrome/Edge
+      console.log('[FarmContext] ⏸️ Aguardando 100ms para estabilizar cliente Supabase...');
+      await new Promise(resolve => setTimeout(resolve, 100));
+      console.log('[FarmContext] ✅ Cliente Supabase estabilizado');
       
       // Carregar tudo em PARALELO para acelerar
       console.log('[FarmContext] 🚀 Carregando todas as tabelas em paralelo...');
