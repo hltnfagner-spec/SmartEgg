@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.11 - Parallel Loading (12s → 2-3s)";
+const FARM_CONTEXT_VERSION = "v1.0.12 - Simplified (No AbortController)";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -84,7 +84,6 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Ref para controlar race conditions de carregamento de usuário
   const activeUserIdRef = useRef<string | null>(null);
   const isLoadingRef = useRef<boolean>(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   const [sheds, setSheds] = useState<Shed[]>([]);
 
@@ -118,16 +117,12 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   // Função auxiliar para carregar sheds, flocks, registros diários, estoque e despesas para um usuário específico
   const loadDataForUser = useCallback(async (currentUserId: string) => {
-    // Cancelar qualquer carregamento anterior em andamento
-    if (abortControllerRef.current) {
-      console.log('[FarmContext] 🛑 Cancelando carregamento anterior');
-      abortControllerRef.current.abort();
+    // Se já estiver carregando o MESMO usuário, não faça nada
+    if (isLoadingRef.current) {
+       console.log('[FarmContext] Já existe um carregamento em andamento.');
+       return; 
     }
-    
-    // Criar novo AbortController para este carregamento
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-    
+
     // Se o usuário mudou enquanto esperávamos para chamar esta função, abortar
     if (activeUserIdRef.current && activeUserIdRef.current !== currentUserId) {
       console.log(`[FarmContext] 🛑 Abortando loadDataForUser para ${currentUserId} (Atual: ${activeUserIdRef.current})`);
@@ -135,6 +130,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
 
     try {
+      isLoadingRef.current = true;
       console.log('[FarmContext] 🚀 INICIANDO loadDataForUser para:', currentUserId);
       const startTime = Date.now();
       
@@ -152,35 +148,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         tasksResult,
         formulationsResult
       ] = await Promise.allSettled([
-        // Sheds (com retry e fallback)
-        (async () => {
-          try {
-            const result = await Promise.race([
-              supabase.from('sheds').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Query timeout')), 10000)),
-              new Promise((_, reject) => {
-                abortController.signal.addEventListener('abort', () => reject(new Error('Aborted')));
-              })
-            ]);
-            return { data: (result as any).data, error: (result as any).error };
-          } catch (err: any) {
-            if (err.message === 'Aborted') return { data: null, error: new Error('Aborted') };
-            if (err.message === 'Query timeout') {
-              console.error('[FarmContext] ⏰ Query timeout - retry...');
-              try {
-                const retry = await supabase.from('sheds').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true });
-                return { data: retry.data, error: retry.error };
-              } catch {
-                const { data: sessionData } = await supabase.auth.getSession();
-                if (sessionData.session) {
-                  const final = await supabase.from('sheds').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true });
-                  return { data: final.data, error: final.error };
-                }
-              }
-            }
-            return { data: null, error: err };
-          }
-        })(),
+        // Sheds (simples, sem abort)
+        supabase.from('sheds').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }),
         
         // Demais tabelas (simples, em paralelo)
         supabase.from('flocks').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }),
@@ -193,10 +162,10 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         supabase.from('feed_formulations').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true })
       ]);
 
-      // Verificar se foi abortado durante o carregamento paralelo
-      if (abortController.signal.aborted) {
-        console.log('[FarmContext] 🛑 Carregamento abortado durante paralelo');
-        return;
+      // Verificação de segurança: O usuário mudou durante a requisição?
+      if (activeUserIdRef.current !== currentUserId) {
+         console.log('[FarmContext] 🛑 Usuário mudou durante carregamento. Abortando.');
+         return;
       }
 
       // Processar resultados e atualizar estado IMEDIATAMENTE
@@ -309,6 +278,9 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       console.log('[FarmContext] ✅ CONCLUÍDO loadDataForUser em', endTime - startTime, 'ms');
     } catch (error) {
       console.error('[FarmContext] ❌ ERRO em loadDataForUser:', error);
+    } finally {
+      isLoadingRef.current = false;
+      console.log('[FarmContext] ✅ Carregamento finalizado.');
     }
   }, []);
 
