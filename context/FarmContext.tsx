@@ -120,6 +120,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           capacity: s.capacity,
           notes: s.notes ?? undefined,
         }));
+        console.log('[FarmContext] 📝 setSheds chamado com', mappedSheds.length, 'registros');
         setSheds(mappedSheds);
       }
 
@@ -473,6 +474,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       } else {
         // Usuário fez logout - limpar todos os dados
         console.log('[FarmContext] 🚪 Limpando dados após logout');
+        console.trace('[FarmContext] Stack trace do logout');
         setUserId(null);
         setSheds([]);
         setFlocks([]);
