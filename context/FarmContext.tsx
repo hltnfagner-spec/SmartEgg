@@ -454,8 +454,13 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         
         // Carregar dados para TODOS os eventos (SIGNED_IN, INITIAL_SESSION, etc)
         console.log('[FarmContext] 📥 Carregando dados para evento:', event);
-        await loadDataForUser(currentUserId);
-        console.log('[FarmContext] ✅ Dados carregados com sucesso');
+        console.log('[FarmContext] 📥 Chamando loadDataForUser agora...');
+        try {
+          await loadDataForUser(currentUserId);
+          console.log('[FarmContext] ✅ Dados carregados com sucesso');
+        } catch (error) {
+          console.error('[FarmContext] ❌ Erro ao chamar loadDataForUser:', error);
+        }
       } else {
         // Usuário fez logout - limpar todos os dados
         console.log('[FarmContext] 🚪 Limpando dados após logout');
