@@ -10,10 +10,11 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
+
+// StrictMode removido para evitar dupla montagem que causa race condition no Chrome/Edge
+// Em desenvolvimento, você pode reativar para detectar problemas
 root.render(
-  <StrictMode>
-    <FarmProvider>
-      <App />
-    </FarmProvider>
-  </StrictMode>
+  <FarmProvider>
+    <App />
+  </FarmProvider>
 );
