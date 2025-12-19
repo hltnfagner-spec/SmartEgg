@@ -2,6 +2,7 @@
 import { createContext, useState, useEffect, useContext, ReactNode, useCallback, FC, useRef } from 'react';
 import { Flock, DailyRecord, Expense, Sale, FlockTask, Shed, Client, InventoryItem, FeedFormulation, View, EggMovement, EggMovementType, EggMovementReason, CompanySettings } from '../types';
 import { supabase } from '../services/supabaseClient';
+import { createClient } from '@supabase/supabase-js';
 
 interface FarmContextType {
   sheds: Shed[];
@@ -66,7 +67,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.19 - 100ms Delay Before Queries";
+const FARM_CONTEXT_VERSION = "v1.0.20 - Fresh Supabase Client + 5s Timeout";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -135,21 +136,32 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       console.log('[FarmContext] 🚀 INICIANDO loadDataForUser para:', currentUserId);
       const startTime = Date.now();
       
-      // CRÍTICO: Pequeno delay para dar tempo do Supabase "acordar" após F5 no Chrome/Edge
-      console.log('[FarmContext] ⏸️ Aguardando 100ms para estabilizar cliente Supabase...');
-      await new Promise(resolve => setTimeout(resolve, 100));
-      console.log('[FarmContext] ✅ Cliente Supabase estabilizado');
+      // CRÍTICO: Criar cliente Supabase fresco para evitar estado stale após F5
+      console.log('[FarmContext] 🔄 Criando cliente Supabase fresco...');
+      const freshClient = createClient(
+        (import.meta as any).env.VITE_SUPABASE_URL,
+        (import.meta as any).env.VITE_SUPABASE_ANON_KEY
+      );
+      console.log('[FarmContext] ✅ Cliente Supabase fresco criado');
       
       // Carregar tudo em PARALELO para acelerar
       console.log('[FarmContext] 🚀 Carregando todas as tabelas em paralelo...');
       
-      // Forçar execução assíncrona com setTimeout para evitar travamento
+      // Forçar execução assíncrona com setTimeout e timeout de 5s por query
       const createAsyncQuery = (queryFn: () => any, name: string): Promise<any> => {
         return new Promise((resolve) => {
           setTimeout(async () => {
             try {
               console.log(`[FarmContext] 📤 Executando query: ${name}`);
-              const result = await queryFn();
+              
+              // Race entre query e timeout de 5s
+              const result = await Promise.race([
+                queryFn(),
+                new Promise((_, reject) => 
+                  setTimeout(() => reject(new Error(`Timeout: ${name}`)), 5000)
+                )
+              ]);
+              
               console.log(`[FarmContext] ✅ Query ${name} completou`);
               resolve(result);
             } catch (error) {
@@ -164,15 +176,15 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       console.log('[FarmContext] 🚨 CHECKPOINT: Prestes a chamar Promise.allSettled');
       
       const results = await Promise.allSettled([
-        createAsyncQuery(() => supabase.from('sheds').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'sheds'),
-        createAsyncQuery(() => supabase.from('flocks').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'flocks'),
-        createAsyncQuery(() => supabase.from('daily_records').select('*').eq('user_id', currentUserId).order('date', { ascending: true }), 'records'),
-        createAsyncQuery(() => supabase.from('inventory').select('*').eq('user_id', currentUserId).order('last_updated', { ascending: false }), 'inventory'),
-        createAsyncQuery(() => supabase.from('expenses').select('*').eq('user_id', currentUserId).order('date', { ascending: false }), 'expenses'),
-        createAsyncQuery(() => supabase.from('sales').select('*').eq('user_id', currentUserId).order('date', { ascending: false }), 'sales'),
-        createAsyncQuery(() => supabase.from('clients').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'clients'),
-        createAsyncQuery(() => supabase.from('tasks').select('*').eq('user_id', currentUserId).order('due_date', { ascending: true }), 'tasks'),
-        createAsyncQuery(() => supabase.from('feed_formulations').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'formulations')
+        createAsyncQuery(() => freshClient.from('sheds').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'sheds'),
+        createAsyncQuery(() => freshClient.from('flocks').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'flocks'),
+        createAsyncQuery(() => freshClient.from('daily_records').select('*').eq('user_id', currentUserId).order('date', { ascending: true }), 'records'),
+        createAsyncQuery(() => freshClient.from('inventory').select('*').eq('user_id', currentUserId).order('last_updated', { ascending: false }), 'inventory'),
+        createAsyncQuery(() => freshClient.from('expenses').select('*').eq('user_id', currentUserId).order('date', { ascending: false }), 'expenses'),
+        createAsyncQuery(() => freshClient.from('sales').select('*').eq('user_id', currentUserId).order('date', { ascending: false }), 'sales'),
+        createAsyncQuery(() => freshClient.from('clients').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'clients'),
+        createAsyncQuery(() => freshClient.from('tasks').select('*').eq('user_id', currentUserId).order('due_date', { ascending: true }), 'tasks'),
+        createAsyncQuery(() => freshClient.from('feed_formulations').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'formulations')
       ]);
       
       console.log('[FarmContext] 🚨 CHECKPOINT: Promise.allSettled RETORNOU');
