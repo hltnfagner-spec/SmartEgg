@@ -413,18 +413,9 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           console.log('[FarmContext] Sessão detectada ao inicializar:', currentUserId);
           setUserId(currentUserId);
           
-          // Carregar dados do BD PRIMEIRO
-          console.log('[FarmContext] Carregando dados do BD...');
+          // Carregar dados do BD
+          console.log('[FarmContext] Carregando dados do BD para usuário:', currentUserId);
           await loadDataForUser(currentUserId);
-          
-          // DEPOIS limpar cache para evitar dados corrompidos
-          try {
-            localStorage.clear();
-            sessionStorage.clear();
-            console.log('[FarmContext] Cache local limpo após carregar dados');
-          } catch (error) {
-            console.error('[FarmContext] Erro ao limpar cache:', error);
-          }
         } else if (sessionError) {
           console.error('[FarmContext] Erro ao verificar sessão inicial:', sessionError);
         }
@@ -438,18 +429,20 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
       
-      console.log('[FarmContext] Auth state changed:', event, 'Session:', !!session);
+      console.log('[FarmContext] 🔔 Auth state changed:', event, 'Session:', !!session, 'User:', session?.user?.id);
       
       if (session) {
         const currentUserId = session.user.id;
+        console.log('[FarmContext] 👤 Definindo userId:', currentUserId);
         setUserId(currentUserId);
         
         // Garantir que usuário este salvo em user_contacts (apenas no primeiro cadastro)
         if (event === 'SIGNED_IN') {
+          console.log('[FarmContext] ✅ Evento SIGNED_IN detectado');
           try {
             await ensureUserInContacts(session.user);
           } catch (error) {
-            console.error('[FarmContext] Erro ao garantir usuário em contacts:', error);
+            console.error('[FarmContext] ❌ Erro ao garantir usuário em contacts:', error);
           }
           // Garantir que a URL esteja limpa e no dashboard após login
           const url = new URL(window.location.href);
@@ -457,10 +450,13 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           window.history.replaceState(null, '', url.toString());
         }
         
+        // Carregar dados para TODOS os eventos (SIGNED_IN, INITIAL_SESSION, etc)
+        console.log('[FarmContext] 📥 Carregando dados para evento:', event);
         await loadDataForUser(currentUserId);
+        console.log('[FarmContext] ✅ Dados carregados com sucesso');
       } else {
         // Usuário fez logout - limpar todos os dados
-        console.log('[FarmContext] Limpando dados após logout');
+        console.log('[FarmContext] 🚪 Limpando dados após logout');
         setUserId(null);
         setSheds([]);
         setFlocks([]);
