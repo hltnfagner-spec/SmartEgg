@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.14 - Single Load Per Session (No Duplicate Calls)";
+const FARM_CONTEXT_VERSION = "v1.0.15 - Detailed Query Logging";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -138,6 +138,36 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       // Carregar tudo em PARALELO para acelerar
       console.log('[FarmContext] 🚀 Carregando todas as tabelas em paralelo...');
       
+      // Criar queries individuais com log
+      console.log('[FarmContext] 📤 Iniciando query: sheds');
+      const shedsPromise = supabase.from('sheds').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true });
+      
+      console.log('[FarmContext] 📤 Iniciando query: flocks');
+      const flocksPromise = supabase.from('flocks').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true });
+      
+      console.log('[FarmContext] 📤 Iniciando query: daily_records');
+      const recordsPromise = supabase.from('daily_records').select('*').eq('user_id', currentUserId).order('date', { ascending: true });
+      
+      console.log('[FarmContext] 📤 Iniciando query: inventory');
+      const inventoryPromise = supabase.from('inventory').select('*').eq('user_id', currentUserId).order('last_updated', { ascending: false });
+      
+      console.log('[FarmContext] 📤 Iniciando query: expenses');
+      const expensesPromise = supabase.from('expenses').select('*').eq('user_id', currentUserId).order('date', { ascending: false });
+      
+      console.log('[FarmContext] 📤 Iniciando query: sales');
+      const salesPromise = supabase.from('sales').select('*').eq('user_id', currentUserId).order('date', { ascending: false });
+      
+      console.log('[FarmContext] 📤 Iniciando query: clients');
+      const clientsPromise = supabase.from('clients').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true });
+      
+      console.log('[FarmContext] 📤 Iniciando query: tasks');
+      const tasksPromise = supabase.from('tasks').select('*').eq('user_id', currentUserId).order('due_date', { ascending: true });
+      
+      console.log('[FarmContext] 📤 Iniciando query: feed_formulations');
+      const formulationsPromise = supabase.from('feed_formulations').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true });
+      
+      console.log('[FarmContext] ⏳ Aguardando Promise.allSettled...');
+      
       const [
         shedsResult,
         flocksResult,
@@ -149,19 +179,18 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         tasksResult,
         formulationsResult
       ] = await Promise.allSettled([
-        // Sheds (simples, sem abort)
-        supabase.from('sheds').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }),
-        
-        // Demais tabelas (simples, em paralelo)
-        supabase.from('flocks').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }),
-        supabase.from('daily_records').select('*').eq('user_id', currentUserId).order('date', { ascending: true }),
-        supabase.from('inventory').select('*').eq('user_id', currentUserId).order('last_updated', { ascending: false }),
-        supabase.from('expenses').select('*').eq('user_id', currentUserId).order('date', { ascending: false }),
-        supabase.from('sales').select('*').eq('user_id', currentUserId).order('date', { ascending: false }),
-        supabase.from('clients').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }),
-        supabase.from('tasks').select('*').eq('user_id', currentUserId).order('due_date', { ascending: true }),
-        supabase.from('feed_formulations').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true })
+        shedsPromise,
+        flocksPromise,
+        recordsPromise,
+        inventoryPromise,
+        expensesPromise,
+        salesPromise,
+        clientsPromise,
+        tasksPromise,
+        formulationsPromise
       ]);
+      
+      console.log('[FarmContext] ✅ Promise.allSettled completou!');
 
       // Verificação CRÍTICA: O usuário mudou durante a requisição? (Principal causa do problema)
       if (activeUserIdRef.current !== currentUserId) {
