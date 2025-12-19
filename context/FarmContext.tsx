@@ -399,23 +399,13 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           console.log('[FarmContext] Sessão detectada ao inicializar:', currentUserId);
           setUserId(currentUserId);
           
-          // Verificar integridade de dados antes de carregar
+          // Limpar localStorage e sessionStorage ao inicializar para evitar dados corrompidos
           try {
-            const { count } = await supabase
-              .from('sales')
-              .select('id', { count: 'exact', head: true })
-              .eq('user_id', currentUserId);
-            
-            const hasDataInDB = (count ?? 0) > 0;
-            
-            if (hasDataInDB) {
-              console.log('[FarmContext] Usuário tem dados no BD. Limpando cache local...');
-              // Limpar cache local para forçar recarregamento do BD
-              localStorage.clear();
-              sessionStorage.clear();
-            }
+            localStorage.clear();
+            sessionStorage.clear();
+            console.log('[FarmContext] Cache local limpo ao inicializar');
           } catch (error) {
-            console.error('[FarmContext] Erro ao verificar integridade de dados:', error);
+            console.error('[FarmContext] Erro ao limpar cache:', error);
           }
           
           await loadDataForUser(currentUserId);
@@ -474,36 +464,6 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     };
   }, []);
 
-  // Verificar integridade de dados periodicamente (a cada 30 segundos)
-  useEffect(() => {
-    if (!userId) return;
-    
-    const checkDataIntegrity = async () => {
-      try {
-        // Verificar se há dados no BD
-        const { count } = await supabase
-          .from('sales')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', userId);
-        
-        const hasDataInDB = (count ?? 0) > 0;
-        const hasDataInState = sales.length > 0;
-        
-        // Se há dados no BD mas não no estado, recarregar
-        if (hasDataInDB && !hasDataInState) {
-          console.warn('[FarmContext] Dados zerados detectados! Recarregando do BD...');
-          localStorage.clear();
-          sessionStorage.clear();
-          await loadDataForUser(userId);
-        }
-      } catch (error) {
-        console.error('[FarmContext] Erro ao verificar integridade de dados:', error);
-      }
-    };
-    
-    const interval = setInterval(checkDataIntegrity, 30000);
-    return () => clearInterval(interval);
-  }, [userId, sales.length, loadDataForUser]);
 
   // Sincronizar navegação com mudanças na URL
   useEffect(() => {
