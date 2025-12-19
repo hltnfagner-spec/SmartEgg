@@ -129,11 +129,28 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       
       // Carregar sheds
       console.log('[FarmContext] Carregando sheds...');
-      const { data: shedsData, error: shedsError } = await supabase
-        .from('sheds')
-        .select('*')
-        .eq('user_id', currentUserId)
-        .order('created_at', { ascending: true });
+      
+      let shedsData = null;
+      let shedsError = null;
+      
+      try {
+        const result = await Promise.race([
+          supabase
+            .from('sheds')
+            .select('*')
+            .eq('user_id', currentUserId)
+            .order('created_at', { ascending: true }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Query timeout')), 10000)
+          )
+        ]);
+        
+        shedsData = (result as any).data;
+        shedsError = (result as any).error;
+      } catch (err: any) {
+        console.error('[FarmContext] ⚠️ Erro ou timeout ao carregar sheds:', err);
+        shedsError = err;
+      }
 
       console.log('[FarmContext] 🔍 Query sheds retornou:', { hasData: !!shedsData, hasError: !!shedsError, dataLength: shedsData?.length });
 
