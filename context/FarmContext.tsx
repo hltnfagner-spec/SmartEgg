@@ -109,17 +109,17 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .eq('user_id', currentUserId)
         .order('created_at', { ascending: true });
 
-      if (!shedsError && shedsData) {
-        console.log('[FarmContext] ✓ Sheds carregados:', shedsData.length, 'registros');
-        const mappedSheds: Shed[] = shedsData.map((s: any) => ({
+      if (shedsError) {
+        console.error('[FarmContext] ✗ Erro ao carregar sheds:', shedsError.message, shedsError.code);
+      } else {
+        console.log('[FarmContext] ✓ Sheds carregados:', shedsData?.length ?? 0, 'registros');
+        const mappedSheds: Shed[] = (shedsData || []).map((s: any) => ({
           id: s.id,
           name: s.name,
           capacity: s.capacity,
           notes: s.notes ?? undefined,
         }));
         setSheds(mappedSheds);
-      } else if (shedsError) {
-        console.error('[FarmContext] ✗ Erro ao carregar sheds:', shedsError);
       }
 
       // Carregar flocks
