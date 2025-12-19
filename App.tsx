@@ -86,9 +86,14 @@ function App() {
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const typeParam = urlParams.get('type') || hashParams.get('type');
-    const accessTokenParam = urlParams.get('access_token') || hashParams.get('access_token');
-    const refreshTokenParam = urlParams.get('refresh_token') || hashParams.get('refresh_token');
-    return (accessTokenParam || refreshTokenParam) && typeParam === 'signup';
+    const tokenHashParam = urlParams.get('token_hash') || hashParams.get('token_hash');
+    const isConfirm = typeParam === 'email' && tokenHashParam;
+    
+    if (isConfirm) {
+      console.log('[App] Email confirmation route detected');
+    }
+    
+    return isConfirm;
   });
 
   // Navigation state is now managed in FarmContext

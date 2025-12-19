@@ -13,6 +13,10 @@ const EmailConfirm = () => {
   useEffect(() => {
     const handleEmailConfirmation = async () => {
       try {
+        console.log('[EmailConfirm] URL:', window.location.href);
+        console.log('[EmailConfirm] Search:', window.location.search);
+        console.log('[EmailConfirm] Hash:', window.location.hash);
+        
         // Safari pode ter problemas com URLSearchParams, tentar abordagem alternativa
         let urlParams: URLSearchParams;
         let searchSource = window.location.search;
@@ -20,6 +24,11 @@ const EmailConfirm = () => {
         // Tentar obter parâmetros do hash também (alguns clientes de email podem fazer isso)
         if (!searchSource && window.location.hash && window.location.hash.includes('?')) {
           searchSource = window.location.hash.split('?')[1];
+        }
+        
+        // Se ainda não temos search, tentar hash direto
+        if (!searchSource && window.location.hash) {
+          searchSource = window.location.hash.substring(1);
         }
         
         try {
@@ -45,8 +54,11 @@ const EmailConfirm = () => {
         const error_code = urlParams.get('error_code');
         const error_description = urlParams.get('error_description');
 
+        console.log('[EmailConfirm] Parsed params:', { token_hash: !!token_hash, type, error, error_code });
+
         // Se não encontrou parâmetros, mostrar mensagem de debug
         if (!token_hash && !type && !error) {
+          console.error('[EmailConfirm] Nenhum parâmetro encontrado na URL');
           setMessage('Link de confirmação inválido ou corrompido. Verifique se você copiou o link completo do email.');
           setIsSuccess(false);
           setLoading(false);
