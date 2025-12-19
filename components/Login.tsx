@@ -23,13 +23,26 @@ const Login: FC<LoginProps> = ({ onLogin, onSwitchToRegister, onSwitchToForgotPa
     setError('');
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       });
 
       if (signInError) {
+        // Verificar se o erro é por email não confirmado
+        if (signInError.message?.includes('Email not confirmed') || signInError.message?.includes('email_not_confirmed')) {
+          setError('Seu email ainda não foi confirmado. Verifique sua caixa de entrada e clique no link de confirmação enviado por email.');
+          setIsLoading(false);
+          return;
+        }
         setError('Email ou senha incorretos. Verifique suas credenciais ou tente novamente.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Verificar se o usuário confirmou o email
+      if (data.user && !data.user.email_confirmed_at) {
+        setError('Seu email ainda não foi confirmado. Verifique sua caixa de entrada e clique no link de confirmação enviado por email.');
         setIsLoading(false);
         return;
       }

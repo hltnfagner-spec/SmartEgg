@@ -111,20 +111,8 @@ const handleSubmit = async (e: FormEvent) => {
         return;
       }
 
-      // Após signup, tentar fazer login automático
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      });
-
-      if (signInError) {
-        // Se login falhar, mostrar mensagem para verificar email
-        setError('Conta criada! Verifique seu email para confirmar ou tente fazer login.');
-        setIsLoading(false);
-        return;
-      }
-
-      // Login automático bem sucedido
+      // Conta criada com sucesso - NÃO fazer login automático
+      // Usuário DEVE confirmar email antes de acessar o app
       setIsLoading(false);
       
       // Salvar dados na tabela user_contacts (apenas se não existir)
@@ -155,7 +143,21 @@ const handleSubmit = async (e: FormEvent) => {
         }
       }
       
-      onRegister();
+      // Mostrar mensagem de confirmação de email
+      setError('');
+      setFormData({
+        name: '',
+        farmName: '',
+        phone: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        agreeTerms: false
+      });
+      
+      // Mostrar sucesso e redirecionar para login
+      alert(`Conta criada com sucesso! Um email de confirmação foi enviado para ${formData.email}. Verifique sua caixa de entrada e clique no link para confirmar seu email antes de fazer login.`);
+      onSwitchToLogin();
     } catch (err) {
       console.error(err);
       setError('Erro ao criar conta. Tente novamente.');
