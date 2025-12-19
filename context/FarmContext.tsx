@@ -209,8 +209,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           id: s.id, name: s.name, capacity: s.capacity, notes: s.notes ?? undefined,
         }));
         setSheds(mappedSheds);
-      } else if (shedsResult.status === 'rejected' || shedsResult.value.error) {
-        console.error('[FarmContext] ✗ Erro ao carregar sheds:', shedsResult.reason || shedsResult.value.error);
+      } else if (shedsResult.status === 'rejected' || (shedsResult.status === 'fulfilled' && shedsResult.value.error)) {
+        console.error('[FarmContext] ✗ Erro ao carregar sheds:', shedsResult.status === 'rejected' ? shedsResult.reason : shedsResult.value.error);
       }
 
       // Flocks
