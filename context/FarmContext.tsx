@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.12 - Simplified (No AbortController)";
+const FARM_CONTEXT_VERSION = "v1.0.13 - Double Protection Against Multiple INITIAL_SESSION";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -131,6 +131,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
     try {
       isLoadingRef.current = true;
+      activeUserIdRef.current = currentUserId; // Definir imediatamente
       console.log('[FarmContext] 🚀 INICIANDO loadDataForUser para:', currentUserId);
       const startTime = Date.now();
       
@@ -162,17 +163,17 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         supabase.from('feed_formulations').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true })
       ]);
 
-      // Verificação de segurança: O usuário mudou durante a requisição?
+      // Verificação CRÍTICA: O usuário mudou durante a requisição? (Principal causa do problema)
       if (activeUserIdRef.current !== currentUserId) {
-         console.log('[FarmContext] 🛑 Usuário mudou durante carregamento. Abortando.');
+         console.log('[FarmContext] 🛑 Usuário mudou durante carregamento. Abortando para evitar sobrescrever dados.');
          return;
       }
 
       // Processar resultados e atualizar estado IMEDIATAMENTE
       console.log('[FarmContext] 📊 Processando resultados paralelos...');
 
-      // Sheds
-      if (shedsResult.status === 'fulfilled' && !shedsResult.value.error && shedsResult.value.data) {
+      // Sheds - VERIFICAÇÃO DUPLA antes de setar
+      if (shedsResult.status === 'fulfilled' && !shedsResult.value.error && shedsResult.value.data && activeUserIdRef.current === currentUserId) {
         console.log('[FarmContext] ✓ Sheds carregados:', shedsResult.value.data.length, 'registros');
         const mappedSheds: Shed[] = shedsResult.value.data.map((s: any) => ({
           id: s.id, name: s.name, capacity: s.capacity, notes: s.notes ?? undefined,
@@ -182,8 +183,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         console.error('[FarmContext] ✗ Erro ao carregar sheds:', shedsResult.status === 'rejected' ? shedsResult.reason : shedsResult.value.error);
       }
 
-      // Flocks
-      if (flocksResult.status === 'fulfilled' && !flocksResult.value.error && flocksResult.value.data) {
+      // Flocks - VERIFICAÇÃO DUPLA
+      if (flocksResult.status === 'fulfilled' && !flocksResult.value.error && flocksResult.value.data && activeUserIdRef.current === currentUserId) {
         console.log('[FarmContext] ✓ Flocks carregados:', flocksResult.value.data.length, 'registros');
         const mappedFlocks: Flock[] = flocksResult.value.data.map((f: any) => ({
           id: f.id, shedId: f.shed_id, name: f.name, breed: f.breed, birthDate: f.birth_date,
@@ -193,8 +194,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setFlocks(mappedFlocks);
       }
 
-      // Records
-      if (recordsResult.status === 'fulfilled' && !recordsResult.value.error && recordsResult.value.data) {
+      // Records - VERIFICAÇÃO DUPLA
+      if (recordsResult.status === 'fulfilled' && !recordsResult.value.error && recordsResult.value.data && activeUserIdRef.current === currentUserId) {
         console.log('[FarmContext] ✓ Registros diários carregados:', recordsResult.value.data.length, 'registros');
         const mappedRecords: DailyRecord[] = recordsResult.value.data.map((r: any) => ({
           id: r.id, flockId: r.flock_id, date: r.date, eggsCollected: r.eggs_collected,
@@ -204,8 +205,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setRecords(mappedRecords);
       }
 
-      // Inventory
-      if (inventoryResult.status === 'fulfilled' && !inventoryResult.value.error && inventoryResult.value.data) {
+      // Inventory - VERIFICAÇÃO DUPLA
+      if (inventoryResult.status === 'fulfilled' && !inventoryResult.value.error && inventoryResult.value.data && activeUserIdRef.current === currentUserId) {
         console.log('[FarmContext] ✓ Estoque carregado:', inventoryResult.value.data.length, 'registros');
         const mappedInventory: InventoryItem[] = inventoryResult.value.data.map((i: any) => ({
           id: i.id, name: i.name, category: i.category, quantity: parseFloat(i.quantity),
@@ -215,8 +216,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setInventory(mappedInventory);
       }
 
-      // Expenses
-      if (expensesResult.status === 'fulfilled' && !expensesResult.value.error && expensesResult.value.data) {
+      // Expenses - VERIFICAÇÃO DUPLA
+      if (expensesResult.status === 'fulfilled' && !expensesResult.value.error && expensesResult.value.data && activeUserIdRef.current === currentUserId) {
         console.log('[FarmContext] ✓ Despesas carregadas:', expensesResult.value.data.length, 'registros');
         const mappedExpenses: Expense[] = expensesResult.value.data.map((e: any) => ({
           id: e.id, flockId: e.flock_id, date: e.date, description: e.description,
@@ -225,8 +226,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setExpenses(mappedExpenses);
       }
 
-      // Sales
-      if (salesResult.status === 'fulfilled' && !salesResult.value.error && salesResult.value.data) {
+      // Sales - VERIFICAÇÃO DUPLA
+      if (salesResult.status === 'fulfilled' && !salesResult.value.error && salesResult.value.data && activeUserIdRef.current === currentUserId) {
         console.log('[FarmContext] ✓ Vendas carregadas:', salesResult.value.data.length, 'registros');
         const mappedSales: Sale[] = salesResult.value.data.map((s: any, index: number) => ({
           id: s.id, saleNumber: s.sale_number || index + 1, flockId: s.flock_id, clientId: s.client_id,
@@ -240,8 +241,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setSales(mappedSales);
       }
 
-      // Clients
-      if (clientsResult.status === 'fulfilled' && !clientsResult.value.error && clientsResult.value.data) {
+      // Clients - VERIFICAÇÃO DUPLA
+      if (clientsResult.status === 'fulfilled' && !clientsResult.value.error && clientsResult.value.data && activeUserIdRef.current === currentUserId) {
         console.log('[FarmContext] ✓ Clientes carregados:', clientsResult.value.data.length, 'registros');
         const mappedClients: Client[] = clientsResult.value.data.map((c: any) => ({
           id: c.id, name: c.name, phone: c.phone, email: c.email,
@@ -250,8 +251,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setClients(mappedClients);
       }
 
-      // Tasks
-      if (tasksResult.status === 'fulfilled' && !tasksResult.value.error && tasksResult.value.data) {
+      // Tasks - VERIFICAÇÃO DUPLA
+      if (tasksResult.status === 'fulfilled' && !tasksResult.value.error && tasksResult.value.data && activeUserIdRef.current === currentUserId) {
         console.log('[FarmContext] ✓ Tarefas carregadas:', tasksResult.value.data.length, 'registros');
         const mappedTasks: FlockTask[] = tasksResult.value.data.map((t: any) => ({
           id: t.id, flockId: t.flock_id, taskType: t.task_type, dueDate: t.due_date,
@@ -260,8 +261,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setTasks(mappedTasks);
       }
 
-      // Formulations
-      if (formulationsResult.status === 'fulfilled' && !formulationsResult.value.error && formulationsResult.value.data) {
+      // Formulations - VERIFICAÇÃO DUPLA
+      if (formulationsResult.status === 'fulfilled' && !formulationsResult.value.error && formulationsResult.value.data && activeUserIdRef.current === currentUserId) {
         console.log('[FarmContext] ✓ Formulações carregadas:', formulationsResult.value.data.length, 'registros');
         const mappedFormulations: FeedFormulation[] = formulationsResult.value.data.map((f: any) => {
           const formData = f.data || {};
