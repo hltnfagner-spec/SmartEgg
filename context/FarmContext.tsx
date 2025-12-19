@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.21 - Wait for Session Ready";
+const FARM_CONTEXT_VERSION = "v1.0.22 - 500ms Delay + Timeout Protection";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -135,33 +135,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       console.log('[FarmContext] 🚀 INICIANDO loadDataForUser para:', currentUserId);
       const startTime = Date.now();
       
-      // CRÍTICO: Aguardar sessão estar pronta antes de fazer queries
-      console.log('[FarmContext] ⏸️ Aguardando sessão Supabase estar pronta...');
-      let sessionReady = false;
-      let attempts = 0;
-      
-      while (!sessionReady && attempts < 10) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session && session.access_token) {
-            sessionReady = true;
-            console.log('[FarmContext] ✅ Sessão Supabase pronta');
-          } else {
-            console.log('[FarmContext] ⏳ Sessão ainda não pronta, tentativa', attempts + 1);
-            await new Promise(resolve => setTimeout(resolve, 200));
-            attempts++;
-          }
-        } catch (error) {
-          console.error('[FarmContext] ❌ Erro ao verificar sessão:', error);
-          await new Promise(resolve => setTimeout(resolve, 200));
-          attempts++;
-        }
-      }
-      
-      if (!sessionReady) {
-        console.error('[FarmContext] ❌ Sessão não ficou pronta após 10 tentativas');
-        return;
-      }
+      // CRÍTICO: Delay fixo de 500ms para garantir estabilidade do cliente no Chrome/Edge
+      // Removemos o loop de verificação de sessão pois ele estava travando o JS
+      console.log('[FarmContext] ⏸️ Aguardando 500ms para estabilizar cliente Supabase...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('[FarmContext] ✅ Delay concluído, iniciando queries...');
       
       // Carregar tudo em PARALELO para acelerar
       console.log('[FarmContext] 🚀 Carregando todas as tabelas em paralelo...');
@@ -172,7 +150,15 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           setTimeout(async () => {
             try {
               console.log(`[FarmContext] 📤 Executando query: ${name}`);
-              const result = await queryFn();
+              
+              // Race entre query e timeout de 5s para não travar indefinidamente
+              const result = await Promise.race([
+                queryFn(),
+                new Promise((_, reject) => 
+                  setTimeout(() => reject(new Error(`Timeout: ${name}`)), 5000)
+                )
+              ]);
+              
               console.log(`[FarmContext] ✅ Query ${name} completou`);
               resolve(result);
             } catch (error) {
