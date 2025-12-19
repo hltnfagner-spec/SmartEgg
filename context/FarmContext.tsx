@@ -99,6 +99,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Função auxiliar para carregar sheds, flocks, registros diários, estoque e despesas para um usuário específico
   const loadDataForUser = useCallback(async (currentUserId: string) => {
     try {
+      console.log('[FarmContext] Iniciando carregamento de dados para usuário:', currentUserId);
+      
       // Carregar sheds
       const { data: shedsData, error: shedsError } = await supabase
         .from('sheds')
@@ -107,6 +109,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .order('created_at', { ascending: true });
 
       if (!shedsError && shedsData) {
+        console.log('[FarmContext] Sheds carregados:', shedsData.length);
         const mappedSheds: Shed[] = shedsData.map((s: any) => ({
           id: s.id,
           name: s.name,
@@ -218,6 +221,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .order('date', { ascending: false });
 
       if (!salesError && salesData) {
+        console.log('[FarmContext] Vendas carregadas:', salesData.length);
         const mappedSales: Sale[] = salesData.map((s: any, index: number) => ({
           id: s.id,
           saleNumber: s.sale_number || index + 1,
@@ -249,6 +253,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .order('created_at', { ascending: true });
 
       if (!clientsError && clientsData) {
+        console.log('[FarmContext] Clientes carregados:', clientsData.length);
         const mappedClients: Client[] = clientsData.map((c: any) => ({
           id: c.id,
           name: c.name,
@@ -271,6 +276,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .order('due_date', { ascending: true });
 
       if (!tasksError && tasksData) {
+        console.log('[FarmContext] Tarefas carregadas:', tasksData.length);
         const mappedTasks: FlockTask[] = tasksData.map((t: any) => ({
           id: t.id,
           flockId: t.flock_id,
@@ -292,6 +298,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .order('created_at', { ascending: true });
 
       if (!formulationsError && formulationsData) {
+        console.log('[FarmContext] Formulações carregadas:', formulationsData.length);
         const mappedFormulations: FeedFormulation[] = formulationsData.map((f: any) => {
           // A formulação está armazenada no campo 'data' como JSON
           const formData = f.data || {};
@@ -379,25 +386,45 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   // Carrega dados iniciais e reage a mudanças de autenticação do Supabase
   useEffect(() => {
+    let isMounted = true;
+    
     const init = async () => {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (!sessionError && sessionData.session) {
-        const currentUserId = sessionData.session.user.id;
-        setUserId(currentUserId);
-        await loadDataForUser(currentUserId);
+      try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+        
+        if (!sessionError && sessionData.session) {
+          const currentUserId = sessionData.session.user.id;
+          console.log('[FarmContext] Sessão detectada ao inicializar:', currentUserId);
+          setUserId(currentUserId);
+          await loadDataForUser(currentUserId);
+        } else if (sessionError) {
+          console.error('[FarmContext] Erro ao verificar sessão inicial:', sessionError);
+        }
+      } catch (error) {
+        console.error('[FarmContext] Erro na inicialização:', error);
       }
     };
 
     init();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+      
+      console.log('[FarmContext] Auth state changed:', event, 'Session:', !!session);
+      
       if (session) {
         const currentUserId = session.user.id;
         setUserId(currentUserId);
         
         // Garantir que usuário este salvo em user_contacts (apenas no primeiro cadastro)
         if (event === 'SIGNED_IN') {
-          await ensureUserInContacts(session.user);
+          try {
+            await ensureUserInContacts(session.user);
+          } catch (error) {
+            console.error('[FarmContext] Erro ao garantir usuário em contacts:', error);
+          }
           // Garantir que a URL esteja limpa e no dashboard após login
           const url = new URL(window.location.href);
           url.searchParams.set('view', 'dashboard');
@@ -407,6 +434,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         await loadDataForUser(currentUserId);
       } else {
         // Usuário fez logout - limpar todos os dados
+        console.log('[FarmContext] Limpando dados após logout');
         setUserId(null);
         setSheds([]);
         setFlocks([]);
@@ -421,9 +449,10 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     });
 
     return () => {
+      isMounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, [loadDataForUser, ensureUserInContacts]);
+  }, []);
 
   // Sincronizar navegação com mudanças na URL
   useEffect(() => {

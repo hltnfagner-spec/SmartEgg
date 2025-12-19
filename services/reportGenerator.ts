@@ -1,5 +1,5 @@
 
-import { DailyRecord, Expense, Flock, Sale } from '../types';
+import { DailyRecord, Expense, Flock, Sale, Client } from '../types';
 
 // Declaração para acessar o jsPDF carregado via CDN (UMD global)
 declare const jspdf: any;
@@ -322,9 +322,19 @@ export const generateProductionReport = (
     doc.save(`Producao_${endDate}.pdf`);
 };
 
+type ClientReportSummary = {
+    client: Client;
+    totalSpent: number;
+    totalQuantity: number;
+    saleCount: number;
+    lastPurchase: string | null;
+    avgTicket: number;
+};
+
 export const generateFinancialReport = (
     expenses: Expense[],
     sales: Sale[],
+    clientSummaries: ClientReportSummary[] = [],
     flocks: Flock[],
     flockName: string,
     startDate: string,

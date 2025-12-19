@@ -2,7 +2,7 @@ import { useState, FC, useMemo, useCallback, useEffect } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { generateProductionReport, generateFinancialReport } from '../services/reportGenerator.ts';
 import { ReportIcon } from './icons';
-import { DailyRecord, Expense, Sale } from '../types';
+import { DailyRecord, Expense, Sale, Client } from '../types';
 
 type ReportType = 'production' | 'financial' | 'eggs' | 'sales' | 'expenses' | 'posture' | 'clients';
 
@@ -60,15 +60,26 @@ type PostureReportData = {
 type ClientsReportData = {
 	type: 'clients';
 	sales: Sale[];
+	clients: Client[];
 	flockName: string;
 	startDate: string;
 	endDate: string;
 };
 
+type ClientSummary = {
+	client: Client;
+	sales: Sale[];
+	totalSpent: number;
+	totalQuantity: number;
+	saleCount: number;
+	lastPurchase: string | null;
+	avgTicket: number;
+};
+
 type ReportData = ProductionReportData | FinancialReportData | EggsReportData | SalesReportData | ExpensesReportData | PostureReportData | ClientsReportData | null;
 
 const Reports: FC = () => {
-	const { flocks, records, expenses, sales } = useFarm();
+	const { flocks, records, expenses, sales, clients } = useFarm();
 	const [reportType, setReportType] = useState<ReportType | null>(null);
 	const [periodType, setPeriodType] = useState<PeriodType>('monthly');
 	
@@ -137,6 +148,8 @@ const Reports: FC = () => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [message, setMessage] = useState('');
 	const [reportData, setReportData] = useState<ReportData>(null);
+	const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+	const [clientSearch, setClientSearch] = useState('');
 
 	const selectedFlockName = useMemo(
 		() => (selectedFlockId === 'all'
@@ -149,6 +162,7 @@ const Reports: FC = () => {
 		setIsLoading(true);
 		setMessage('');
 		setReportData(null);
+		setSelectedClientId(null);
 
 		try {
 			if (type === 'production' || type === 'eggs' || type === 'posture') {
@@ -237,11 +251,12 @@ const Reports: FC = () => {
 					setReportData({
 						type: 'clients',
 						sales: filteredSales,
+						clients,
 						flockName: selectedFlockName,
 						startDate,
 						endDate,
 					});
-					setMessage('Relatório de Clientes gerado. Você pode visualizar na tela, imprimir ou baixar o PDF.');
+					setMessage('Relatório de Clientes gerado. Selecione um cliente para visualizar o histórico completo.');
 				}
 			}
 		} catch (error: any) {
@@ -261,6 +276,59 @@ const Reports: FC = () => {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [selectedFlockId]);
 
+	const clientSummaries = useMemo<ClientSummary[]>(() => {
+		if (!reportData || reportData.type !== 'clients') return [];
+
+		return reportData.clients.map(client => {
+			const clientSales = reportData.sales.filter(s => s.clientId === client.id);
+			const totalSpent = clientSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+			const totalQuantity = clientSales.reduce((sum, sale) => sum + sale.quantity, 0);
+			const saleCount = clientSales.length;
+			const lastPurchase = saleCount > 0
+				? clientSales.reduce((latest, sale) => (sale.date > latest ? sale.date : latest), clientSales[0].date)
+				: null;
+			const avgTicket = saleCount > 0 ? totalSpent / saleCount : 0;
+
+			return {
+				client,
+				sales: clientSales.sort((a, b) => b.date.localeCompare(a.date)),
+				totalSpent,
+				totalQuantity,
+				saleCount,
+				lastPurchase,
+				avgTicket,
+			};
+		});
+	}, [reportData]);
+
+		useEffect(() => {
+		if (!reportData || reportData.type !== 'clients') {
+			setSelectedClientId(null);
+			return;
+		}
+
+		if (selectedClientId && clientSummaries.some(summary => summary.client.id === selectedClientId)) {
+			return;
+		}
+
+		setSelectedClientId(null);
+	}, [reportData, clientSummaries, selectedClientId]);
+
+	const filteredClientSummaries = useMemo(() => {
+		if (!clientSummaries.length) return [];
+		const term = clientSearch.trim().toLowerCase();
+		if (!term) return [];
+
+		return clientSummaries.filter(summary => {
+			const { name, email, phone } = summary.client;
+			return (
+				name.toLowerCase().includes(term) ||
+				(email ? email.toLowerCase().includes(term) : false) ||
+				(phone ? phone.toLowerCase().includes(term) : false)
+			);
+		});
+	}, [clientSummaries, clientSearch]);
+
 	const handleDownloadPdf = () => {
 		if (!reportData) return;
 
@@ -277,6 +345,7 @@ const Reports: FC = () => {
 			generateFinancialReport(
 				(reportData.type === 'financial' ? reportData.expenses : []),
 				(reportData.type === 'financial' ? reportData.sales : reportData.type === 'sales' || reportData.type === 'clients' ? reportData.sales : []),
+				(reportData.type === 'clients' ? clientSummaries : []),
 				flocks,
 				reportData.flockName,
 				reportData.startDate,
@@ -765,7 +834,7 @@ const Reports: FC = () => {
                         </table>
                     </div>
                 </div>
-            )}
+            			)}
 
             {reportData && reportData.type === 'clients' && (
                 <div className="bg-white p-6 rounded-xl shadow-md space-y-4 print:bg-white print:shadow-none">
@@ -775,80 +844,224 @@ const Reports: FC = () => {
                     </p>
 
                     {(() => {
-                        const totalRevenue = reportData.sales.reduce((sum, s) => sum + s.totalAmount, 0);
-                        const totalQuantity = reportData.sales.reduce((sum, s) => sum + s.quantity, 0);
+                        const totalRevenue = clientSummaries.reduce((sum, s) => sum + s.totalSpent, 0);
+                        const totalQuantity = clientSummaries.reduce((sum, s) => sum + s.totalQuantity, 0);
                         const avgTicket = reportData.sales.length > 0 ? totalRevenue / reportData.sales.length : 0;
-
-                        // Agrupar vendas por cliente (assumindo que existe um campo clientName)
-                        const salesByClient = reportData.sales.reduce((acc, s) => {
-                            const clientName = (s as any).clientName || 'Cliente Não Informado';
-                            if (!acc[clientName]) {
-                                acc[clientName] = { sales: 0, revenue: 0, quantity: 0 };
-                            }
-                            acc[clientName].sales += 1;
-                            acc[clientName].revenue += s.totalAmount;
-                            acc[clientName].quantity += s.quantity;
-                            return acc;
-                        }, {} as Record<string, { sales: number; revenue: number; quantity: number }>);
+                        const activeClients = clientSummaries.filter(s => s.saleCount > 0).length;
+                        const totalClients = clientSummaries.length;
 
                         return (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 text-sm">
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                                     <p className="text-xs font-semibold text-green-700 uppercase">Receita Total</p>
-                                    <p className="mt-1 text-lg font-bold text-stone-800">
+                                    <p className="mt-1 text-2xl font-bold text-stone-800">
                                         {totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                     </p>
+                                    <p className="text-xs text-stone-500">Somente no período filtrado</p>
                                 </div>
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                                     <p className="text-xs font-semibold text-blue-700 uppercase">Clientes Ativos</p>
-                                    <p className="mt-1 text-lg font-bold text-stone-800">
-                                        {Object.keys(salesByClient).length} clientes
-                                    </p>
+                                    <p className="mt-1 text-2xl font-bold text-stone-800">{activeClients}</p>
+                                    <p className="text-xs text-stone-500">{totalClients} cadastrados</p>
                                 </div>
-                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                                     <p className="text-xs font-semibold text-amber-700 uppercase">Ticket Médio</p>
-                                    <p className="mt-1 text-lg font-bold text-stone-800">
+                                    <p className="mt-1 text-2xl font-bold text-stone-800">
                                         {avgTicket.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                     </p>
+                                    <p className="text-xs text-stone-500">Baseado em {reportData.sales.length} vendas</p>
+                                </div>
+                                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                    <p className="text-xs font-semibold text-purple-700 uppercase">Volume Vendido</p>
+                                    <p className="mt-1 text-2xl font-bold text-stone-800">{totalQuantity.toLocaleString('pt-BR')} un</p>
+                                    <p className="text-xs text-stone-500">Quantidade total no período</p>
                                 </div>
                             </div>
                         );
                     })()}
 
-                    <div>
-                        <h3 className="text-sm font-semibold text-stone-700 mb-2">Vendas por Cliente</h3>
-                        {reportData.sales.length === 0 ? (
-                            <p className="text-xs text-stone-500">Nenhuma venda no período.</p>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left text-stone-600 border-collapse">
-                                    <thead className="bg-stone-50 text-xs uppercase text-stone-500 border-b">
-                                        <tr>
-                                            <th className="px-3 py-2">Data</th>
-                                            <th className="px-3 py-2">Cliente</th>
-                                            <th className="px-3 py-2">Produto</th>
-                                            <th className="px-3 py-2 text-right">Qtd</th>
-                                            <th className="px-3 py-2 text-right">Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {reportData.sales.map(s => (
-                                            <tr key={s.id} className="border-b last:border-0 hover:bg-stone-50">
-                                                <td className="px-3 py-2">
-                                                    {new Date(s.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
-                                                </td>
-                                                <td className="px-3 py-2">{(s as any).clientName || 'Não informado'}</td>
-                                                <td className="px-3 py-2">{s.productType || 'Ovos'}</td>
-                                                <td className="px-3 py-2 text-right">{s.quantity}</td>
-                                                <td className="px-3 py-2 text-right font-medium">
-                                                    {s.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                    <div className="space-y-4">
+                        <div className="border border-stone-100 rounded-xl p-4 bg-stone-50/30">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-semibold text-stone-700">Buscar cliente</h3>
+                                <span className="text-xs text-stone-500">{clientSummaries.length} cadastrados</span>
                             </div>
-                        )}
+                            <p className="text-xs text-stone-500 mt-1">Digite nome, e-mail ou telefone para localizar o cliente desejado.</p>
+
+                            <div className="mt-3">
+                                <label className="sr-only" htmlFor="client-search">Buscar cliente</label>
+                                <div className="relative">
+                                    <span className="absolute inset-y-0 left-3 flex items-center text-stone-400 text-sm">🔍</span>
+                                    <input
+                                        id="client-search"
+                                        type="text"
+                                        placeholder="Ex: Maria, (11) 99999-9999, vendas@email.com"
+                                        value={clientSearch}
+                                        onChange={e => {
+                                            setClientSearch(e.target.value);
+                                            if (!e.target.value) {
+                                                setSelectedClientId(null);
+                                            }
+                                        }}
+                                        className="w-full border border-stone-200 rounded-lg py-2 pl-9 pr-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-300 transition"
+                                    />
+                                </div>
+                            </div>
+
+                            {clientSearch && (
+                                <div className="mt-3 max-h-64 overflow-y-auto pr-1">
+                                    {filteredClientSummaries.length === 0 ? (
+                                        <p className="text-xs text-stone-500">Nenhum cliente encontrado para “{clientSearch}”.</p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {filteredClientSummaries.map(summary => (
+                                                <button
+                                                    key={summary.client.id}
+                                                    onClick={() => {
+                                                        setSelectedClientId(summary.client.id);
+                                                    }}
+                                                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                                                        selectedClientId === summary.client.id
+                                                            ? 'border-amber-300 bg-amber-50'
+                                                            : 'border-stone-100 bg-white hover:border-amber-200'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <p className="font-semibold text-stone-800 truncate">{summary.client.name}</p>
+                                                        <span className={`text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full font-semibold ${
+                                                            summary.client.type === 'Atacado'
+                                                                ? 'bg-blue-50 text-blue-600'
+                                                                : 'bg-green-50 text-green-600'
+                                                        }`}>
+                                                            {summary.client.type}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-xs text-stone-500">
+                                                        <span>{summary.saleCount} compras</span>
+                                                        <span>{summary.totalSpent.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                                    </div>
+                                                    <div className="text-[11px] text-stone-400 mt-1">
+                                                        Última compra:{' '}
+                                                        {summary.lastPurchase
+                                                            ? new Date(summary.lastPurchase).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+                                                            : 'Sem histórico'}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="border border-stone-100 rounded-xl p-4 bg-white shadow-sm">
+                            {!selectedClientId ? (
+                                <div className="h-full flex items-center justify-center text-sm text-stone-500 min-h-[280px]">
+                                    {clientSummaries.length === 0
+                                        ? 'Cadastre clientes para visualizar detalhes.'
+                                        : 'Selecione um cliente ao lado para ver o histórico.'}
+                                </div>
+                            ) : (
+                                (() => {
+                                    const selectedSummary = clientSummaries.find(summary => summary.client.id === selectedClientId);
+                                    if (!selectedSummary) {
+                                        return (
+                                            <div className="h-full flex items-center justify-center text-sm text-stone-500 min-h-[280px]">
+                                                Cliente não encontrado.
+                                            </div>
+                                        );
+                                    }
+
+                                    const { client, sales: clientSales, totalSpent, totalQuantity, saleCount, avgTicket, lastPurchase } = selectedSummary;
+
+                                    return (
+                                        <div className="space-y-4">
+                                            <div>
+                                                <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Cliente selecionado</p>
+                                                <h3 className="text-2xl font-bold text-stone-900">{client.name}</h3>
+                                                <p className="text-sm text-stone-500">
+                                                    {client.city ? `${client.city}${client.state ? ` - ${client.state}` : ''}` : client.address || 'Endereço não informado'}
+                                                </p>
+                                                <div className="flex flex-wrap gap-4 text-xs text-stone-500 mt-2">
+                                                    {client.phone && <span>📞 {client.phone}</span>}
+                                                    {client.email && <span>✉️ {client.email}</span>}
+                                                    {client.notes && <span className="truncate max-w-full">📝 {client.notes}</span>}
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                                <div className="bg-stone-50 rounded-lg p-3 border border-stone-100">
+                                                    <p className="text-[11px] text-stone-500 uppercase">Compras</p>
+                                                    <p className="text-lg font-semibold text-stone-900">{saleCount}</p>
+                                                </div>
+                                                <div className="bg-stone-50 rounded-lg p-3 border border-stone-100">
+                                                    <p className="text-[11px] text-stone-500 uppercase">Total gasto</p>
+                                                    <p className="text-lg font-semibold text-stone-900">
+                                                        {totalSpent.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                    </p>
+                                                </div>
+                                                <div className="bg-stone-50 rounded-lg p-3 border border-stone-100">
+                                                    <p className="text-[11px] text-stone-500 uppercase">Qtd comprada</p>
+                                                    <p className="text-lg font-semibold text-stone-900">{totalQuantity.toLocaleString('pt-BR')} un</p>
+                                                </div>
+                                                <div className="bg-stone-50 rounded-lg p-3 border border-stone-100">
+                                                    <p className="text-[11px] text-stone-500 uppercase">Ticket médio</p>
+                                                    <p className="text-lg font-semibold text-stone-900">
+                                                        {avgTicket.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                       			        {clientSales.length === 0 ? (
+                                                <div className="text-sm text-stone-500 bg-stone-50 border border-dashed border-stone-200 rounded-lg p-4">
+                                                    Este cliente não possui compras no período selecionado.
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <h4 className="text-sm font-semibold text-stone-700">Histórico de Compras</h4>
+                                                        <p className="text-xs text-stone-400">
+                                                            Última compra:{' '}
+                                                            {lastPurchase
+                                                                ? new Date(lastPurchase).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+                                                                : 'N/A'}
+                                                        </p>
+                                                    </div>
+                                                    <div className="overflow-x-auto">
+                                                        <table className="w-full text-sm text-left text-stone-600 border-collapse">
+                                                            <thead className="bg-stone-50 text-xs uppercase text-stone-500 border-b">
+                                                                <tr>
+                                                                    <th className="px-3 py-2">Data</th>
+                                                                    <th className="px-3 py-2">Produto</th>
+                                                                    <th className="px-3 py-2">Tipo</th>
+                                                                    <th className="px-3 py-2 text-right">Qtd</th>
+                                                                    <th className="px-3 py-2 text-right">Valor</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {clientSales.map(s => (
+                                                                    <tr key={s.id} className="border-b last:border-0 hover:bg-stone-50">
+                                                                        <td className="px-3 py-2">
+                                                                            {new Date(s.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                                                                        </td>
+                                                                        <td className="px-3 py-2">{s.productType || 'Ovos'}</td>
+                                                                        <td className="px-3 py-2">{s.saleType}</td>
+                                                                        <td className="px-3 py-2 text-right">{s.quantity}</td>
+                                                                        <td className="px-3 py-2 text-right font-medium">
+                                                                            {s.totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
