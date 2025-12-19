@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.8 - Add AbortController for Query Cancellation";
+const FARM_CONTEXT_VERSION = "v1.0.9 - Add Auto-Retry for Chrome/Edge Query Timeout";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -172,8 +172,27 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           console.log('[FarmContext] 🛑 Query sheds foi abortada');
           return;
         }
-        console.error('[FarmContext] ⚠️ Erro ou timeout ao carregar sheds:', err);
-        shedsError = err;
+        if (err.message === 'Query timeout') {
+          console.error('[FarmContext] ⏰ Query timeout no Chrome/Edge - tentando novamente...');
+          // Retry automático para Chrome/Edge
+          try {
+            const retryResult = await supabase
+              .from('sheds')
+              .select('*')
+              .eq('user_id', currentUserId)
+              .order('created_at', { ascending: true });
+            
+            shedsData = retryResult.data;
+            shedsError = retryResult.error;
+            console.log('[FarmContext] 🔄 Retry bem-sucedido!');
+          } catch (retryErr: any) {
+            console.error('[FarmContext] ❌ Retry também falhou:', retryErr);
+            shedsError = retryErr;
+          }
+        } else {
+          console.error('[FarmContext] ⚠️ Erro ou timeout ao carregar sheds:', err);
+          shedsError = err;
+        }
       }
 
       console.log('[FarmContext] 🔍 Query sheds retornou:', { hasData: !!shedsData, hasError: !!shedsError, dataLength: shedsData?.length });
