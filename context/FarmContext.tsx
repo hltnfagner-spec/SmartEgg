@@ -403,6 +403,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Carrega dados iniciais e reage a mudanças de autenticação do Supabase
   useEffect(() => {
     let isMounted = true;
+    let isLoadingData = false;
     
     const init = async () => {
       try {
@@ -417,7 +418,9 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           
           // Carregar dados do BD
           console.log('[FarmContext] Carregando dados do BD para usuário:', currentUserId);
+          isLoadingData = true;
           await loadDataForUser(currentUserId);
+          isLoadingData = false;
         } else if (sessionError) {
           console.error('[FarmContext] Erro ao verificar sessão inicial:', sessionError);
         }
@@ -452,14 +455,20 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           window.history.replaceState(null, '', url.toString());
         }
         
-        // Carregar dados para TODOS os eventos (SIGNED_IN, INITIAL_SESSION, etc)
-        console.log('[FarmContext] 📥 Carregando dados para evento:', event);
-        console.log('[FarmContext] 📥 Chamando loadDataForUser agora...');
-        try {
-          await loadDataForUser(currentUserId);
-          console.log('[FarmContext] ✅ Dados carregados com sucesso');
-        } catch (error) {
-          console.error('[FarmContext] ❌ Erro ao chamar loadDataForUser:', error);
+        // Carregar dados apenas se não estiver já carregando
+        if (!isLoadingData) {
+          console.log('[FarmContext] 📥 Carregando dados para evento:', event);
+          isLoadingData = true;
+          try {
+            await loadDataForUser(currentUserId);
+            console.log('[FarmContext] ✅ Dados carregados com sucesso');
+          } catch (error) {
+            console.error('[FarmContext] ❌ Erro ao chamar loadDataForUser:', error);
+          } finally {
+            isLoadingData = false;
+          }
+        } else {
+          console.log('[FarmContext] ⏭️ Pulando carregamento (já em progresso)');
         }
       } else {
         // Usuário fez logout - limpar todos os dados
