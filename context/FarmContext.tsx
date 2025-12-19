@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.5 - Fix Refresh Data Loss";
+const FARM_CONTEXT_VERSION = "v1.0.6 - Fix Non-blocking Contacts Check";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -462,15 +462,23 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         // Garantir que usuário este salvo em user_contacts (apenas no primeiro cadastro)
         if (event === 'SIGNED_IN') {
           console.log('[FarmContext] ✅ Evento SIGNED_IN detectado');
-          try {
-            await ensureUserInContacts(session.user);
-          } catch (error) {
-            console.error('[FarmContext] ❌ Erro ao garantir usuário em contacts:', error);
-          }
+          
+          // Executar em background para não bloquear o carregamento de dados
+          ensureUserInContacts(session.user).catch(err => {
+            console.error('[FarmContext] ❌ Erro em background ao garantir contacts:', err);
+          });
+
           // Garantir que a URL esteja limpa e no dashboard após login
-          const url = new URL(window.location.href);
-          url.searchParams.set('view', 'dashboard');
-          window.history.replaceState(null, '', url.toString());
+          try {
+            const url = new URL(window.location.href);
+            // Só alterar para dashboard se estivermos na raiz ou login, para não perder navegação
+            if (url.searchParams.get('view') === 'login' || !url.searchParams.get('view')) {
+               url.searchParams.set('view', 'dashboard');
+               window.history.replaceState(null, '', url.toString());
+            }
+          } catch (e) {
+            console.error('[FarmContext] Erro ao manipular URL:', e);
+          }
         }
         
         // Carregar dados apenas se não estiver já carregando
