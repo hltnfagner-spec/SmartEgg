@@ -66,7 +66,14 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
+const FARM_CONTEXT_VERSION = "v1.0.5 - Fix Refresh Data Loss";
+
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
+  // Log de versão para debug
+  useEffect(() => {
+    console.log(`[FarmContext] 🆕 Versão carregada: ${FARM_CONTEXT_VERSION}`);
+  }, []);
+
   // Navigation State
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [viewParams, setViewParams] = useState<Record<string, any>>({});
