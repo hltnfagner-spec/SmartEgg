@@ -135,6 +135,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         .eq('user_id', currentUserId)
         .order('created_at', { ascending: true });
 
+      console.log('[FarmContext] 🔍 Query sheds retornou:', { hasData: !!shedsData, hasError: !!shedsError, dataLength: shedsData?.length });
+
       // Verificação de segurança: O usuário mudou durante a requisição?
       if (activeUserIdRef.current !== currentUserId) {
          console.log('[FarmContext] 🛑 Usuário mudou durante carregamento de sheds. Abortando.');
