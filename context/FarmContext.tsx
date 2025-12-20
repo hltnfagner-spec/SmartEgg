@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.25 - Instant Fallback (200ms)";
+const FARM_CONTEXT_VERSION = "v1.0.26 - Race Mode (Zero Delay)";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -150,7 +150,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
       const supabaseKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
 
-      // Função híbrida: Tenta SDK -> Se demorar > 200ms -> Tenta Fetch direto
+      // Função híbrida: Dispara AMBOS (SDK e Fetch) simultaneamente. O primeiro a responder ganha.
+      // Isso elimina o delay de espera pelo timeout quando o SDK trava.
       interface QueryResult {
         data: any;
         error: any;
@@ -160,6 +161,15 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         return new Promise((resolve) => {
           let resolved = false;
           
+          // Helper para resolver apenas uma vez
+          const tryResolve = (source: string, result: any) => {
+            if (!resolved) {
+              resolved = true;
+              // console.log(`[FarmContext] 🏁 Vencedor da corrida (${table}): ${source}`);
+              resolve(result);
+            }
+          };
+
           // 1. Via SDK (Standard)
           const sdkPromise = supabase
             .from(table)
@@ -187,27 +197,22 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             }
           };
 
-          // Iniciar SDK
+          // Disparar AMBOS imediatamente (Corrida)
+          
+          // Pista 1: SDK
           sdkPromise.then(result => {
-            if (!resolved) {
-              resolved = true;
-              // console.log(`[FarmContext] ✅ SDK venceu: ${table}`);
-              resolve(result as any);
-            }
+            tryResolve('SDK', result as any);
           });
 
-          // Se SDK não responder em 200ms (antes 2000ms), tentar fetch
+          // Pista 2: Fetch Direto
+          // Pequeno delay de 10ms apenas para dar prioridade ao cache local do SDK se existir,
+          // mas imperceptível para o usuário.
           setTimeout(async () => {
-            if (!resolved) {
-              // console.log(`[FarmContext] ⚠️ SDK lento para ${table}, tentando Fetch direto...`);
-              const fetchResult = await fetchPromise();
-              if (fetchResult && !resolved) {
-                resolved = true;
-                console.log(`[FarmContext] 🚀 Fetch direto salvou: ${table}`);
-                resolve(fetchResult);
-              }
-            }
-          }, 200); // 200ms timeout para SDK (Otimizado para velocidade)
+             const result = await fetchPromise();
+             if (result) {
+               tryResolve('Fetch Direto', result);
+             }
+          }, 10);
         });
       };
       
