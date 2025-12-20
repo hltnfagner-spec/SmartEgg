@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.22 - 500ms Delay + Timeout Protection";
+const FARM_CONTEXT_VERSION = "v1.0.23 - Direct Fetch Fallback for Chrome/Edge Hangs";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -84,6 +84,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Ref para controlar race conditions de carregamento de usuário
   const activeUserIdRef = useRef<string | null>(null);
   const isLoadingRef = useRef<boolean>(false);
+  const accessTokenRef = useRef<string | null>(null); // Token para fetch direto
 
   const [sheds, setSheds] = useState<Shed[]>([]);
 
@@ -135,53 +136,95 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       console.log('[FarmContext] 🚀 INICIANDO loadDataForUser para:', currentUserId);
       const startTime = Date.now();
       
-      // CRÍTICO: Delay fixo de 500ms para garantir estabilidade do cliente no Chrome/Edge
-      // Removemos o loop de verificação de sessão pois ele estava travando o JS
-      console.log('[FarmContext] ⏸️ Aguardando 500ms para estabilizar cliente Supabase...');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      console.log('[FarmContext] ✅ Delay concluído, iniciando queries...');
+      // CRÍTICO: Obter token de acesso para fetch direto se necessário
+      console.log('[FarmContext] 🔑 Obtendo token para bypass SDK...');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        accessTokenRef.current = session.access_token;
+        console.log('[FarmContext] ✅ Token obtido');
+      } else {
+        console.warn('[FarmContext] ⚠️ Sem token disponível, fetch direto pode falhar');
+      }
       
-      // Carregar tudo em PARALELO para acelerar
-      console.log('[FarmContext] 🚀 Carregando todas as tabelas em paralelo...');
+      // Carregar tudo em PARALELO
+      console.log('[FarmContext] 🚀 Carregando tabelas (SDK + Fallback Fetch)...');
       
-      // Forçar execução assíncrona com setTimeout
-      const createAsyncQuery = (queryFn: () => any, name: string): Promise<any> => {
+      const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
+      const supabaseKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
+
+      // Função híbrida: Tenta SDK -> Se demorar > 2s -> Tenta Fetch direto
+      interface QueryResult {
+        data: any;
+        error: any;
+      }
+
+      const smartQuery = async (table: string, orderBy: string, ascending: boolean, mapper?: (data: any) => any): Promise<QueryResult> => {
         return new Promise((resolve) => {
-          setTimeout(async () => {
+          let resolved = false;
+          
+          // 1. Via SDK (Standard)
+          const sdkPromise = supabase
+            .from(table)
+            .select('*')
+            .eq('user_id', currentUserId)
+            .order(orderBy, { ascending });
+            
+          // 2. Via Fetch Direto (Bypass)
+          const fetchPromise = async (): Promise<QueryResult | null> => {
+            if (!accessTokenRef.current) return null;
             try {
-              console.log(`[FarmContext] 📤 Executando query: ${name}`);
-              
-              // Race entre query e timeout de 5s para não travar indefinidamente
-              const result = await Promise.race([
-                queryFn(),
-                new Promise((_, reject) => 
-                  setTimeout(() => reject(new Error(`Timeout: ${name}`)), 5000)
-                )
-              ]);
-              
-              console.log(`[FarmContext] ✅ Query ${name} completou`);
-              resolve(result);
-            } catch (error) {
-              console.error(`[FarmContext] ❌ Query ${name} falhou:`, error);
-              resolve({ data: null, error });
+              const url = `${supabaseUrl}/rest/v1/${table}?user_id=eq.${currentUserId}&select=*&order=${orderBy}.${ascending ? 'asc' : 'desc'}`;
+              const response = await fetch(url, {
+                headers: {
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${accessTokenRef.current}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+              if (!response.ok) throw new Error(response.statusText);
+              const data = await response.json();
+              return { data, error: null };
+            } catch (err) {
+              return { data: null, error: err };
             }
-          }, 0);
+          };
+
+          // Iniciar SDK
+          sdkPromise.then(result => {
+            if (!resolved) {
+              resolved = true;
+              console.log(`[FarmContext] ✅ SDK venceu: ${table}`);
+              resolve(result as any);
+            }
+          });
+
+          // Se SDK não responder em 2s, tentar fetch
+          setTimeout(async () => {
+            if (!resolved) {
+              console.log(`[FarmContext] ⚠️ SDK lento para ${table}, tentando Fetch direto...`);
+              const fetchResult = await fetchPromise();
+              if (fetchResult && !resolved) {
+                resolved = true;
+                console.log(`[FarmContext] 🚀 Fetch direto salvou: ${table}`);
+                resolve(fetchResult);
+              }
+            }
+          }, 2000); // 2s timeout para SDK
         });
       };
       
       console.log('[FarmContext] ⏳ Aguardando Promise.allSettled...');
-      console.log('[FarmContext] 🚨 CHECKPOINT: Prestes a chamar Promise.allSettled');
       
       const results = await Promise.allSettled([
-        createAsyncQuery(() => supabase.from('sheds').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'sheds'),
-        createAsyncQuery(() => supabase.from('flocks').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'flocks'),
-        createAsyncQuery(() => supabase.from('daily_records').select('*').eq('user_id', currentUserId).order('date', { ascending: true }), 'records'),
-        createAsyncQuery(() => supabase.from('inventory').select('*').eq('user_id', currentUserId).order('last_updated', { ascending: false }), 'inventory'),
-        createAsyncQuery(() => supabase.from('expenses').select('*').eq('user_id', currentUserId).order('date', { ascending: false }), 'expenses'),
-        createAsyncQuery(() => supabase.from('sales').select('*').eq('user_id', currentUserId).order('date', { ascending: false }), 'sales'),
-        createAsyncQuery(() => supabase.from('clients').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'clients'),
-        createAsyncQuery(() => supabase.from('tasks').select('*').eq('user_id', currentUserId).order('due_date', { ascending: true }), 'tasks'),
-        createAsyncQuery(() => supabase.from('feed_formulations').select('*').eq('user_id', currentUserId).order('created_at', { ascending: true }), 'formulations')
+        smartQuery('sheds', 'created_at', true),
+        smartQuery('flocks', 'created_at', true),
+        smartQuery('daily_records', 'date', true),
+        smartQuery('inventory', 'last_updated', false),
+        smartQuery('expenses', 'date', false),
+        smartQuery('sales', 'date', false),
+        smartQuery('clients', 'created_at', true),
+        smartQuery('tasks', 'due_date', true),
+        smartQuery('feed_formulations', 'created_at', true)
       ]);
       
       console.log('[FarmContext] 🚨 CHECKPOINT: Promise.allSettled RETORNOU');
@@ -208,21 +251,31 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       // Processar resultados e atualizar estado IMEDIATAMENTE
       console.log('[FarmContext] 📊 Processando resultados paralelos...');
 
-      // Sheds - VERIFICAÇÃO DUPLA antes de setar
-      if (shedsResult.status === 'fulfilled' && !shedsResult.value.error && shedsResult.value.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Sheds carregados:', shedsResult.value.data.length, 'registros');
-        const mappedSheds: Shed[] = shedsResult.value.data.map((s: any) => ({
+      // Helper para extrair dados tipados
+      const getData = (result: PromiseSettledResult<QueryResult>) => {
+        if (result.status === 'fulfilled') {
+          return result.value;
+        }
+        return { data: null, error: result.reason };
+      };
+
+      // Sheds
+      const shedsData = getData(shedsResult);
+      if (!shedsData.error && shedsData.data && activeUserIdRef.current === currentUserId) {
+        console.log('[FarmContext] ✓ Sheds carregados:', shedsData.data.length, 'registros');
+        const mappedSheds: Shed[] = shedsData.data.map((s: any) => ({
           id: s.id, name: s.name, capacity: s.capacity, notes: s.notes ?? undefined,
         }));
         setSheds(mappedSheds);
-      } else if (shedsResult.status === 'rejected' || (shedsResult.status === 'fulfilled' && shedsResult.value.error)) {
-        console.error('[FarmContext] ✗ Erro ao carregar sheds:', shedsResult.status === 'rejected' ? shedsResult.reason : shedsResult.value.error);
+      } else if (shedsData.error) {
+        console.error('[FarmContext] ✗ Erro ao carregar sheds:', shedsData.error);
       }
 
-      // Flocks - VERIFICAÇÃO DUPLA
-      if (flocksResult.status === 'fulfilled' && !flocksResult.value.error && flocksResult.value.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Flocks carregados:', flocksResult.value.data.length, 'registros');
-        const mappedFlocks: Flock[] = flocksResult.value.data.map((f: any) => ({
+      // Flocks
+      const flocksData = getData(flocksResult);
+      if (!flocksData.error && flocksData.data && activeUserIdRef.current === currentUserId) {
+        console.log('[FarmContext] ✓ Flocks carregados:', flocksData.data.length, 'registros');
+        const mappedFlocks: Flock[] = flocksData.data.map((f: any) => ({
           id: f.id, shedId: f.shed_id, name: f.name, breed: f.breed, birthDate: f.birth_date,
           arrivalDate: f.arrival_date, plannedDisposalDate: f.planned_disposal_date,
           initialHenCount: f.initial_hen_count, status: f.status,
@@ -230,10 +283,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setFlocks(mappedFlocks);
       }
 
-      // Records - VERIFICAÇÃO DUPLA
-      if (recordsResult.status === 'fulfilled' && !recordsResult.value.error && recordsResult.value.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Registros diários carregados:', recordsResult.value.data.length, 'registros');
-        const mappedRecords: DailyRecord[] = recordsResult.value.data.map((r: any) => ({
+      // Records
+      const recordsData = getData(recordsResult);
+      if (!recordsData.error && recordsData.data && activeUserIdRef.current === currentUserId) {
+        console.log('[FarmContext] ✓ Registros diários carregados:', recordsData.data.length, 'registros');
+        const mappedRecords: DailyRecord[] = recordsData.data.map((r: any) => ({
           id: r.id, flockId: r.flock_id, date: r.date, eggsCollected: r.eggs_collected,
           brokenEggs: r.broken_eggs, feedConsumedKg: parseFloat(r.feed_consumed_kg),
           mortality: r.mortality, notes: r.notes ?? undefined, createdAt: r.created_at ?? undefined,
@@ -241,10 +295,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setRecords(mappedRecords);
       }
 
-      // Inventory - VERIFICAÇÃO DUPLA
-      if (inventoryResult.status === 'fulfilled' && !inventoryResult.value.error && inventoryResult.value.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Estoque carregado:', inventoryResult.value.data.length, 'registros');
-        const mappedInventory: InventoryItem[] = inventoryResult.value.data.map((i: any) => ({
+      // Inventory
+      const inventoryData = getData(inventoryResult);
+      if (!inventoryData.error && inventoryData.data && activeUserIdRef.current === currentUserId) {
+        console.log('[FarmContext] ✓ Estoque carregado:', inventoryData.data.length, 'registros');
+        const mappedInventory: InventoryItem[] = inventoryData.data.map((i: any) => ({
           id: i.id, name: i.name, category: i.category, quantity: parseFloat(i.quantity),
           unit: i.unit, minThreshold: parseFloat(i.min_threshold), costPerUnit: parseFloat(i.cost_per_unit),
           lastUpdated: i.last_updated,
@@ -252,20 +307,22 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setInventory(mappedInventory);
       }
 
-      // Expenses - VERIFICAÇÃO DUPLA
-      if (expensesResult.status === 'fulfilled' && !expensesResult.value.error && expensesResult.value.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Despesas carregadas:', expensesResult.value.data.length, 'registros');
-        const mappedExpenses: Expense[] = expensesResult.value.data.map((e: any) => ({
+      // Expenses
+      const expensesData = getData(expensesResult);
+      if (!expensesData.error && expensesData.data && activeUserIdRef.current === currentUserId) {
+        console.log('[FarmContext] ✓ Despesas carregadas:', expensesData.data.length, 'registros');
+        const mappedExpenses: Expense[] = expensesData.data.map((e: any) => ({
           id: e.id, flockId: e.flock_id, date: e.date, description: e.description,
           category: e.category, amount: parseFloat(e.amount),
         }));
         setExpenses(mappedExpenses);
       }
 
-      // Sales - VERIFICAÇÃO DUPLA
-      if (salesResult.status === 'fulfilled' && !salesResult.value.error && salesResult.value.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Vendas carregadas:', salesResult.value.data.length, 'registros');
-        const mappedSales: Sale[] = salesResult.value.data.map((s: any, index: number) => ({
+      // Sales
+      const salesData = getData(salesResult);
+      if (!salesData.error && salesData.data && activeUserIdRef.current === currentUserId) {
+        console.log('[FarmContext] ✓ Vendas carregadas:', salesData.data.length, 'registros');
+        const mappedSales: Sale[] = salesData.data.map((s: any, index: number) => ({
           id: s.id, saleNumber: s.sale_number || index + 1, flockId: s.flock_id, clientId: s.client_id,
           date: s.date, productType: s.product_type, saleType: s.sale_type,
           paymentMethod: s.payment_method, paymentStatus: s.payment_status,
@@ -277,30 +334,33 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setSales(mappedSales);
       }
 
-      // Clients - VERIFICAÇÃO DUPLA
-      if (clientsResult.status === 'fulfilled' && !clientsResult.value.error && clientsResult.value.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Clientes carregados:', clientsResult.value.data.length, 'registros');
-        const mappedClients: Client[] = clientsResult.value.data.map((c: any) => ({
+      // Clients
+      const clientsData = getData(clientsResult);
+      if (!clientsData.error && clientsData.data && activeUserIdRef.current === currentUserId) {
+        console.log('[FarmContext] ✓ Clientes carregados:', clientsData.data.length, 'registros');
+        const mappedClients: Client[] = clientsData.data.map((c: any) => ({
           id: c.id, name: c.name, phone: c.phone, email: c.email,
           address: c.address, type: c.type, notes: c.notes,
         }));
         setClients(mappedClients);
       }
 
-      // Tasks - VERIFICAÇÃO DUPLA
-      if (tasksResult.status === 'fulfilled' && !tasksResult.value.error && tasksResult.value.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Tarefas carregadas:', tasksResult.value.data.length, 'registros');
-        const mappedTasks: FlockTask[] = tasksResult.value.data.map((t: any) => ({
+      // Tasks
+      const tasksData = getData(tasksResult);
+      if (!tasksData.error && tasksData.data && activeUserIdRef.current === currentUserId) {
+        console.log('[FarmContext] ✓ Tarefas carregadas:', tasksData.data.length, 'registros');
+        const mappedTasks: FlockTask[] = tasksData.data.map((t: any) => ({
           id: t.id, flockId: t.flock_id, taskType: t.task_type, dueDate: t.due_date,
           notes: t.notes, isCompleted: t.is_completed,
         }));
         setTasks(mappedTasks);
       }
 
-      // Formulations - VERIFICAÇÃO DUPLA
-      if (formulationsResult.status === 'fulfilled' && !formulationsResult.value.error && formulationsResult.value.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Formulações carregadas:', formulationsResult.value.data.length, 'registros');
-        const mappedFormulations: FeedFormulation[] = formulationsResult.value.data.map((f: any) => {
+      // Formulations
+      const formulationsData = getData(formulationsResult);
+      if (!formulationsData.error && formulationsData.data && activeUserIdRef.current === currentUserId) {
+        console.log('[FarmContext] ✓ Formulações carregadas:', formulationsData.data.length, 'registros');
+        const mappedFormulations: FeedFormulation[] = formulationsData.data.map((f: any) => {
           const formData = f.data || {};
           return {
             id: f.id, name: f.name, phase: formData.phase || 'Outra',
