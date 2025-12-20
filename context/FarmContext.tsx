@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.27 - Pure Fetch Mode (Max Speed)";
+const FARM_CONTEXT_VERSION = "v1.0.28 - Turbo Mode + Perf Logs";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -151,9 +151,6 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       const supabaseKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
 
       // Função OTIMIZADA: Se temos token, usamos APENAS Fetch direto.
-      // Motivo: O SDK adiciona overhead e pode travar. Disparar ambos (Race) duplica requisições e
-      // pode saturar o limite de conexões do navegador (Stall), causando lentidão (2.4s).
-      // Fetch direto é o caminho mais rápido e leve possível.
       interface QueryResult {
         data: any;
         error: any;
@@ -173,15 +170,15 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
               });
               if (!response.ok) throw new Error(response.statusText);
               const data = await response.json();
-              // console.log(`[FarmContext] ⚡ Fetch Direto (Pure) rápido: ${table}`);
               return { data, error: null };
             } catch (err) {
               console.warn(`[FarmContext] ⚠️ Fetch falhou para ${table}, tentando SDK como fallback...`, err);
-              // Se fetch falhar, aí sim tentamos SDK (ex: token expirado)
             }
+        } else {
+           console.warn(`[FarmContext] 🐌 Token indisponível para ${table}. Usando SDK (mais lento).`);
         }
 
-        // Fallback para SDK (se não tiver token ou fetch falhar)
+        // Fallback para SDK
         try {
           const { data, error } = await supabase
             .from(table)
@@ -194,7 +191,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         }
       };
       
-      console.log('[FarmContext] ⏳ Aguardando Promise.allSettled...');
+      console.log('[FarmContext] ⚡ Iniciando carregamento Turbo (Pure Fetch)...');
+      const turboStartTime = performance.now();
       
       const results = await Promise.allSettled([
         smartQuery('sheds', 'created_at', true),
@@ -208,6 +206,10 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         smartQuery('feed_formulations', 'created_at', true)
       ]);
       
+      const turboEndTime = performance.now();
+      const totalTime = Math.round(turboEndTime - turboStartTime);
+      console.log(`[FarmContext] 🚀 Carregamento Turbo CONCLUÍDO em ${totalTime}ms`);
+
       console.log('[FarmContext] 🚨 CHECKPOINT: Promise.allSettled RETORNOU');
       console.log('[FarmContext] ✅ Promise.allSettled completou!');
       
