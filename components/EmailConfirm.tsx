@@ -100,9 +100,15 @@ const EmailConfirm = () => {
             // Aguardar um pouco e verificar se a sessão foi estabelecida
             setTimeout(async () => {
               try {
-                const { data: sessionData } = await supabase.auth.getSession();
+                // Proteção contra travamento do SDK
+                const sessionPromise = supabase.auth.getSession();
+                const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) => 
+                  setTimeout(() => resolve({ data: { session: null } }), 200)
+                );
                 
-                if (sessionData.session) {
+                const { data: sessionData } = await Promise.race([sessionPromise, timeoutPromise]);
+                
+                if (sessionData?.session) {
                   window.location.href = '/?view=dashboard';
                 } else {
                   // Tentar novamente após um pequeno delay

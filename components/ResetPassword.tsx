@@ -36,13 +36,19 @@ const ResetPassword: FC<ResetPasswordProps> = ({ onSuccess }) => {
     console.log('[ResetPassword] 2. Validation passed');
 
     try {
-      // Verificar se há sessão ativa
+      // Verificar se há sessão ativa (Race condition para evitar travamento do SDK)
       console.log('[ResetPassword] 3. Checking session...');
-      const { data: sessionData } = await supabase.auth.getSession();
-      console.log('[ResetPassword] 4. Session check done:', !!sessionData.session);
       
-      if (!sessionData.session) {
-        setError('Sessão expirada. Por favor, solicite um novo link de recuperação.');
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) => 
+        setTimeout(() => resolve({ data: { session: null } }), 200)
+      );
+      
+      const { data: sessionData } = await Promise.race([sessionPromise, timeoutPromise]);
+      console.log('[ResetPassword] 4. Session check done:', !!sessionData?.session);
+      
+      if (!sessionData?.session) {
+        setError('Sessão expirada ou SDK indisponível. Por favor, solicite um novo link de recuperação.');
         setIsLoading(false);
         return;
       }
