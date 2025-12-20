@@ -164,18 +164,28 @@ function App() {
     if (isRecoveryRoute) return;
 
     const checkSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error('[App] Erro ao verificar sessão:', error);
-        setAuthState('landing');
-        return;
-      }
-      
-      if (data.session) {
-        setAuthState('app');
-      } else {
-        setAuthState('landing');
+      // Race: Se getSession demorar > 200ms, não bloqueamos a UI na Landing Page.
+      // O listener onAuthStateChange cuidará da transição assim que possível.
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise<{ data: { session: null }; error: null }>((resolve) => 
+        setTimeout(() => resolve({ data: { session: null }, error: null }), 200)
+      );
+
+      try {
+        const { data, error } = await Promise.race([sessionPromise, timeoutPromise]);
+        
+        if (error) {
+          console.error('[App] Erro ao verificar sessão:', error);
+          // Não forçamos landing aqui para dar chance ao listener
+          return;
+        }
+        
+        if (data?.session) {
+          console.log('[App] Sessão inicial detectada via checkSession');
+          setAuthState('app');
+        }
+      } catch (err) {
+        console.error('[App] Erro inesperado no checkSession:', err);
       }
     };
 
