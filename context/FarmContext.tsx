@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.26 - Race Mode (Zero Delay)";
+const FARM_CONTEXT_VERSION = "v1.0.27 - Pure Fetch Mode (Max Speed)";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -150,37 +150,19 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
       const supabaseKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
 
-      // Função híbrida: Dispara AMBOS (SDK e Fetch) simultaneamente. O primeiro a responder ganha.
-      // Isso elimina o delay de espera pelo timeout quando o SDK trava.
+      // Função OTIMIZADA: Se temos token, usamos APENAS Fetch direto.
+      // Motivo: O SDK adiciona overhead e pode travar. Disparar ambos (Race) duplica requisições e
+      // pode saturar o limite de conexões do navegador (Stall), causando lentidão (2.4s).
+      // Fetch direto é o caminho mais rápido e leve possível.
       interface QueryResult {
         data: any;
         error: any;
       }
 
       const smartQuery = async (table: string, orderBy: string, ascending: boolean, mapper?: (data: any) => any): Promise<QueryResult> => {
-        return new Promise((resolve) => {
-          let resolved = false;
-          
-          // Helper para resolver apenas uma vez
-          const tryResolve = (source: string, result: any) => {
-            if (!resolved) {
-              resolved = true;
-              // console.log(`[FarmContext] 🏁 Vencedor da corrida (${table}): ${source}`);
-              resolve(result);
-            }
-          };
-
-          // 1. Via SDK (Standard)
-          const sdkPromise = supabase
-            .from(table)
-            .select('*')
-            .eq('user_id', currentUserId)
-            .order(orderBy, { ascending });
-            
-          // 2. Via Fetch Direto (Bypass)
-          const fetchPromise = async (): Promise<QueryResult | null> => {
-            if (!accessTokenRef.current) return null;
-            try {
+        // Se temos token, bypass TOTAL no SDK para leitura
+        if (accessTokenRef.current) {
+           try {
               const url = `${supabaseUrl}/rest/v1/${table}?user_id=eq.${currentUserId}&select=*&order=${orderBy}.${ascending ? 'asc' : 'desc'}`;
               const response = await fetch(url, {
                 headers: {
@@ -191,29 +173,25 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
               });
               if (!response.ok) throw new Error(response.statusText);
               const data = await response.json();
+              // console.log(`[FarmContext] ⚡ Fetch Direto (Pure) rápido: ${table}`);
               return { data, error: null };
             } catch (err) {
-              return { data: null, error: err };
+              console.warn(`[FarmContext] ⚠️ Fetch falhou para ${table}, tentando SDK como fallback...`, err);
+              // Se fetch falhar, aí sim tentamos SDK (ex: token expirado)
             }
-          };
+        }
 
-          // Disparar AMBOS imediatamente (Corrida)
-          
-          // Pista 1: SDK
-          sdkPromise.then(result => {
-            tryResolve('SDK', result as any);
-          });
-
-          // Pista 2: Fetch Direto
-          // Pequeno delay de 10ms apenas para dar prioridade ao cache local do SDK se existir,
-          // mas imperceptível para o usuário.
-          setTimeout(async () => {
-             const result = await fetchPromise();
-             if (result) {
-               tryResolve('Fetch Direto', result);
-             }
-          }, 10);
-        });
+        // Fallback para SDK (se não tiver token ou fetch falhar)
+        try {
+          const { data, error } = await supabase
+            .from(table)
+            .select('*')
+            .eq('user_id', currentUserId)
+            .order(orderBy, { ascending });
+          return { data, error };
+        } catch (err) {
+          return { data: null, error: err };
+        }
       };
       
       console.log('[FarmContext] ⏳ Aguardando Promise.allSettled...');
