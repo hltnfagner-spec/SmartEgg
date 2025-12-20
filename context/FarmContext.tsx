@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.24 - No getSession() Call Inside Loader";
+const FARM_CONTEXT_VERSION = "v1.0.25 - Instant Fallback (200ms)";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -150,7 +150,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
       const supabaseKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
 
-      // Função híbrida: Tenta SDK -> Se demorar > 2s -> Tenta Fetch direto
+      // Função híbrida: Tenta SDK -> Se demorar > 200ms -> Tenta Fetch direto
       interface QueryResult {
         data: any;
         error: any;
@@ -191,15 +191,15 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           sdkPromise.then(result => {
             if (!resolved) {
               resolved = true;
-              console.log(`[FarmContext] ✅ SDK venceu: ${table}`);
+              // console.log(`[FarmContext] ✅ SDK venceu: ${table}`);
               resolve(result as any);
             }
           });
 
-          // Se SDK não responder em 2s, tentar fetch
+          // Se SDK não responder em 200ms (antes 2000ms), tentar fetch
           setTimeout(async () => {
             if (!resolved) {
-              console.log(`[FarmContext] ⚠️ SDK lento para ${table}, tentando Fetch direto...`);
+              // console.log(`[FarmContext] ⚠️ SDK lento para ${table}, tentando Fetch direto...`);
               const fetchResult = await fetchPromise();
               if (fetchResult && !resolved) {
                 resolved = true;
@@ -207,7 +207,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
                 resolve(fetchResult);
               }
             }
-          }, 2000); // 2s timeout para SDK
+          }, 200); // 200ms timeout para SDK (Otimizado para velocidade)
         });
       };
       
