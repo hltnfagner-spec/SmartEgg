@@ -66,7 +66,7 @@ interface FarmContextType {
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
-const FARM_CONTEXT_VERSION = "v1.0.23 - Direct Fetch Fallback for Chrome/Edge Hangs";
+const FARM_CONTEXT_VERSION = "v1.0.24 - No getSession() Call Inside Loader";
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -117,7 +117,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }, [sheds]);
 
   // Função auxiliar para carregar sheds, flocks, registros diários, estoque e despesas para um usuário específico
-  const loadDataForUser = useCallback(async (currentUserId: string) => {
+  const loadDataForUser = useCallback(async (currentUserId: string, accessToken?: string) => {
     // Se já estiver carregando o MESMO usuário, não faça nada
     if (isLoadingRef.current) {
        console.log('[FarmContext] Já existe um carregamento em andamento.');
@@ -136,14 +136,12 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       console.log('[FarmContext] 🚀 INICIANDO loadDataForUser para:', currentUserId);
       const startTime = Date.now();
       
-      // CRÍTICO: Obter token de acesso para fetch direto se necessário
-      console.log('[FarmContext] 🔑 Obtendo token para bypass SDK...');
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        accessTokenRef.current = session.access_token;
-        console.log('[FarmContext] ✅ Token obtido');
-      } else {
-        console.warn('[FarmContext] ⚠️ Sem token disponível, fetch direto pode falhar');
+      // CRÍTICO: Usar token passado via argumento ou do ref, EVITANDO chamar getSession() que trava
+      if (accessToken) {
+        accessTokenRef.current = accessToken;
+        console.log('[FarmContext] 🔑 Token recebido via argumento');
+      } else if (!accessTokenRef.current) {
+         console.warn('[FarmContext] ⚠️ Nenhum token disponível (nem argumento, nem ref). Fetch direto falhará.');
       }
       
       // Carregar tudo em PARALELO
@@ -499,7 +497,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           console.log('[FarmContext] 📥 Carregando dados para evento:', event);
           hasLoadedData = true;
           try {
-            await loadDataForUser(currentUserId);
+            // Passar token explicitamente para evitar getSession()
+            await loadDataForUser(currentUserId, session.access_token);
             console.log('[FarmContext] ✅ Dados carregados com sucesso');
           } catch (error) {
             console.error('[FarmContext] ❌ Erro ao chamar loadDataForUser:', error);
