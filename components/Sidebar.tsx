@@ -1,6 +1,6 @@
 
 import { useState, FC } from 'react';
-import { DashboardIcon, DataEntryIcon, FlockIcon, AIIcon, ExpenseIcon, SalesIcon, ReportIcon, ShedIcon, CalculatorIcon, UsersIcon, ContactIcon, InventoryIcon, LogOutIcon, SettingsIcon } from './icons';
+import { DashboardIcon, DataEntryIcon, FlockIcon, AIIcon, ExpenseIcon, SalesIcon, ReportIcon, ShedIcon, CalculatorIcon, UsersIcon, ContactIcon, InventoryIcon, LogOutIcon, SettingsIcon, BellIcon } from './icons';
 import { useFarm } from '../context/FarmContext';
 import { View } from '../types';
 

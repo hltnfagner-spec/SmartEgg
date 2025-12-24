@@ -1,7 +1,10 @@
 
 import { useMemo, useRef, useEffect, FC } from 'react';
 import { useFarm } from '../context/FarmContext';
+import { useAlerts } from '../context/AlertContext';
 import StatCard from './StatCard';
+import SubscriptionCard from './SubscriptionCard';
+import AlertsDashboard from './AlertsDashboard';
 import { EggIcon, FlockIcon, ExpenseIcon, SalesIcon, ArrowUpIcon, ArrowDownIcon, InventoryIcon, TrendUpIcon, TrendDownIcon, ChickenIcon } from './icons';
 import NotificationBell from './NotificationBell';
 
@@ -17,6 +20,7 @@ const getLocalYMD = (date: Date | string) => {
 
 const Dashboard: FC = () => {
   const { flocks, records, expenses, sales, tasks, toggleTaskCompletion, getHensCountOnDate, getFlockById, inventory } = useFarm();
+  const { addAlert } = useAlerts();
   const chartContainer = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<any>(null);
 
@@ -58,49 +62,58 @@ const Dashboard: FC = () => {
       return item ? item.quantity : 0;
   }, [inventory]);
 
-  // ALERT LOGIC: Production Trends
-  const productionAlerts = useMemo(() => {
-    const alerts: { type: 'up' | 'down', flockName: string, percentage: number }[] = [];
+  // ALERT LOGIC: Production Trends - agora integrado com o contexto
+  useEffect(() => {
     const activeFlocks = flocks.filter(f => f.status === 'Ativo');
 
     activeFlocks.forEach(flock => {
-        // Group records by day to handle multiple entries
-        const dayMap = new Map<string, number>();
-        records
-            .filter(r => r.flockId === flock.id)
-            .forEach(r => {
-                const day = getLocalYMD(new Date(r.date));
-                dayMap.set(day, (dayMap.get(day) || 0) + r.eggsCollected);
-            });
+      // Group records by day to handle multiple entries
+      const dayMap = new Map<string, number>();
+      records
+          .filter(r => r.flockId === flock.id)
+          .forEach(r => {
+              const day = getLocalYMD(new Date(r.date));
+              dayMap.set(day, (dayMap.get(day) || 0) + r.eggsCollected);
+          });
 
-        const dailyTotals = Array.from(dayMap.entries())
-            .map(([date, total]) => ({ date, total }))
-            .sort((a, b) => b.date.localeCompare(a.date));
+      const dailyTotals = Array.from(dayMap.entries())
+          .map(([date, total]) => ({ date, total }))
+          .sort((a, b) => b.date.localeCompare(a.date));
 
-        if (dailyTotals.length >= 6) {
-            const last3Days = dailyTotals.slice(0, 3);
-            const prev3Days = dailyTotals.slice(3, 6);
+      if (dailyTotals.length >= 6) {
+          const last3Days = dailyTotals.slice(0, 3);
+          const prev3Days = dailyTotals.slice(3, 6);
 
-            const avgLast3 = last3Days.reduce((acc, d) => acc + d.total, 0) / 3;
-            const avgPrev3 = prev3Days.reduce((acc, d) => acc + d.total, 0) / 3;
+          const avgLast3 = last3Days.reduce((acc, d) => acc + d.total, 0) / 3;
+          const avgPrev3 = prev3Days.reduce((acc, d) => acc + d.total, 0) / 3;
 
-            if (avgPrev3 > 0) {
-                const variation = ((avgLast3 - avgPrev3) / avgPrev3) * 100;
-                
-                if (variation < -5) { // Queda maior que 5%
-                    alerts.push({ type: 'down', flockName: flock.name, percentage: Math.abs(variation) });
-                } else if (variation > 5) { // Aumento maior que 5%
-                    alerts.push({ type: 'up', flockName: flock.name, percentage: variation });
-                }
-            }
-        }
+          if (avgPrev3 > 0) {
+              const variation = ((avgLast3 - avgPrev3) / avgPrev3) * 100;
+              
+              if (variation < -5) { // Queda maior que 5%
+                  addAlert({
+                      type: 'production_down',
+                      title: `Alerta de Queda de Produção - ${flock.name}`,
+                      message: `Variação de ${Math.abs(variation).toFixed(1)}% comparado aos 3 dias anteriores.`,
+                      percentage: Math.abs(variation),
+                      flockName: flock.name
+                  });
+              } else if (variation > 5) { // Aumento maior que 5%
+                  addAlert({
+                      type: 'production_up',
+                      title: `Aumento de Produção - ${flock.name}`,
+                      message: `Variação de ${variation.toFixed(1)}% comparado aos 3 dias anteriores.`,
+                      percentage: variation,
+                      flockName: flock.name
+                  });
+              }
+          }
+      }
     });
-    return alerts;
-  }, [flocks, records]);
+  }, [flocks, records, addAlert]);
 
-  // ALERT LOGIC: Feed Inventory
-  const inventoryAlerts = useMemo(() => {
-    const alerts: { itemName: string, daysRemaining: number }[] = [];
+  // ALERT LOGIC: Feed Inventory - agora integrado com o contexto
+  useEffect(() => {
     const feedItem = inventory.find(i => i.category === 'Ração');
     
     if (feedItem) {
@@ -118,12 +131,17 @@ const Dashboard: FC = () => {
         if (dailyConsumption > 0) {
             const daysRemaining = feedItem.quantity / dailyConsumption;
             if (daysRemaining < 5) {
-                alerts.push({ itemName: feedItem.name, daysRemaining });
+                addAlert({
+                    type: 'inventory_low',
+                    title: `Estoque Baixo: ${feedItem.name}`,
+                    message: `Restam aproximadamente ${daysRemaining.toFixed(1)} dias com base no consumo atual.`,
+                    itemName: feedItem.name,
+                    daysRemaining
+                });
             }
         }
     }
-    return alerts;
-  }, [inventory, records]);
+  }, [inventory, records, addAlert]);
 
 
   // Quality metrics for the last 7 days
@@ -393,42 +411,13 @@ const Dashboard: FC = () => {
         </div>
       </div>
 
-      {/* ALERT SECTION */}
-      {(inventoryAlerts.length > 0 || productionAlerts.length > 0) && (
-          <div className="grid grid-cols-1 gap-4 mb-6">
-              {inventoryAlerts.map((alert, idx) => (
-                  <div key={`inv-alert-${idx}`} className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r shadow-sm flex justify-between items-center">
-                      <div className="flex items-center">
-                          <InventoryIcon className="h-6 w-6 text-red-600 mr-3" />
-                          <div>
-                              <p className="font-bold text-red-700">Estoque Baixo: {alert.itemName}</p>
-                              <p className="text-sm text-red-600">Restam aproximadamente {alert.daysRemaining.toFixed(1)} dias com base no consumo atual.</p>
-                          </div>
-                      </div>
-                      <button className="text-sm bg-white text-red-600 px-3 py-1 rounded border border-red-200 font-medium hover:bg-red-50">Repor</button>
-                  </div>
-              ))}
-
-              {productionAlerts.map((alert, idx) => (
-                  <div key={`prod-alert-${idx}`} className={`${alert.type === 'down' ? 'bg-amber-50 border-amber-500' : 'bg-green-50 border-green-500'} border-l-4 p-4 rounded-r shadow-sm flex items-center`}>
-                      {alert.type === 'down' ? (
-                          <TrendDownIcon className="h-6 w-6 text-amber-600 mr-3" />
-                      ) : (
-                          <TrendUpIcon className="h-6 w-6 text-green-600 mr-3" />
-                      )}
-                      <div>
-                          <p className={`font-bold ${alert.type === 'down' ? 'text-amber-800' : 'text-green-800'}`}>
-                              {alert.type === 'down' ? 'Alerta de Queda de Produção' : 'Aumento de Produção'} - {alert.flockName}
-                          </p>
-                          <p className={`text-sm ${alert.type === 'down' ? 'text-amber-700' : 'text-green-700'}`}>
-                              Variação de {alert.percentage.toFixed(1)}% comparado aos 3 dias anteriores.
-                          </p>
-                      </div>
-                  </div>
-              ))}
-          </div>
-      )}
+      {/* ALERT SECTION - usando novo sistema de alertas */}
+      <AlertsDashboard />
       
+      <div className="mb-6">
+        <SubscriptionCard />
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {/* NEW FEATURE: Egg Stock Highlight */}
         <div className="bg-gradient-to-br from-amber-500 to-orange-600 p-6 rounded-xl shadow-md flex items-center space-x-4 text-white transform hover:scale-105 transition-transform duration-200 cursor-default">

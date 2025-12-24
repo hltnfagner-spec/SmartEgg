@@ -14,6 +14,7 @@ import Contacts from './components/Contacts';
 import Inventory from './components/Inventory';
 import Mortality from './components/Mortality';
 import Settings from './components/Settings';
+import AlertsPage from './components/AlertsPage';
 import LandingPage from './components/LandingPage';
 import Register from './components/Register';
 import Login from './components/Login';
@@ -21,7 +22,9 @@ import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 import EmailConfirm from './components/EmailConfirm';
 import RecoveryRedirect from './components/RecoveryRedirect';
+import { SubscriptionStatus } from './components/SubscriptionStatus';
 import { useFarm } from './context/FarmContext';
+import { AlertProvider } from './context/AlertContext';
 import { supabase } from './services/supabaseClient';
 
 type AuthState = 'landing' | 'login' | 'register' | 'forgot-password' | 'reset-password' | 'app';
@@ -100,7 +103,7 @@ function App() {
   });
 
   // Navigation state is now managed in FarmContext
-  const { currentView, navigate, clearData } = useFarm();
+  const { currentView, navigate, clearData, subscription, isSubscriptionLoading, handleMercadoPagoReturn } = useFarm();
 
   const handleLoginSuccess = () => {
     setAuthState('app');
@@ -157,6 +160,29 @@ function App() {
       setAuthState('reset-password');
     }
   }, [isRecoveryRoute]);
+
+  // Handle Mercado Pago return URL
+  useEffect(() => {
+    if (authState === 'app') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      
+      // Check for Mercado Pago payment_id in URL
+      const paymentId = urlParams.get('payment_id') || hashParams.get('payment_id');
+      const status = urlParams.get('status') || hashParams.get('status');
+      
+      if (paymentId && status) {
+        console.log('[App] Mercado Pago return detected:', { paymentId, status });
+        
+        // Process the payment return
+        handleMercadoPagoReturn(paymentId);
+        
+        // Clean the URL to remove payment parameters
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState(null, '', cleanUrl);
+      }
+    }
+  }, [authState, handleMercadoPagoReturn]);
 
   // Verifica se existe uma sessão ativa ao carregar a página e escuta mudanças de auth
   useEffect(() => {
@@ -243,6 +269,7 @@ function App() {
       case 'contacts': return <Contacts />;
       case 'inventory': return <Inventory />;
       case 'mortality': return <Mortality />;
+      case 'alerts': return <AlertsPage />;
       case 'settings': return <Settings />;
       default: return <Dashboard />;
     }
@@ -333,17 +360,34 @@ function App() {
       );
   }
 
+  // Check subscription status for authenticated users
+  if (authState === 'app' && !isSubscriptionLoading) {
+    const isTrialExpired = subscription?.status === 'trial' && 
+      subscription.trialEnd && 
+      new Date(subscription.trialEnd) < new Date();
+    
+    const isSubscriptionActive = subscription?.status === 'active' || 
+      (subscription?.status === 'trial' && !isTrialExpired);
+
+    // If subscription is not active, show the subscription status
+    if (!isSubscriptionActive) {
+      return <SubscriptionStatus />;
+    }
+  }
+
   return (
-    <div className="flex h-screen bg-gray-50 text-slate-800 font-sans overflow-hidden">
-      <Sidebar 
-        onLogout={handleLogout}
-      />
-      <main className="flex-1 overflow-y-auto w-full">
-        <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 pt-[88px] md:pt-8">
-            {renderView()}
-        </div>
-      </main>
-    </div>
+    <AlertProvider>
+      <div className="flex h-screen bg-gray-50 text-slate-800 font-sans overflow-hidden">
+        <Sidebar 
+          onLogout={handleLogout}
+        />
+        <main className="flex-1 overflow-y-auto w-full">
+          <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 pt-[88px] md:pt-8">
+              {renderView()}
+          </div>
+        </main>
+      </div>
+    </AlertProvider>
   );
 };
 

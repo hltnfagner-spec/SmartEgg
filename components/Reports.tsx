@@ -3,8 +3,9 @@ import { useFarm } from '../context/FarmContext';
 import { generateProductionReport, generateFinancialReport } from '../services/reportGenerator.ts';
 import { ReportIcon } from './icons';
 import { DailyRecord, Expense, Sale, Client } from '../types';
+import AlertsHistory from './AlertsHistory';
 
-type ReportType = 'production' | 'financial' | 'eggs' | 'sales' | 'expenses' | 'posture' | 'clients';
+type ReportType = 'production' | 'financial' | 'eggs' | 'sales' | 'expenses' | 'posture' | 'clients' | 'alerts';
 
 type PeriodType = 'daily' | 'weekly' | 'monthly' | 'custom';
 
@@ -66,6 +67,13 @@ type ClientsReportData = {
 	endDate: string;
 };
 
+type AlertsReportData = {
+	type: 'alerts';
+	flockName: string;
+	startDate: string;
+	endDate: string;
+};
+
 type ClientSummary = {
 	client: Client;
 	sales: Sale[];
@@ -76,7 +84,7 @@ type ClientSummary = {
 	avgTicket: number;
 };
 
-type ReportData = ProductionReportData | FinancialReportData | EggsReportData | SalesReportData | ExpensesReportData | PostureReportData | ClientsReportData | null;
+type ReportData = ProductionReportData | FinancialReportData | EggsReportData | SalesReportData | ExpensesReportData | PostureReportData | ClientsReportData | AlertsReportData | null;
 
 const Reports: FC = () => {
 	const { flocks, records, expenses, sales, clients } = useFarm();
@@ -113,6 +121,8 @@ const Reports: FC = () => {
                 break;
             case 'custom':
                 // For custom, use the manually set dates
+                startDate = new Date(customStartDate);
+                endDate = new Date(customEndDate);
                 return {
                     start: startDate,
                     end: endDate
@@ -165,7 +175,18 @@ const Reports: FC = () => {
 		setSelectedClientId(null);
 
 		try {
-			if (type === 'production' || type === 'eggs' || type === 'posture') {
+			if (type === 'alerts') {
+				// Alertas não precisam de filtros, apenas exibe o histórico completo
+				setReportData({
+					type: 'alerts',
+					startDate,
+					endDate,
+					flockName: selectedFlockName,
+				});
+				setMessage('Relatório de Alertas carregado. Visualize o histórico completo e estatísticas por lote.');
+				setIsLoading(false);
+				return;
+			} else if (type === 'production' || type === 'eggs' || type === 'posture') {
 				// Filtra registros por data e lote
 				const filteredRecords = records
 					.filter(r => {
@@ -332,7 +353,10 @@ const Reports: FC = () => {
 	const handleDownloadPdf = () => {
 		if (!reportData) return;
 
-		if (reportData.type === 'production' || reportData.type === 'eggs' || reportData.type === 'posture') {
+		if (reportData.type === 'alerts') {
+			// Alertas não suportam download PDF - apenas visualização
+			return;
+		} else if (reportData.type === 'production' || reportData.type === 'eggs' || reportData.type === 'posture') {
 			generateProductionReport(
 				reportData.records,
 				flocks,
@@ -372,6 +396,17 @@ const Reports: FC = () => {
                                 <div className="text-center">
                                     <p className="font-semibold">Ovos Produzidos</p>
                                     <p className="text-xs opacity-75">Produção total e métricas</p>
+                                </div>
+                            </button>
+                            
+                            <button 
+                                onClick={() => setReportType('alerts')}
+                                className="px-6 py-8 rounded-xl font-medium transition-all duration-200 border-2 flex flex-col items-center justify-center space-y-3 border-stone-100 bg-stone-50 text-stone-600 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700"
+                            >
+                                <span className="bg-orange-100 p-4 rounded-xl text-3xl">🚨</span>
+                                <div className="text-center">
+                                    <p className="font-semibold">Alertas</p>
+                                    <p className="text-xs opacity-75">Histórico e estatísticas</p>
                                 </div>
                             </button>
                             
@@ -428,6 +463,7 @@ const Reports: FC = () => {
                             <label className="block text-lg font-semibold text-stone-700 mb-3">Tipo de Relatório Selecionado</label>
                             <div className="flex items-center space-x-3">
                                 {reportType === 'eggs' && <><span className="bg-amber-100 p-2 rounded-lg">🥚</span><span className="font-medium text-amber-700">Ovos Produzidos</span></>}
+                                {reportType === 'alerts' && <><span className="bg-orange-100 p-2 rounded-lg">🚨</span><span className="font-medium text-orange-700">Alertas</span></>}
                                 {reportType === 'sales' && <><span className="bg-green-100 p-2 rounded-lg">💰</span><span className="font-medium text-green-700">Vendas</span></>}
                                 {reportType === 'expenses' && <><span className="bg-red-100 p-2 rounded-lg">📊</span><span className="font-medium text-red-700">Custos</span></>}
                                 {reportType === 'posture' && <><span className="bg-blue-100 p-2 rounded-lg">🐔</span><span className="font-medium text-blue-700">Postura</span></>}
@@ -835,6 +871,12 @@ const Reports: FC = () => {
                     </div>
                 </div>
             			)}
+
+            {reportData && reportData.type === 'alerts' && (
+                <div className="bg-white p-6 rounded-xl shadow-md space-y-4 print:bg-white print:shadow-none">
+                    <AlertsHistory />
+                </div>
+            )}
 
             {reportData && reportData.type === 'clients' && (
                 <div className="bg-white p-6 rounded-xl shadow-md space-y-4 print:bg-white print:shadow-none">

@@ -145,7 +145,7 @@ export interface EggMovement {
   referenceId?: string; // ID do registro relacionado (coleta, venda, etc)
 }
 
-export type View = 'dashboard' | 'data-entry' | 'flocks' | 'sheds' | 'expenses' | 'sales' | 'reports' | 'ai-assistant' | 'calculator' | 'clients' | 'contacts' | 'inventory' | 'mortality' | 'settings';
+export type View = 'dashboard' | 'data-entry' | 'flocks' | 'sheds' | 'expenses' | 'sales' | 'reports' | 'ai-assistant' | 'calculator' | 'clients' | 'contacts' | 'inventory' | 'mortality' | 'alerts' | 'settings';
 
 // Configurações da Empresa/Granja
 export interface CompanySettings {
@@ -160,4 +160,21 @@ export interface CompanySettings {
   state: string;
   zipCode: string;
   logo?: string; // URL ou base64 da logo
+}
+
+export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'blocked';
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  planName: string;
+  status: SubscriptionStatus;
+  trialStart: string;
+  trialEnd: string;
+  paymentDueDate?: string | null;
+  lastPaymentAt?: string | null;
+  mpPreferenceId?: string | null;
+  mpPaymentId?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }

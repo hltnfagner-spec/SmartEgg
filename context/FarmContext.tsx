@@ -1,7 +1,8 @@
 
 import { createContext, useState, useEffect, useContext, ReactNode, useCallback, FC, useRef } from 'react';
-import { Flock, DailyRecord, Expense, Sale, FlockTask, Shed, Client, InventoryItem, FeedFormulation, View, EggMovement, EggMovementType, EggMovementReason, CompanySettings } from '../types';
+import { Flock, DailyRecord, Expense, Sale, FlockTask, Shed, Client, InventoryItem, FeedFormulation, View, EggMovement, EggMovementType, EggMovementReason, CompanySettings, Subscription, SubscriptionStatus } from '../types';
 import { supabase } from '../services/supabaseClient';
+import { createMercadoPagoPreference, getMercadoPagoPayment, MercadoPagoPreferenceResponse } from '../services/mercadoPago';
 
 interface FarmContextType {
   sheds: Shed[];
@@ -62,11 +63,21 @@ interface FarmContextType {
   companySettings: CompanySettings | null;
   saveCompanySettings: (settings: CompanySettings) => Promise<void>;
   loadCompanySettings: () => Promise<void>;
+  subscription: Subscription | null;
+  isSubscriptionLoading: boolean;
+  subscriptionError: string | null;
+  refreshSubscription: () => Promise<void>;
+  startSubscriptionCheckout: (returnUrl?: string) => Promise<string | null>;
+  handleMercadoPagoReturn: (paymentId: string) => Promise<void>;
+  isCheckoutLoading: boolean;
+  checkoutError: string | null;
+  confirmSubscriptionPayment: (paymentId: string) => Promise<boolean>;
 }
 
 const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
 const FARM_CONTEXT_VERSION = "v1.0.28 - Turbo Mode + Perf Logs";
+const PLAN_PRICE = 29.99;
 
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
@@ -107,6 +118,195 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [feedFormulations, setFeedFormulations] = useState<FeedFormulation[]>([]);
 
   const [eggMovements, setEggMovements] = useState<EggMovement[]>([]);
+
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  const mapSubscriptionRow = useCallback((row: any): Subscription => ({
+    id: row.id,
+    userId: row.user_id,
+    planName: row.plan_name,
+    status: row.status,
+    trialStart: row.trial_start,
+    trialEnd: row.trial_end,
+    paymentDueDate: row.payment_due_date,
+    lastPaymentAt: row.last_payment_at,
+    mpPreferenceId: row.mp_preference_id,
+    mpPaymentId: row.mp_payment_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }), []);
+
+  const fetchSubscription = useCallback(async (targetUserId: string) => {
+    setIsSubscriptionLoading(true);
+    setSubscriptionError(null);
+
+    try {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', targetUserId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      let row = data;
+
+      if (!row) {
+        const { data: inserted, error: insertError } = await supabase
+          .from('subscriptions')
+          .insert({ user_id: targetUserId })
+          .select('*')
+          .single();
+
+        if (insertError || !inserted) {
+          throw insertError || new Error('Não foi possível criar o registro de assinatura.');
+        }
+
+        row = inserted;
+      }
+
+      setSubscription(mapSubscriptionRow(row));
+    } catch (err: any) {
+      console.error('[FarmContext] Erro ao carregar assinatura:', err);
+      setSubscription(null);
+      setSubscriptionError(err?.message || 'Erro ao carregar assinatura');
+    } finally {
+      setIsSubscriptionLoading(false);
+    }
+  }, [mapSubscriptionRow]);
+
+  const refreshSubscription = useCallback(async () => {
+    if (!userId) return;
+    await fetchSubscription(userId);
+  }, [userId, fetchSubscription]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchSubscription(userId);
+    } else {
+      setSubscription(null);
+    }
+  }, [userId, fetchSubscription]);
+
+  const updateSubscriptionRow = useCallback(
+    async (data: Partial<Subscription>) => {
+      if (!userId) return null;
+      const payload = {
+        plan_name: data.planName,
+        status: data.status,
+        trial_start: data.trialStart,
+        trial_end: data.trialEnd,
+        payment_due_date: data.paymentDueDate,
+        last_payment_at: data.lastPaymentAt,
+        mp_preference_id: data.mpPreferenceId,
+        mp_payment_id: data.mpPaymentId,
+        updated_at: new Date().toISOString(),
+      };
+      const { data: updated, error } = await supabase
+        .from('subscriptions')
+        .update(payload)
+        .eq('user_id', userId)
+        .select('*')
+        .single();
+      if (error) {
+        throw error;
+      }
+      setSubscription(mapSubscriptionRow(updated));
+      return updated;
+    },
+    [userId, mapSubscriptionRow]
+  );
+
+  const startSubscriptionCheckout = useCallback(
+    async (returnUrl?: string) => {
+      if (!userId) {
+        setCheckoutError('Usuário não autenticado.');
+        return null;
+      }
+      setIsCheckoutLoading(true);
+      setCheckoutError(null);
+      try {
+        // Só envia backUrls se for URL pública (https://), senão deixa a Edge Function usar o default
+        const configuredReturn = import.meta.env.VITE_APP_URL || undefined;
+        const origin = window.location.origin && window.location.origin !== 'null'
+          ? window.location.origin
+          : undefined;
+        const candidateReturn = returnUrl?.trim() || configuredReturn || origin;
+        
+        // Mercado Pago rejeita URLs de localhost/IP privado, só aceita HTTPS público
+        const isPublicUrl = candidateReturn?.startsWith('https://') && 
+          !candidateReturn.includes('localhost') && 
+          !candidateReturn.includes('127.0.0.1') &&
+          !/https?:\/\/\d+\.\d+\.\d+\.\d+/.test(candidateReturn);
+        
+        const preference = await createMercadoPagoPreference({
+          title: 'Assinatura SmartEgg',
+          quantity: 1,
+          unitPrice: PLAN_PRICE,
+          currencyId: 'BRL',
+          metadata: {
+            userId,
+          },
+          // Só envia backUrls se for URL pública, senão a Edge Function usa o default
+          ...(isPublicUrl && candidateReturn ? {
+            backUrls: {
+              success: candidateReturn,
+              failure: candidateReturn,
+              pending: candidateReturn,
+            },
+          } : {}),
+          autoReturn: 'approved',
+        });
+        await updateSubscriptionRow({
+          ...subscription,
+          mpPreferenceId: preference.id,
+        });
+        return preference.init_point || preference.sandbox_init_point || null;
+      } catch (error: any) {
+        console.error('[FarmContext] Erro ao iniciar checkout:', error);
+        setCheckoutError(error?.message || 'Erro ao iniciar checkout.');
+        return null;
+      } finally {
+        setIsCheckoutLoading(false);
+      }
+    },
+    [userId, subscription, updateSubscriptionRow]
+  );
+
+  const confirmSubscriptionPayment = useCallback(
+    async (paymentId: string) => {
+      if (!userId) return false;
+      try {
+        setIsSubscriptionLoading(true);
+        const payment = await getMercadoPagoPayment(paymentId);
+        if (payment.status !== 'approved') {
+          setCheckoutError('Pagamento ainda não aprovado.');
+          return false;
+        }
+        await updateSubscriptionRow({
+          status: 'active',
+          lastPaymentAt: new Date().toISOString(),
+          paymentDueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          mpPaymentId: paymentId,
+        });
+        setCheckoutError(null);
+        return true;
+      } catch (error: any) {
+        console.error('[FarmContext] Erro ao confirmar pagamento:', error);
+        setCheckoutError(error?.message || 'Erro ao confirmar pagamento.');
+        return false;
+      } finally {
+        setIsSubscriptionLoading(false);
+      }
+    },
+    [userId, updateSubscriptionRow]
+  );
 
   // Rastrear mudanças no estado de sheds
   useEffect(() => {
@@ -454,6 +654,9 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
         console.log('[FarmContext] 👤 Definindo userId:', currentUserId);
         setUserId(currentUserId);
+        fetchSubscription(currentUserId).catch((err) => {
+          console.error('[FarmContext] Erro ao buscar assinatura após login:', err);
+        });
         
         // Garantir que usuário este salvo em user_contacts (apenas no primeiro cadastro)
         if (event === 'SIGNED_IN') {
@@ -508,6 +711,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setClients([]);
         setTasks([]);
         setFeedFormulations([]);
+        setSubscription(null);
+        setSubscriptionError(null);
       }
     });
 
@@ -601,6 +806,44 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     setInventory([]);
     setFeedFormulations([]);
   };
+
+  const handleMercadoPagoReturn = useCallback(
+    async (paymentId: string) => {
+      if (!paymentId) return;
+      
+      try {
+        setIsCheckoutLoading(true);
+        setCheckoutError(null);
+        
+        // Verifica se o pagamento foi aprovado
+        const payment = await getMercadoPagoPayment(paymentId);
+        
+        if (payment.status === 'approved') {
+          // Atualiza a assinatura para ativa
+          await updateSubscriptionRow({
+            status: 'active',
+            lastPaymentAt: new Date().toISOString(),
+            paymentDueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            mpPaymentId: paymentId,
+          });
+          
+          // Redireciona para o dashboard com mensagem de sucesso
+          navigate('dashboard', { message: 'Assinatura ativada com sucesso!' });
+        } else if (payment.status === 'pending') {
+          // Pagamento pendente (ex.: boleto) - redireciona para dashboard pois não temos view de pending
+          navigate('dashboard', { 
+            message: 'Seu pagamento está em processamento. Você receberá um e-mail quando for confirmado.' 
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao processar retorno do pagamento:', error);
+        setCheckoutError('Não foi possível verificar o status do pagamento. Por favor, tente novamente.');
+      } finally {
+        setIsCheckoutLoading(false);
+      }
+    },
+    [navigate, updateSubscriptionRow]
+  );
 
   // Helper function to manage egg stock automatically (Used for Sales)
   const adjustEggStock = (amount: number) => {
@@ -2173,7 +2416,9 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         getShedById, getFlockById, getClientById, getAvailableSheds, 
         getRecordsByFlockId, getExpensesByFlockId, getSalesByFlockId, getTasksByFlockId, getHensCountOnDate,
         clearData,
-        companySettings, saveCompanySettings, loadCompanySettings
+        companySettings, saveCompanySettings, loadCompanySettings,
+        subscription, isSubscriptionLoading, subscriptionError, refreshSubscription,
+        startSubscriptionCheckout, handleMercadoPagoReturn, isCheckoutLoading, checkoutError, confirmSubscriptionPayment
     }}>
       {children}
     </FarmContext.Provider>
