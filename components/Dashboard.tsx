@@ -1,5 +1,5 @@
 
-import { useMemo, useRef, useEffect, FC } from 'react';
+import { useMemo, useRef, useEffect, FC, useState } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { useAlerts } from '../context/AlertContext';
 import StatCard from './StatCard';
@@ -402,11 +402,37 @@ const Dashboard: FC = () => {
       };
   }, [productionChartData]);
 
+  const { subscription } = useFarm();
+  const isActive = subscription?.status === 'active';
+  const isTrial = subscription?.status === 'trial';
+  
+  // Calcula dias restantes para assinatura ativa
+  const daysRemaining = isActive && subscription?.paymentDueDate
+    ? Math.max(0, Math.ceil((new Date(subscription.paymentDueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
         <div className="flex items-center space-x-4">
+            {/* Informações discretas de assinatura ativa */}
+            {isActive && subscription?.paymentDueDate && (
+              <div className="flex items-center space-x-2 px-4 py-2 bg-emerald-50 rounded-lg border border-emerald-200">
+                <div className="flex items-center space-x-1">
+                  <span className="text-emerald-600 text-sm">●</span>
+                  <span className="text-xs font-medium text-emerald-700">Assinatura ativa</span>
+                </div>
+                <span className="text-slate-300">|</span>
+                <div className="text-xs text-slate-600">
+                  Vencimento: <span className="font-semibold">{new Date(subscription.paymentDueDate).toLocaleDateString('pt-BR')}</span>
+                </div>
+                <span className="text-slate-300">|</span>
+                <div className="text-xs text-emerald-600 font-medium">
+                  {daysRemaining} dias restantes
+                </div>
+              </div>
+            )}
             <NotificationBell />
         </div>
       </div>
@@ -414,9 +440,12 @@ const Dashboard: FC = () => {
       {/* ALERT SECTION - usando novo sistema de alertas */}
       <AlertsDashboard />
       
-      <div className="mb-6">
-        <SubscriptionCard />
-      </div>
+      {/* Card de assinatura - apenas durante trial */}
+      {isTrial && (
+        <div className="mb-6">
+          <SubscriptionCard />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {/* NEW FEATURE: Egg Stock Highlight */}

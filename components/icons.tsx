@@ -121,6 +121,14 @@ export const SettingsIcon = ({ className }: { className?: string }) => (
     </svg>
 );
 
+export const AdminIcon = ({ className }: { className?: string }) => (
+    <svg {...iconProps} className={className || iconProps.className} viewBox="0 0 24 24">
+        <path d="M12 2L2 7l10 5 10-5-10-5z" />
+        <path d="M2 17l10 5 10-5" />
+        <path d="M2 12l10 5 10-5" />
+    </svg>
+);
+
 export const EditIcon = () => (
     <svg {...iconProps} className="h-4 w-4 pointer-events-none" viewBox="0 0 24 24">
         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />

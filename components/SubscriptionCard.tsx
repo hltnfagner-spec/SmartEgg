@@ -12,10 +12,28 @@ const SubscriptionCard = () => {
 
   const hasSubscription = !!subscription;
   const isTrial = subscription?.status === 'trial';
-  const trialEnd = subscription?.trialEnd ? new Date(subscription.trialEnd) : null;
-  const daysRemaining = trialEnd
-    ? Math.max(0, Math.ceil((trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+  const isActive = subscription?.status === 'active';
+  
+  // Usa trialEnd para trial, paymentDueDate para assinatura ativa
+  const endDate = isTrial 
+    ? (subscription?.trialEnd ? new Date(subscription.trialEnd) : null)
+    : (isActive && subscription?.paymentDueDate ? new Date(subscription.paymentDueDate) : null);
+    
+  // Calcula dias restantes considerando fuso horário local (Brasil UTC-3)
+  const daysRemaining = endDate
+    ? Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : null;
+    
+  // Debug: mostrar valores para verificar cálculo
+  if (process.env.NODE_ENV === 'development' && daysRemaining !== null) {
+    console.log('[SubscriptionCard] Debug:', {
+      status: subscription?.status,
+      paymentDueDate: subscription?.paymentDueDate,
+      endDate: endDate?.toISOString(),
+      now: new Date().toISOString(),
+      daysRemaining
+    });
+  }
 
   const statusLabel = useMemo(() => {
     if (subscription?.status === 'active') return 'Assinatura ativa';

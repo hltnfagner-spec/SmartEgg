@@ -62,6 +62,25 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Buscar dados da empresa para obter nome correto
+    let companyName = 'SmartEgg'; // Default
+    let ownerName = '';
+    
+    try {
+      const { data: companyData } = await supabase
+        .from('company_settings')
+        .select('farm_name, owner_name')
+        .eq('user_id', userData.user.id)
+        .single();
+      
+      if (companyData) {
+        companyName = companyData.farm_name || 'SmartEgg';
+        ownerName = companyData.owner_name || '';
+      }
+    } catch (error) {
+      console.warn('[MP Create Preference] Error fetching company data:', error);
+    }
+
     const bodyText = await req.text();
     let params: CreatePreferenceParams;
     try {
@@ -118,16 +137,23 @@ Deno.serve(async (req) => {
     const mpBody = sanitizePayload({
       items: [
         {
-          title: params.title,
+          title: `${companyName} - ${params.title}`,
           quantity,
           unit_price: unitPrice,
           currency_id: params.currencyId ?? 'BRL',
         },
       ],
-      payer: params.payerEmail ? { email: params.payerEmail } : undefined,
+      payer: params.payerEmail ? { 
+        email: params.payerEmail,
+        name: ownerName || companyName
+      } : {
+        name: companyName
+      },
       metadata: {
         ...(params.metadata ?? {}),
         userId: userData.user.id,
+        companyName,
+        ownerName,
       },
       back_urls: backUrls,
       auto_return: params.autoReturn ?? autoReturn,
@@ -136,6 +162,8 @@ Deno.serve(async (req) => {
     console.log('[MP Create Preference] Calling Mercado Pago', {
       userId: userData.user.id,
       title: params.title,
+      companyName,
+      ownerName,
       quantity,
       unitPrice,
       currencyId: params.currencyId ?? 'BRL',

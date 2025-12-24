@@ -15,6 +15,7 @@ import Inventory from './components/Inventory';
 import Mortality from './components/Mortality';
 import Settings from './components/Settings';
 import AlertsPage from './components/AlertsPage';
+import AdminPanel from './components/AdminPanel';
 import LandingPage from './components/LandingPage';
 import Register from './components/Register';
 import Login from './components/Login';
@@ -33,6 +34,7 @@ function App() {
   const [authState, setAuthState] = useState<AuthState>('landing');
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const [otpError, setOtpError] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   
   // Verificar se é rota de confirmação de email ou recuperação de senha
   // Supabase pode enviar tokens via query string (?) ou hash (#)
@@ -104,6 +106,26 @@ function App() {
 
   // Navigation state is now managed in FarmContext
   const { currentView, navigate, clearData, subscription, isSubscriptionLoading, handleMercadoPagoReturn } = useFarm();
+
+  // Verificar se usuário é admin ao autenticar
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (authState !== 'app') return;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('admin_users')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      setIsAdmin(!!data);
+    };
+
+    checkAdmin();
+  }, [authState]);
 
   const handleLoginSuccess = () => {
     setAuthState('app');
@@ -271,6 +293,7 @@ function App() {
       case 'mortality': return <Mortality />;
       case 'alerts': return <AlertsPage />;
       case 'settings': return <Settings />;
+      case 'admin': return <AdminPanel />;
       default: return <Dashboard />;
     }
   };
@@ -362,16 +385,21 @@ function App() {
 
   // Check subscription status for authenticated users
   if (authState === 'app' && !isSubscriptionLoading) {
-    const isTrialExpired = subscription?.status === 'trial' && 
-      subscription.trialEnd && 
-      new Date(subscription.trialEnd) < new Date();
-    
-    const isSubscriptionActive = subscription?.status === 'active' || 
-      (subscription?.status === 'trial' && !isTrialExpired);
+    // Administradores têm acesso FULL sem verificação de assinatura
+    if (isAdmin) {
+      // Admin tem acesso total, pular verificação de assinatura
+    } else {
+      const isTrialExpired = subscription?.status === 'trial' && 
+        subscription.trialEnd && 
+        new Date(subscription.trialEnd) < new Date();
+      
+      const isSubscriptionActive = subscription?.status === 'active' || 
+        (subscription?.status === 'trial' && !isTrialExpired);
 
-    // If subscription is not active, show the subscription status
-    if (!isSubscriptionActive) {
-      return <SubscriptionStatus />;
+      // If subscription is not active, show the subscription status
+      if (!isSubscriptionActive) {
+        return <SubscriptionStatus />;
+      }
     }
   }
 

@@ -1,8 +1,9 @@
 
-import { useState, FC } from 'react';
-import { DashboardIcon, DataEntryIcon, FlockIcon, AIIcon, ExpenseIcon, SalesIcon, ReportIcon, ShedIcon, CalculatorIcon, UsersIcon, ContactIcon, InventoryIcon, LogOutIcon, SettingsIcon, BellIcon } from './icons';
+import { useState, FC, useEffect } from 'react';
+import { DashboardIcon, DataEntryIcon, FlockIcon, AIIcon, ExpenseIcon, SalesIcon, ReportIcon, ShedIcon, CalculatorIcon, UsersIcon, ContactIcon, InventoryIcon, LogOutIcon, SettingsIcon, BellIcon, AdminIcon } from './icons';
 import { useFarm } from '../context/FarmContext';
 import { View } from '../types';
+import { supabase } from '../services/supabaseClient';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -11,6 +12,25 @@ interface SidebarProps {
 const Sidebar: FC<SidebarProps> = ({ onLogout }) => {
   const { currentView, navigate } = useFarm();
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Verificar se usuário é admin
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('admin_users')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      setIsAdmin(!!data);
+    };
+
+    checkAdmin();
+  }, []);
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
@@ -28,6 +48,7 @@ const Sidebar: FC<SidebarProps> = ({ onLogout }) => {
     { id: 'reports', label: 'Relatórios', icon: <ReportIcon /> },
     { id: 'ai-assistant', label: 'Assistente AI', icon: <AIIcon /> },
     { id: 'settings', label: 'Configurações', icon: <SettingsIcon /> },
+    ...(isAdmin ? [{ id: 'admin', label: 'Administração', icon: <AdminIcon /> }] : []),
   ];
 
   const handleNavigation = (id: string) => {
