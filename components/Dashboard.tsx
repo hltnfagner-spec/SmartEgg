@@ -435,14 +435,18 @@ const Dashboard: FC = () => {
             )}
             {/* Versão mobile */}
             {isActive && subscription?.paymentDueDate && (
-              <div className="sm:hidden flex flex-col items-end space-y-1">
-                <div className="flex items-center space-x-1 px-2 py-1 bg-emerald-50 rounded border border-emerald-200">
+              <div className="sm:hidden flex items-center space-x-2 px-3 py-1.5 bg-emerald-50 rounded-lg border border-emerald-200">
+                <div className="flex items-center space-x-1">
                   <span className="text-emerald-600 text-xs">●</span>
                   <span className="text-xs font-medium text-emerald-700">Ativa</span>
                 </div>
-                <div className="text-xs text-slate-600 text-right">
-                  <div className="font-semibold">{new Date(subscription.paymentDueDate).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'})}</div>
-                  <div className="text-emerald-600 font-medium">{daysRemaining} dias</div>
+                <span className="text-slate-300">|</span>
+                <div className="text-xs text-slate-600">
+                  <span className="font-semibold">{new Date(subscription.paymentDueDate).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'})}</span>
+                </div>
+                <span className="text-slate-300">|</span>
+                <div className="text-xs text-emerald-600 font-medium">
+                  {daysRemaining}d
                 </div>
               </div>
             )}
