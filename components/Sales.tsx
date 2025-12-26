@@ -154,29 +154,29 @@ const AddSaleForm: FC<{onClose: () => void; saleToEdit?: Sale | null}> = ({ onCl
     const selectedClientType = clients.find(c => c.id === formData.clientId)?.type;
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {/* Seção Dados da Venda */}
-            <div className="space-y-4">
-                <h3 className="text-sm font-bold text-stone-500 uppercase tracking-wide border-b border-stone-200 pb-1">Dados da Venda</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3 sm:space-y-4">
+                <h3 className="text-xs sm:text-sm font-bold text-stone-500 uppercase tracking-wide border-b border-stone-200 pb-1">Dados da Venda</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                        <label htmlFor="date" className="block text-sm font-medium text-stone-600">Data da Venda</label>
-                        <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" />
+                        <label htmlFor="date" className="block text-xs sm:text-sm font-medium text-stone-600">Data da Venda</label>
+                        <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className="mt-1 block w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm" />
                     </div>
                     <div>
-                        <label htmlFor="flockId" className="block text-sm font-medium text-stone-600">Lote Origem</label>
-                        <select id="flockId" name="flockId" value={formData.flockId} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
+                        <label htmlFor="flockId" className="block text-xs sm:text-sm font-medium text-stone-600">Lote Origem</label>
+                        <select id="flockId" name="flockId" value={formData.flockId} onChange={handleChange} required className="mt-1 block w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm">
                             <option value="">Selecione um lote</option>
                             {flocks.map(flock => <option key={flock.id} value={flock.id}>{flock.name}</option>)}
                         </select>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label htmlFor="clientId" className="block text-sm font-medium text-stone-600">Cliente</label>
-                        <select id="clientId" name="clientId" value={formData.clientId} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
-                            <option value="">Venda Avulsa (Sem cliente)</option>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+                    <div className="lg:col-span-1">
+                        <label htmlFor="clientId" className="block text-xs sm:text-sm font-medium text-stone-600">Cliente</label>
+                        <select id="clientId" name="clientId" value={formData.clientId} onChange={handleChange} className="mt-1 block w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm">
+                            <option value="">Venda Avulsa</option>
                             {clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}
                         </select>
                         {selectedClientType && (
@@ -185,36 +185,36 @@ const AddSaleForm: FC<{onClose: () => void; saleToEdit?: Sale | null}> = ({ onCl
                             </p>
                         )}
                     </div>
-                    <div>
-                        <label htmlFor="productType" className="block text-sm font-medium text-stone-600">Produto</label>
-                        <select id="productType" name="productType" value={formData.productType} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
+                    <div className="lg:col-span-1">
+                        <label htmlFor="productType" className="block text-xs sm:text-sm font-medium text-stone-600">Produto</label>
+                        <select id="productType" name="productType" value={formData.productType} onChange={handleChange} required className="mt-1 block w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm">
                             {PRODUCT_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
                         </select>
                     </div>
-                    <div>
-                        <label htmlFor="saleType" className="block text-sm font-medium text-stone-600">Tipo Venda</label>
-                        <select id="saleType" name="saleType" value={formData.saleType} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
+                    <div className="lg:col-span-1">
+                        <label htmlFor="saleType" className="block text-xs sm:text-sm font-medium text-stone-600">Tipo Venda</label>
+                        <select id="saleType" name="saleType" value={formData.saleType} onChange={handleChange} required className="mt-1 block w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm">
                             {SALE_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
                         </select>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                        <label htmlFor="quantity" className="block text-sm font-medium text-stone-600">Quantidade</label>
-                        <input type="number" id="quantity" name="quantity" min="0" value={formData.quantity} onChange={handleChange} onFocus={handleFocus} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" />
+                        <label htmlFor="quantity" className="block text-xs sm:text-sm font-medium text-stone-600">Quantidade</label>
+                        <input type="number" id="quantity" name="quantity" min="0" value={formData.quantity} onChange={handleChange} onFocus={handleFocus} required className="mt-1 block w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm" />
                     </div>
                     <div>
-                        <label htmlFor="pricePerUnit" className="block text-sm font-medium text-stone-600">Preço Unitário (R$)</label>
-                        <input type="number" step="0.01" id="pricePerUnit" name="pricePerUnit" min="0" value={formData.pricePerUnit} onChange={handleChange} onFocus={handleFocus} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" />
+                        <label htmlFor="pricePerUnit" className="block text-xs sm:text-sm font-medium text-stone-600">Preço Unitário (R$)</label>
+                        <input type="number" step="0.01" id="pricePerUnit" name="pricePerUnit" min="0" value={formData.pricePerUnit} onChange={handleChange} onFocus={handleFocus} required className="mt-1 block w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm" />
                     </div>
                 </div>
             </div>
 
             {/* Seção Agendamento e Logística */}
-            <div className="space-y-4 bg-stone-50 p-4 rounded-lg border border-stone-200">
-                <div className="flex items-center justify-between border-b border-stone-200 pb-2 mb-2">
-                    <h3 className="text-sm font-bold text-stone-500 uppercase tracking-wide">Agendamento de Entrega</h3>
+            <div className="space-y-3 sm:space-y-4 bg-stone-50 p-3 sm:p-4 rounded-lg border border-stone-200">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-stone-200 pb-2 mb-2">
+                    <h3 className="text-xs sm:text-sm font-bold text-stone-500 uppercase tracking-wide">Agendamento de Entrega</h3>
                     <label className="flex items-center space-x-2 cursor-pointer">
                         <input 
                             type="checkbox" 
@@ -223,62 +223,76 @@ const AddSaleForm: FC<{onClose: () => void; saleToEdit?: Sale | null}> = ({ onCl
                             onChange={handleChange} 
                             className="form-checkbox h-4 w-4 text-amber-600 rounded border-stone-300 focus:ring-amber-500"
                         />
-                        <span className="text-sm font-medium text-stone-700">Agendar Entrega?</span>
+                        <span className="text-xs sm:text-sm font-medium text-stone-700">Agendar Entrega?</span>
                     </label>
                 </div>
 
                 {formData.hasDelivery && (
-                    <div className="grid grid-cols-1 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-3 sm:gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                             <div>
-                                <label htmlFor="deliveryDate" className="block text-sm font-medium text-stone-600">Data da Entrega</label>
-                                <input type="date" id="deliveryDate" name="deliveryDate" value={formData.deliveryDate} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" />
+                                <label htmlFor="deliveryDate" className="block text-xs sm:text-sm font-medium text-stone-600">Data da Entrega</label>
+                                <input type="date" id="deliveryDate" name="deliveryDate" value={formData.deliveryDate} onChange={handleChange} className="mt-1 block w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm" />
                             </div>
                             <div>
-                                <label htmlFor="deliveryStatus" className="block text-sm font-medium text-stone-600">Status Inicial</label>
-                                <select id="deliveryStatus" name="deliveryStatus" value={formData.deliveryStatus} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
+                                <label htmlFor="deliveryStatus" className="block text-xs sm:text-sm font-medium text-stone-600">Status Inicial</label>
+                                <select id="deliveryStatus" name="deliveryStatus" value={formData.deliveryStatus} onChange={handleChange} className="mt-1 block w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm">
                                     {DELIVERY_STATUSES.map(status => <option key={status} value={status}>{status}</option>)}
                                 </select>
                             </div>
                         </div>
                         <div>
-                            <label htmlFor="deliveryAddress" className="block text-sm font-medium text-stone-600">Endereço de Entrega</label>
-                            <input type="text" id="deliveryAddress" name="deliveryAddress" value={formData.deliveryAddress} onChange={handleChange} placeholder="Rua, Número, Bairro, Cidade" className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" />
+                            <label htmlFor="deliveryAddress" className="block text-xs sm:text-sm font-medium text-stone-600">Endereço de Entrega</label>
+                            <input type="text" id="deliveryAddress" name="deliveryAddress" value={formData.deliveryAddress} onChange={handleChange} placeholder="Rua, Número, Bairro, Cidade" className="mt-1 block w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm" />
                         </div>
                          <div>
-                            <label htmlFor="deliveryNotes" className="block text-sm font-medium text-stone-600">Observações de Entrega</label>
-                            <input type="text" id="deliveryNotes" name="deliveryNotes" value={formData.deliveryNotes} onChange={handleChange} placeholder="Ex: Deixar na portaria, cuidado frágil" className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" />
+                            <label htmlFor="deliveryNotes" className="block text-xs sm:text-sm font-medium text-stone-600">Observações de Entrega</label>
+                            <textarea id="deliveryNotes" name="deliveryNotes" value={formData.deliveryNotes} onChange={handleChange} placeholder="Ex: Deixar na portaria, cuidado frágil" rows={2} className="mt-1 block w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm resize-none" />
                         </div>
                     </div>
                 )}
             </div>
 
             {/* Seção Pagamento */}
-            <div className="space-y-4">
-                <h3 className="text-sm font-bold text-stone-500 uppercase tracking-wide border-b border-stone-200 pb-1">Pagamento</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3 sm:space-y-4">
+                <h3 className="text-xs sm:text-sm font-bold text-stone-500 uppercase tracking-wide border-b border-stone-200 pb-1">Pagamento</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                        <label htmlFor="paymentMethod" className="block text-sm font-medium text-stone-600">Forma de Pagamento</label>
-                        <select id="paymentMethod" name="paymentMethod" value={formData.paymentMethod} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
+                        <label htmlFor="paymentMethod" className="block text-xs sm:text-sm font-medium text-stone-600">Forma de Pagamento</label>
+                        <select id="paymentMethod" name="paymentMethod" value={formData.paymentMethod} onChange={handleChange} required className="mt-1 block w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm">
                             {PAYMENT_METHODS.map(method => <option key={method} value={method}>{method}</option>)}
                         </select>
                     </div>
                     <div>
-                        <label htmlFor="paymentStatus" className="block text-sm font-medium text-stone-600">Situação</label>
-                        <select id="paymentStatus" name="paymentStatus" value={formData.paymentStatus} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
+                        <label htmlFor="paymentStatus" className="block text-xs sm:text-sm font-medium text-stone-600">Status do Pagamento</label>
+                        <select id="paymentStatus" name="paymentStatus" value={formData.paymentStatus} onChange={handleChange} required className="mt-1 block w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm">
                             {PAYMENT_STATUSES.map(status => <option key={status} value={status}>{status}</option>)}
                         </select>
                     </div>
                 </div>
-                <div className="bg-stone-50 p-3 rounded-md text-center mt-2">
-                    <p className="text-sm font-medium text-stone-600">Total da Venda</p>
-                    <p className="text-2xl font-bold text-green-600">{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-                </div>
             </div>
 
-            <div className="flex justify-end space-x-3 pt-4 border-t border-stone-100">
-                <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-stone-700 bg-stone-100 border border-stone-300 rounded-md hover:bg-stone-200">Cancelar</button>
-                <button type="submit" className="px-6 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 shadow-sm">{saleToEdit ? 'Salvar Alterações' : 'Registrar Venda'}</button>
+            {/* Resumo e Total */}
+            <div className="bg-stone-100 p-3 sm:p-4 rounded-lg border border-stone-200">
+                <div className="flex justify-between items-center mb-3">
+                    <span className="text-xs sm:text-sm font-medium text-stone-700">Total da Venda:</span>
+                    <span className="text-lg sm:text-xl font-bold text-stone-900">{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:justify-end sm:space-x-3 space-y-2 sm:space-y-0">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-stone-700 bg-white border border-stone-300 rounded-md shadow-sm hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-amber-600 border border-transparent rounded-md shadow-sm hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    >
+                        {saleToEdit ? 'Atualizar Venda' : 'Registrar Venda'}
+                    </button>
+                </div>
             </div>
         </form>
     );

@@ -71,16 +71,16 @@ const Sidebar: FC<SidebarProps> = ({ onLogout }) => {
         <button
           key={item.id}
           onClick={() => handleNavigation(item.id)}
-          className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200 mb-1 ${
+          className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 mb-1 ${
             isActive
               ? 'bg-orange-500 text-white shadow-sm'
               : 'text-slate-300 hover:bg-slate-800 hover:text-white'
           }`}
         >
-          <span className={`${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'}`}>
+          <span className={`${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'} flex-shrink-0`}>
             {item.icon}
           </span>
-          <span className="ml-3">{item.label}</span>
+          <span className="ml-3 truncate">{item.label}</span>
         </button>
       )})}
     </nav>
@@ -132,37 +132,39 @@ const Sidebar: FC<SidebarProps> = ({ onLogout }) => {
       )}
       
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 h-full bg-slate-900 shadow-xl shrink-0 transition-all duration-300 ease-in-out z-30">
+      <aside className="hidden md:flex flex-col w-64 lg:w-72 h-full bg-slate-900 shadow-xl shrink-0 transition-all duration-300 ease-in-out z-30">
         {/* Logo Area */}
-        <div className="flex items-center h-20 px-6 border-b border-slate-800">
+        <div className="flex items-center h-16 lg:h-20 px-4 lg:px-6 border-b border-slate-800">
           <img 
             src="/logo.png" 
             alt="SmartEgg" 
-            className="h-10 w-auto mr-3 object-contain"
+            className="h-8 lg:h-10 w-auto mr-2 lg:mr-3 object-contain"
             onError={(e) => {
                 e.currentTarget.style.display = 'none';
                 const span = document.createElement('span');
                 span.innerText = '🥚';
-                span.className = 'text-3xl mr-3';
+                span.className = 'text-2xl lg:text-3xl mr-2 lg:mr-3';
                 e.currentTarget.parentNode?.insertBefore(span, e.currentTarget);
             }}
           />
-          <h1 className="text-2xl font-bold text-white tracking-tight">SmartEgg</h1>
+          <h1 className="text-xl lg:text-2xl font-bold text-white tracking-tight hidden lg:block">SmartEgg</h1>
+          <h1 className="text-xl font-bold text-white tracking-tight lg:hidden">🥚</h1>
         </div>
         
         {/* Navigation */}
-        <div className="flex-1 overflow-y-auto py-4 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto py-3 lg:py-4 custom-scrollbar">
             <NavLinks />
         </div>
 
         {/* Footer / Logout */}
-        <div className="p-4 border-t border-slate-800">
+        <div className="p-3 lg:p-4 border-t border-slate-800">
             <button 
                 onClick={handleLogoutClick}
-                className="w-full flex items-center px-4 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-colors group"
+                className="w-full flex items-center px-3 lg:px-4 py-2.5 lg:py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-colors group"
             >
-                <LogOutIcon className="h-5 w-5 mr-3 group-hover:text-red-400 transition-colors" />
-                <span className="group-hover:text-red-100">Sair</span>
+                <LogOutIcon className="h-4 w-4 lg:h-5 lg:w-5 mr-2 lg:mr-3 group-hover:text-red-400 transition-colors flex-shrink-0" />
+                <span className="group-hover:text-red-100 hidden lg:inline">Sair do Sistema</span>
+                <span className="group-hover:text-red-100 lg:hidden">Sair</span>
             </button>
         </div>
       </aside>

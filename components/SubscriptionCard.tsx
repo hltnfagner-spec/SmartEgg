@@ -57,50 +57,55 @@ const SubscriptionCard = () => {
   };
 
   return (
-    <div className="w-full rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 p-6 shadow-2xl shadow-slate-900/40 text-white">
-      <div className="flex flex-col lg:flex-row justify-between gap-6 items-start">
+    <div className="w-full rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 p-4 sm:p-6 shadow-2xl shadow-slate-900/40 text-white">
+      <div className="flex flex-col justify-between gap-4 sm:gap-6">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-2xl">👑</span>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold tracking-wide uppercase">{statusLabel}</span>
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            <span className="text-xl sm:text-2xl">👑</span>
+            <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+              <span className="text-xs sm:text-sm font-semibold tracking-wide uppercase">{statusLabel}</span>
               {isTrial && (
-                <span className="px-2 py-0.5 text-[10px] font-semibold bg-blue-500 text-white rounded-full tracking-widest">
-                  Período de teste
+                <span className="px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-semibold bg-blue-500 text-white rounded-full tracking-wider">
+                  Trial
                 </span>
               )}
             </div>
           </div>
-          <div className="text-sm text-slate-200">
-            Próximo vencimento:{' '}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs sm:text-sm text-slate-200">
+            <span>Vencimento:</span>
             <span className="font-semibold">
               {subscription?.paymentDueDate
-                ? new Date(subscription.paymentDueDate).toLocaleDateString('pt-BR')
+                ? new Date(subscription.paymentDueDate).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit', year: '2-digit'})
                 : '—'}
             </span>
           </div>
           {daysRemaining !== null && (
-            <div className="text-sm text-emerald-300">
-              Dias restantes: <span className="font-semibold">{daysRemaining}</span>
+            <div className="text-xs sm:text-sm text-emerald-300 mt-1">
+              <span className="hidden sm:inline">Dias restantes: </span>
+              <span className="sm:hidden">Restam: </span>
+              <span className="font-semibold">{daysRemaining}</span>
+              <span className="hidden sm:inline"> dias</span>
+              <span className="sm:hidden">d</span>
             </div>
           )}
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-col items-start sm:items-end gap-2">
           <button
             onClick={() => !isCheckoutLoading && handleCheckout()}
             disabled={isCheckoutLoading}
-            className="bg-gradient-to-r from-emerald-400 to-emerald-500 text-slate-900 font-bold px-6 py-2.5 rounded-full shadow-lg shadow-emerald-500/40 hover:brightness-95 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+            className="w-full sm:w-auto bg-gradient-to-r from-emerald-400 to-emerald-500 text-slate-900 font-bold px-4 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-lg shadow-emerald-500/40 hover:brightness-95 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
           >
             <span>⚡</span>
             <span>{buttonLabel}</span>
           </button>
-          <span className="text-[10px] text-slate-200 text-right uppercase tracking-wide">
-            Pagamento seguro via Mercado Pago
+          <span className="text-[9px] sm:text-[10px] text-slate-200 text-center sm:text-right uppercase tracking-wide w-full sm:w-auto">
+            <span className="hidden sm:inline">Pagamento seguro via Mercado Pago</span>
+            <span className="sm:hidden">Mercado Pago Seguro</span>
           </span>
         </div>
       </div>
       {checkoutError && (
-        <div className="mt-4 text-xs text-amber-200 bg-amber-500/10 p-2 rounded">
+        <div className="mt-3 sm:mt-4 text-xs text-amber-200 bg-amber-500/10 p-2 rounded">
           {checkoutError}
         </div>
       )}

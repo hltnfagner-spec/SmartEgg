@@ -416,20 +416,33 @@ const Dashboard: FC = () => {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
         <div className="flex items-center space-x-4">
-            {/* Informações discretas de assinatura ativa */}
+            {/* Informações discretas de assinatura ativa - responsivo */}
             {isActive && subscription?.paymentDueDate && (
-              <div className="flex items-center space-x-2 px-4 py-2 bg-emerald-50 rounded-lg border border-emerald-200">
+              <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 bg-emerald-50 rounded-lg border border-emerald-200">
                 <div className="flex items-center space-x-1">
-                  <span className="text-emerald-600 text-sm">●</span>
-                  <span className="text-xs font-medium text-emerald-700">Assinatura ativa</span>
+                  <span className="text-emerald-600 text-xs">●</span>
+                  <span className="text-xs font-medium text-emerald-700 hidden md:inline">Assinatura ativa</span>
                 </div>
-                <span className="text-slate-300">|</span>
-                <div className="text-xs text-slate-600">
-                  Vencimento: <span className="font-semibold">{new Date(subscription.paymentDueDate).toLocaleDateString('pt-BR')}</span>
+                <span className="text-slate-300 hidden lg:inline">|</span>
+                <div className="text-xs text-slate-600 hidden lg:block">
+                  Venc: <span className="font-semibold">{new Date(subscription.paymentDueDate).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'})}</span>
                 </div>
-                <span className="text-slate-300">|</span>
+                <span className="text-slate-300 hidden sm:inline lg:hidden">|</span>
                 <div className="text-xs text-emerald-600 font-medium">
-                  {daysRemaining} dias restantes
+                  {daysRemaining}d
+                </div>
+              </div>
+            )}
+            {/* Versão mobile */}
+            {isActive && subscription?.paymentDueDate && (
+              <div className="sm:hidden flex flex-col items-end space-y-1">
+                <div className="flex items-center space-x-1 px-2 py-1 bg-emerald-50 rounded border border-emerald-200">
+                  <span className="text-emerald-600 text-xs">●</span>
+                  <span className="text-xs font-medium text-emerald-700">Ativa</span>
+                </div>
+                <div className="text-xs text-slate-600 text-right">
+                  <div className="font-semibold">{new Date(subscription.paymentDueDate).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'})}</div>
+                  <div className="text-emerald-600 font-medium">{daysRemaining} dias</div>
                 </div>
               </div>
             )}
