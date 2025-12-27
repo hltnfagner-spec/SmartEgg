@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAlerts } from '../context/AlertContext';
 import { EggIcon, FlockIcon, InventoryIcon, TrendUpIcon, TrendDownIcon } from './icons';
 
@@ -83,14 +83,20 @@ const AlertsDashboard: React.FC = () => {
             </div>
           </div>
           
-          <div className="flex items-center ml-4">
-            <button
-              onClick={() => moveToHistory(alert.id)}
-              className="text-xs bg-white px-3 py-1 rounded border border-gray-200 text-gray-600 hover:bg-gray-50"
-              title="Arquivar"
+          <div className="flex items-center gap-2 ml-4">
+            <select
+              onChange={(e) => {
+                const ttl = e.target.value as '1h' | '24h' | 'forever';
+                moveToHistory(alert.id, ttl);
+              }}
+              className="text-xs bg-white px-2 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500"
+              defaultValue=""
             >
-              Arquivar
-            </button>
+              <option value="" disabled>Arquivar...</option>
+              <option value="1h">Silenciar 1h</option>
+              <option value="24h">Silenciar 24h</option>
+              <option value="forever">Arquivar</option>
+            </select>
           </div>
         </div>
       ))}

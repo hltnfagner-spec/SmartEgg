@@ -64,6 +64,8 @@ const Dashboard: FC = () => {
 
   // ALERT LOGIC: Production Trends - agora integrado com o contexto
   useEffect(() => {
+    if (typeof addAlert !== 'function') return;
+
     const activeFlocks = flocks.filter(f => f.status === 'Ativo');
 
     activeFlocks.forEach(flock => {
@@ -80,31 +82,41 @@ const Dashboard: FC = () => {
           .map(([date, total]) => ({ date, total }))
           .sort((a, b) => b.date.localeCompare(a.date));
 
-      if (dailyTotals.length >= 6) {
-          const last3Days = dailyTotals.slice(0, 3);
-          const prev3Days = dailyTotals.slice(3, 6);
+      if (dailyTotals.length >= 4) {
+          const last2Days = dailyTotals.slice(0, 2);
+          const prev2Days = dailyTotals.slice(2, 4);
 
-          const avgLast3 = last3Days.reduce((acc, d) => acc + d.total, 0) / 3;
-          const avgPrev3 = prev3Days.reduce((acc, d) => acc + d.total, 0) / 3;
+          const avgLast2 = last2Days.reduce((acc, d) => acc + d.total, 0) / 2;
+          const avgPrev2 = prev2Days.reduce((acc, d) => acc + d.total, 0) / 2;
 
-          if (avgPrev3 > 0) {
-              const variation = ((avgLast3 - avgPrev3) / avgPrev3) * 100;
+          if (avgPrev2 > 0) {
+              const variation = ((avgLast2 - avgPrev2) / avgPrev2) * 100;
               
-              if (variation < -5) { // Queda maior que 5%
+              if (variation < -10) { // Queda maior que 10%
                   addAlert({
                       type: 'production_down',
                       title: `Alerta de Queda de Produção - ${flock.name}`,
-                      message: `Variação de ${Math.abs(variation).toFixed(1)}% comparado aos 3 dias anteriores.`,
+                      message: `Variação de ${Math.abs(variation).toFixed(1)}% comparado aos 2 dias anteriores.`,
                       percentage: Math.abs(variation),
-                      flockName: flock.name
+                      flockName: flock.name,
+                      metadata: {
+                          threshold: -10,
+                          value: variation,
+                          flockId: flock.id
+                      }
                   });
-              } else if (variation > 5) { // Aumento maior que 5%
+              } else if (variation > 10) { // Aumento maior que 10%
                   addAlert({
                       type: 'production_up',
                       title: `Aumento de Produção - ${flock.name}`,
-                      message: `Variação de ${variation.toFixed(1)}% comparado aos 3 dias anteriores.`,
+                      message: `Variação de ${variation.toFixed(1)}% comparado aos 2 dias anteriores.`,
                       percentage: variation,
-                      flockName: flock.name
+                      flockName: flock.name,
+                      metadata: {
+                          threshold: 10,
+                          value: variation,
+                          flockId: flock.id
+                      }
                   });
               }
           }
@@ -136,7 +148,12 @@ const Dashboard: FC = () => {
                     title: `Estoque Baixo: ${feedItem.name}`,
                     message: `Restam aproximadamente ${daysRemaining.toFixed(1)} dias com base no consumo atual.`,
                     itemName: feedItem.name,
-                    daysRemaining
+                    daysRemaining,
+                    metadata: {
+                        threshold: 5,
+                        value: daysRemaining,
+                        itemId: feedItem.id
+                    }
                 });
             }
         }
@@ -425,7 +442,7 @@ const Dashboard: FC = () => {
                 </div>
                 <span className="text-slate-300 hidden lg:inline">|</span>
                 <div className="text-xs text-slate-600 hidden lg:block">
-                  Venc: <span className="font-semibold">{new Date(subscription.paymentDueDate).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'})}</span>
+                  Venc: <span className="font-semibold">{new Date(subscription.paymentDueDate).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit', year: '2-digit'})}</span>
                 </div>
                 <span className="text-slate-300 hidden sm:inline lg:hidden">|</span>
                 <div className="text-xs text-emerald-600 font-medium">
@@ -442,7 +459,7 @@ const Dashboard: FC = () => {
                 </div>
                 <span className="text-slate-300">|</span>
                 <div className="text-xs text-slate-600">
-                  <span className="font-semibold">{new Date(subscription.paymentDueDate).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'})}</span>
+                  Venc: <span className="font-semibold">{new Date(subscription.paymentDueDate).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit', year: '2-digit'})}</span>
                 </div>
                 <span className="text-slate-300">|</span>
                 <div className="text-xs text-emerald-600 font-medium">
