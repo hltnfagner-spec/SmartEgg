@@ -15,6 +15,8 @@ import Inventory from './components/Inventory';
 import Mortality from './components/Mortality';
 import Settings from './components/Settings';
 import AlertsPage from './components/AlertsPage';
+import Transactions from './components/Transactions';
+import Productivity from './components/Productivity';
 import AdminPanel from './components/AdminPanel';
 import LandingPage from './components/LandingPage';
 import Register from './components/Register';
@@ -302,6 +304,8 @@ function App() {
       case 'inventory': return <Inventory />;
       case 'mortality': return <Mortality />;
       case 'alerts': return <AlertsPage />;
+      case 'transactions': return <Transactions />;
+      case 'produtividade': return <Productivity />;
       case 'settings': return <Settings />;
       case 'admin': return <AdminPanel />;
       default: return <Dashboard />;

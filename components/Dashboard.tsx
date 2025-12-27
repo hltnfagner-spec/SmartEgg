@@ -23,7 +23,7 @@ const getLocalYMD = (date: Date | string) => {
 };
 
 const Dashboard: FC = () => {
-  const { flocks, records, expenses, sales, tasks, toggleTaskCompletion, getHensCountOnDate, getFlockById, inventory } = useFarm();
+  const { flocks, records, expenses, sales, tasks, toggleTaskCompletion, getHensCountOnDate, getFlockById, inventory, navigate } = useFarm();
   const { addAlert } = useAlerts();
   
   const [activeModal, setActiveModal] = useState<'collection' | 'expense' | 'sale' | 'mortality' | null>(null);
@@ -484,6 +484,36 @@ const Dashboard: FC = () => {
         </div>
       </div>
 
+      {/* Tabbed Submenu */}
+      <div className="bg-white border-b border-slate-200">
+        <div className="flex space-x-1">
+          <button
+            onClick={() => navigate('transactions')}
+            className="px-6 py-3 text-sm font-medium transition-colors text-slate-600 hover:text-orange-600"
+          >
+            Últimas Transações
+          </button>
+          <button
+            onClick={() => navigate('produtividade')}
+            className="px-6 py-3 text-sm font-medium transition-colors text-slate-600 hover:text-orange-600"
+          >
+            Produtividade
+          </button>
+          <button
+            className="px-6 py-3 text-sm font-medium text-slate-400 cursor-not-allowed"
+            disabled
+          >
+            Aves
+          </button>
+          <button
+            className="px-6 py-3 text-sm font-medium text-slate-400 cursor-not-allowed"
+            disabled
+          >
+            Estoque
+          </button>
+        </div>
+      </div>
+
       {/* ALERT SECTION - usando novo sistema de alertas */}
       <AlertsDashboard />
       
@@ -589,33 +619,7 @@ const Dashboard: FC = () => {
         </div>
       </div>
 
-      {/* Latest Transactions Section - MOVED HERE */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-          <h2 className="text-lg font-semibold text-slate-800 mb-4">Últimas Transações</h2>
-          <div className="max-h-64 overflow-y-auto">
-              <ul className="divide-y divide-slate-100">
-            {latestTransactions.length > 0 ? latestTransactions.map(tx => (
-               <li key={tx.id} className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
-                  <div className="flex items-center min-w-0">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 flex-shrink-0 ${tx.type === 'sale' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                          {tx.type === 'sale' ? <ArrowUpIcon /> : <ArrowDownIcon />}
-                      </div>
-                      <div className="min-w-0">
-                          <p className="font-medium text-slate-800 truncate" title={tx.description}>{tx.description}</p>
-                          <p className="text-xs text-slate-500">{new Date(tx.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', timeZone: 'UTC' })}</p>
-                      </div>
-                  </div>
-                  <p className={`font-semibold text-sm whitespace-nowrap pl-2 ${tx.type === 'sale' ? 'text-green-600' : 'text-red-600'}`}>
-                      {tx.type === 'sale' ? '+' : '-'}{Math.abs(tx.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  </p>
-              </li>
-            )) : (
-              <li className="text-center py-10 text-slate-500">Nenhuma transação recente.</li>
-            )}
-              </ul>
-          </div>
-      </div>
-
+      {/* Main Dashboard Content */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <div className="lg:col-span-3 bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col">
              <h2 className="text-lg font-semibold text-slate-800 mb-4">Produção (7 Dias)</h2>

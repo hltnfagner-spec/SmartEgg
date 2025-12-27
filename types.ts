@@ -160,7 +160,7 @@ export interface EggMovement {
   referenceId?: string; // ID do registro relacionado (coleta, venda, etc)
 }
 
-export type View = 'dashboard' | 'data-entry' | 'flocks' | 'sheds' | 'expenses' | 'sales' | 'reports' | 'ai-assistant' | 'calculator' | 'clients' | 'contacts' | 'inventory' | 'mortality' | 'alerts' | 'settings' | 'admin';
+export type View = 'dashboard' | 'data-entry' | 'flocks' | 'sheds' | 'expenses' | 'sales' | 'reports' | 'ai-assistant' | 'calculator' | 'clients' | 'contacts' | 'inventory' | 'mortality' | 'alerts' | 'transactions' | 'produtividade' | 'settings' | 'admin';
 
 // Configurações da Empresa/Granja
 export interface CompanySettings {

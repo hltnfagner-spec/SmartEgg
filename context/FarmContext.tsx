@@ -758,7 +758,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       });
       
       // Lista de views válidas
-      const validViews: View[] = ['dashboard', 'data-entry', 'flocks', 'sheds', 'expenses', 'sales', 'reports', 'ai-assistant', 'calculator', 'clients', 'contacts', 'inventory'];
+      const validViews: View[] = ['dashboard', 'data-entry', 'flocks', 'sheds', 'expenses', 'sales', 'reports', 'ai-assistant', 'calculator', 'clients', 'contacts', 'inventory', 'transactions', 'produtividade'];
       
       // Navegar para a view correspondente
       if (view && validViews.includes(view as View)) {
