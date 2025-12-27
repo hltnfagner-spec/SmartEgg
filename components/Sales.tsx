@@ -1,4 +1,4 @@
-import { useState, useEffect, FC, ChangeEvent, FormEvent, FocusEvent, useRef } from 'react';
+import { useState, useEffect, FC, ChangeEvent, FormEvent, FocusEvent, useRef, useMemo } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { Sale, SaleType, PaymentMethod, PaymentStatus, ProductType, DeliveryStatus, CompanySettings } from '../types';
 import { EditIcon, PrinterIcon, DownloadIcon } from './icons';
@@ -592,12 +592,98 @@ const Sales: FC = () => {
     const [saleToEdit, setSaleToEdit] = useState<Sale | null>(null);
     const [receiptSale, setReceiptSale] = useState<Sale | null>(null);
     
+    // Filtros - Padrão DataEntry
+    const [paymentFilter, setPaymentFilter] = useState<'todos' | 'Pago' | 'Pendente'>('todos');
+    const [dateFilter, setDateFilter] = useState({ 
+        start: new Date().toISOString().split('T')[0], 
+        end: new Date().toISOString().split('T')[0] 
+    });
+    const [periodType, setPeriodType] = useState<'diario' | 'semanal' | 'mensal' | 'personalizado'>('mensal');
+
+    // Inicializar com filtro mensal ao carregar
+    useEffect(() => {
+        updateDatesByPeriod('mensal');
+    }, []);
+
     // Recarregar configurações sempre que abrir o recibo
     useEffect(() => {
         if (receiptSale) {
             loadCompanySettings();
         }
     }, [receiptSale, loadCompanySettings]);
+
+    // Função para atualizar datas baseada no período (Padrão DataEntry)
+    const updateDatesByPeriod = (period: 'diario' | 'semanal' | 'mensal' | 'personalizado') => {
+        const today = new Date();
+        let start = new Date();
+        let end = new Date();
+
+        switch (period) {
+            case 'diario':
+                start = today;
+                end = today;
+                break;
+            case 'semanal':
+                start = new Date(today);
+                start.setDate(today.getDate() - today.getDay()); // Domingo
+                end = new Date(start);
+                end.setDate(start.getDate() + 6); // Sábado
+                break;
+            case 'mensal':
+                start = new Date(today.getFullYear(), today.getMonth(), 1);
+                end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                break;
+            case 'personalizado':
+                // Manter datas atuais
+                setPeriodType(period);
+                return;
+        }
+
+        // Formatar para YYYY-MM-DD local
+        const formatDate = (d: Date) => {
+            const offset = d.getTimezoneOffset() * 60000;
+            return (new Date(d.getTime() - offset)).toISOString().split('T')[0];
+        };
+
+        setDateFilter({
+            start: formatDate(start),
+            end: formatDate(end)
+        });
+        setPeriodType(period);
+    };
+
+    // Filtragem de vendas
+    const filteredSales = sales.filter(sale => {
+        // 1. Filtro de Pagamento
+        if (paymentFilter !== 'todos' && sale.paymentStatus !== paymentFilter) {
+            return false;
+        }
+
+        // 2. Filtro de Data
+        if (dateFilter.start) {
+            if (new Date(sale.date) < new Date(dateFilter.start)) return false;
+        }
+        if (dateFilter.end) {
+            // Ajustar fim do dia para comparação correta
+            const endDate = new Date(dateFilter.end);
+            endDate.setHours(23, 59, 59, 999);
+            if (new Date(sale.date) > endDate) return false;
+        }
+        
+        return true;
+    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    // Calcular Estatísticas
+    const stats = useMemo(() => {
+        const totalRevenue = filteredSales.reduce((acc, sale) => acc + sale.totalAmount, 0);
+        const totalCount = filteredSales.length;
+        const pendingRevenue = filteredSales
+            .filter(s => s.paymentStatus === 'Pendente')
+            .reduce((acc, sale) => acc + sale.totalAmount, 0);
+        const averageTicket = totalCount > 0 ? totalRevenue / totalCount : 0;
+
+        return { totalRevenue, totalCount, pendingRevenue, averageTicket };
+    }, [filteredSales]);
 
     const handleOpenEditModal = (sale: Sale) => {
         setSaleToEdit(sale);
@@ -634,14 +720,155 @@ const Sales: FC = () => {
 
     return (
         <div className="space-y-6">
+            {/* Header com botão padronizado */}
             <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-stone-800">Gerenciamento de Vendas</h1>
-                <button onClick={handleOpenAddModal} className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 shadow-sm transition-colors">
-                    Adicionar Venda
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <span className="text-2xl">💰</span>
+                    </div>
+                    <div>
+                        <h1 className="text-3xl font-bold text-stone-800">Vendas</h1>
+                        <p className="text-sm text-stone-500">Gestão financeira e pedidos</p>
+                    </div>
+                </div>
+                <button 
+                    onClick={handleOpenAddModal} 
+                    className="px-6 py-3 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-lg transition-all hover:scale-105 flex items-center gap-2"
+                >
+                    <span className="text-lg">+</span>
+                    Nova Venda
                 </button>
             </div>
 
-            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            {/* Filtros Padronizados */}
+            <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                    <span className="text-lg">📅</span>
+                    <h3 className="text-lg font-semibold text-stone-800">Filtros e Período</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-stone-600 mb-1">Período</label>
+                        <select 
+                            value={periodType}
+                            onChange={(e) => updateDatesByPeriod(e.target.value as any)}
+                            className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        >
+                            <option value="diario">Diário</option>
+                            <option value="semanal">Semanal</option>
+                            <option value="mensal">Mensal</option>
+                            <option value="personalizado">Personalizado</option>
+                        </select>
+                    </div>
+
+                    {periodType === 'personalizado' ? (
+                        <>
+                            <div>
+                                <label className="block text-sm font-medium text-stone-600 mb-1">Data Inicial</label>
+                                <input 
+                                    type="date" 
+                                    value={dateFilter.start}
+                                    onChange={(e) => setDateFilter(prev => ({ ...prev, start: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-stone-600 mb-1">Data Final</label>
+                                <input 
+                                    type="date" 
+                                    value={dateFilter.end}
+                                    onChange={(e) => setDateFilter(prev => ({ ...prev, end: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                />
+                            </div>
+                        </>
+                    ) : (
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-stone-600 mb-1">Período Selecionado</label>
+                            <div className="px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-stone-700">
+                                {dateFilter.start === dateFilter.end 
+                                    ? `Hoje: ${new Date(dateFilter.start + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                                    : `${new Date(dateFilter.start + 'T00:00:00').toLocaleDateString('pt-BR')} até ${new Date(dateFilter.end + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                                }
+                            </div>
+                        </div>
+                    )}
+
+                    <div>
+                        <label className="block text-sm font-medium text-stone-600 mb-1">Status Pagamento</label>
+                        <select 
+                            value={paymentFilter} 
+                            onChange={(e) => setPaymentFilter(e.target.value as any)}
+                            className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        >
+                            <option value="todos">Todos</option>
+                            <option value="Pago">Pagos</option>
+                            <option value="Pendente">Pendentes</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            {/* Cards de KPIs */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Card Faturamento */}
+                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-sm border border-green-200 p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="text-2xl">💵</span>
+                                <h3 className="text-sm font-bold text-green-800 uppercase tracking-wide">Faturamento</h3>
+                            </div>
+                            <p className="text-3xl font-bold text-green-700">
+                                {stats.totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </p>
+                            <p className="text-sm text-green-700 mt-1">no período selecionado</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Card Volume */}
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-sm border border-blue-200 p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="text-2xl">📦</span>
+                                <h3 className="text-sm font-bold text-blue-800 uppercase tracking-wide">Volume de Vendas</h3>
+                            </div>
+                            <p className="text-3xl font-bold text-blue-600">{stats.totalCount}</p>
+                            <div className="flex items-center gap-2 mt-3">
+                                <span className="text-xs text-blue-600 font-medium">
+                                    Ticket Médio: {stats.averageTicket.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Card Pendências */}
+                <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl shadow-sm border border-amber-200 p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="text-2xl">⚠️</span>
+                                <h3 className="text-sm font-bold text-amber-800 uppercase tracking-wide">A Receber</h3>
+                            </div>
+                            <p className="text-3xl font-bold text-amber-600">
+                                {stats.pendingRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </p>
+                            <p className="text-sm text-amber-700 mt-1">vendas pendentes</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Tabela */}
+            <div className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden">
+                <div className="flex items-center gap-2 px-6 py-4 bg-stone-50 border-b border-stone-200">
+                    <span className="text-lg">📝</span>
+                    <h3 className="text-lg font-semibold text-stone-800">Histórico de Vendas</h3>
+                    <span className="text-sm text-stone-500 ml-auto">{filteredSales.length} registros encontrados</span>
+                </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-stone-500 min-w-[1000px]">
                         <thead className="text-xs text-stone-700 uppercase bg-stone-50">
@@ -658,7 +885,7 @@ const Sales: FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {sales.length > 0 ? sales.map(sale => (
+                            {filteredSales.length > 0 ? filteredSales.map(sale => (
                                 <tr key={sale.id} className="bg-white border-b hover:bg-stone-50 group">
                                     <td className="px-4 py-4">
                                         <span className="font-mono font-bold text-amber-700">#{String(sale.saleNumber || 0).padStart(6, '0')}</span>
