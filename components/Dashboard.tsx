@@ -7,6 +7,10 @@ import SubscriptionCard from './SubscriptionCard';
 import AlertsDashboard from './AlertsDashboard';
 import { EggIcon, FlockIcon, ExpenseIcon, SalesIcon, ArrowUpIcon, ArrowDownIcon, InventoryIcon, TrendUpIcon, TrendDownIcon, ChickenIcon } from './icons';
 import NotificationBell from './NotificationBell';
+import { AddRecordForm } from './DataEntry';
+import { AddExpenseForm } from './Expenses';
+import { AddSaleForm } from './Sales';
+import { AddMortalityForm } from './Mortality';
 
 const getLocalYMD = (date: Date | string) => {
     // Se for string, assume que já está no formato YYYY-MM-DD ou ISO
@@ -21,8 +25,13 @@ const getLocalYMD = (date: Date | string) => {
 const Dashboard: FC = () => {
   const { flocks, records, expenses, sales, tasks, toggleTaskCompletion, getHensCountOnDate, getFlockById, inventory } = useFarm();
   const { addAlert } = useAlerts();
+  
+  const [activeModal, setActiveModal] = useState<'collection' | 'expense' | 'sale' | 'mortality' | null>(null);
+
   const chartContainer = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<any>(null);
+
+  const handleCloseModal = () => setActiveModal(null);
 
   const todayProduction = useMemo(() => {
     const todayStr = getLocalYMD(new Date());
@@ -62,7 +71,7 @@ const Dashboard: FC = () => {
       return item ? item.quantity : 0;
   }, [inventory]);
 
-  // ALERT LOGIC: Production Trends - agora integrado com o contexto
+  // ALERT LOGIC: Production Trends - restaurado
   useEffect(() => {
     if (typeof addAlert !== 'function') return;
 
@@ -75,14 +84,18 @@ const Dashboard: FC = () => {
           .filter(r => r.flockId === flock.id)
           .forEach(r => {
               const day = getLocalYMD(new Date(r.date));
-              dayMap.set(day, (dayMap.get(day) || 0) + r.eggsCollected);
+              const current = dayMap.get(day) || 0;
+              dayMap.set(day, current + r.eggsCollected);
           });
 
-      const dailyTotals = Array.from(dayMap.entries())
-          .map(([date, total]) => ({ date, total }))
-          .sort((a, b) => b.date.localeCompare(a.date));
+      // Sort days descending
+      const sortedDays = Array.from(dayMap.entries())
+          .sort((a, b) => b[0].localeCompare(a[0]));
 
-      if (dailyTotals.length >= 4) {
+      if (sortedDays.length >= 4) {
+          // Get last 4 days of production
+          const dailyTotals = sortedDays.slice(0, 4).map(d => ({ date: d[0], total: d[1] }));
+          
           const last2Days = dailyTotals.slice(0, 2);
           const prev2Days = dailyTotals.slice(2, 4);
 
@@ -122,7 +135,7 @@ const Dashboard: FC = () => {
           }
       }
     });
-  }, [flocks, records, addAlert]);
+  }, [flocks, records, addAlert]); // Adicionando addAlert dependência
 
   // ALERT LOGIC: Feed Inventory - agora integrado com o contexto
   useEffect(() => {
@@ -158,7 +171,7 @@ const Dashboard: FC = () => {
             }
         }
     }
-  }, [inventory, records, addAlert]);
+  }, [inventory, records, addAlert]); // Adicionando addAlert dependência
 
 
   // Quality metrics for the last 7 days
@@ -524,6 +537,58 @@ const Dashboard: FC = () => {
         />
       </div>
 
+      {/* Quick Actions */}
+      <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
+        <h3 className="text-slate-800 text-base font-bold mb-4">Ações Rápidas</h3>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            {/* Nova Venda - Green */}
+            <button
+                onClick={() => setActiveModal('sale')}
+                className="flex flex-col sm:flex-row items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg transition-all shadow-sm hover:shadow-md group"
+            >
+                <div className="bg-white/20 p-1.5 rounded-md group-hover:scale-110 transition-transform">
+                    <SalesIcon className="h-4 w-4 text-white" />
+                </div>
+                <span className="font-semibold text-sm">Nova Venda</span>
+            </button>
+
+            {/* Registrar Produção - Green */}
+            <button
+                onClick={() => setActiveModal('collection')}
+                className="flex flex-col sm:flex-row items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg transition-all shadow-sm hover:shadow-md group"
+            >
+                <div className="bg-white/20 p-1.5 rounded-md group-hover:scale-110 transition-transform">
+                    <EggIcon className="h-4 w-4 text-white" />
+                </div>
+                <span className="font-semibold text-sm">Registrar Produção</span>
+            </button>
+
+            {/* Nova Despesa - Orange */}
+            <button
+                onClick={() => setActiveModal('expense')}
+                className="flex flex-col sm:flex-row items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white py-3 px-4 rounded-lg transition-all shadow-sm hover:shadow-md group"
+            >
+                <div className="bg-white/20 p-1.5 rounded-md group-hover:scale-110 transition-transform">
+                    <ExpenseIcon className="h-4 w-4 text-white" />
+                </div>
+                <span className="font-semibold text-sm">Nova Despesa</span>
+            </button>
+
+            {/* Registrar Descarte - Red */}
+            <button
+                onClick={() => setActiveModal('mortality')}
+                className="flex flex-col sm:flex-row items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg transition-all shadow-sm hover:shadow-md group"
+            >
+                <div className="bg-white/20 p-1.5 rounded-md group-hover:scale-110 transition-transform">
+                    <TrendDownIcon className="h-4 w-4 text-white" />
+                </div>
+                <span className="font-semibold text-sm">Registrar Descarte</span>
+            </button>
+
+        </div>
+      </div>
+
       {/* Latest Transactions Section - MOVED HERE */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
           <h2 className="text-lg font-semibold text-slate-800 mb-4">Últimas Transações</h2>
@@ -682,6 +747,30 @@ const Dashboard: FC = () => {
             </div>
       </div>
       
+      {/* Modais de Ação Rápida */}
+      {activeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <div className="bg-white p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-3xl relative animate-in fade-in zoom-in duration-200">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-stone-800">
+                        {activeModal === 'collection' && 'Nova Coleta de Ovos'}
+                        {activeModal === 'sale' && 'Nova Venda'}
+                        {activeModal === 'expense' && 'Nova Despesa'}
+                        {activeModal === 'mortality' && 'Registro de Mortalidade'}
+                    </h2>
+                    <button onClick={handleCloseModal} className="text-stone-500 hover:text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-full w-8 h-8 flex items-center justify-center transition-colors">
+                        ✕
+                    </button>
+                </div>
+                
+                {activeModal === 'collection' && <AddRecordForm onClose={handleCloseModal} />}
+                {activeModal === 'sale' && <AddSaleForm onClose={handleCloseModal} />}
+                {activeModal === 'expense' && <AddExpenseForm onClose={handleCloseModal} />}
+                {activeModal === 'mortality' && <AddMortalityForm onClose={handleCloseModal} />}
+            </div>
+        </div>
+      )}
+
     </div>
   );
 };

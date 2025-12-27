@@ -107,8 +107,12 @@ export const SubscriptionStatus = () => {
             <button
               className="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors"
               onClick={() => {
-                // Clear local storage and reload to force logout
-                localStorage.clear();
+                // Clear local storage and reload to force logout (preservando alertas)
+                Object.keys(localStorage).forEach(key => {
+                  if (!key.startsWith('smartegg_')) {
+                    localStorage.removeItem(key);
+                  }
+                });
                 sessionStorage.clear();
                 window.location.href = '/';
               }}

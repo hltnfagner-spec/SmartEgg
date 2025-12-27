@@ -28,6 +28,12 @@
     "noEmit": true
   },
   "exclude": [
-    "supabase/functions/**"
+    "node_modules/**",
+    "supabase/functions/**",
+    "dist/**",
+    ".vercel/**",
+    ".vite/**",
+    "*.config.js",
+    "*.config.ts"
   ]
 }

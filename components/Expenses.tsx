@@ -6,7 +6,7 @@ import { EditIcon } from './icons';
 
 const EXPENSE_CATEGORIES: ExpenseCategory[] = ['Ração', 'Medicamentos', 'Mão de Obra', 'Manutenção', 'Outros'];
 
-const AddExpenseForm: FC<{onClose: () => void; expenseToEdit?: Expense | null}> = ({ onClose, expenseToEdit }) => {
+export const AddExpenseForm: FC<{onClose: () => void; expenseToEdit?: Expense | null}> = ({ onClose, expenseToEdit }) => {
     const { addExpense, updateExpense, flocks, contacts } = useFarm();
     // Usando 'any' para permitir string vazia no estado
     const [formData, setFormData] = useState<any>({

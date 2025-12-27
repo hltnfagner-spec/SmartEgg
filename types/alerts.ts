@@ -1,3 +1,5 @@
+console.log('🚨 types/alerts.ts CARREGADO!');
+
 export interface Alert {
   id: string;
   fingerprint: string; // ID único baseado em contexto

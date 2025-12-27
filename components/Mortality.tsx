@@ -8,7 +8,7 @@ const toLocalDateString = (date: Date) => {
   return new Date(date.getTime() - offset).toISOString().split('T')[0];
 };
 
-const Mortality: FC = () => {
+export const AddMortalityForm: FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { flocks, records, addRecord, updateRecord } = useFarm();
   const activeFlocks = useMemo(() => flocks.filter(f => f.status === 'Ativo' || f.status === 'Descartado'), [flocks]);
 
@@ -26,13 +26,6 @@ const Mortality: FC = () => {
     const { name, value } = e.target;
     setFormData((prev: any) => ({ ...prev, [name]: value }));
   };
-
-  const selectedFlockRecords = useMemo(() => {
-    if (!formData.flockId) return [] as DailyRecord[];
-    return records
-      .filter(r => r.flockId === formData.flockId && r.mortality && r.mortality > 0)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [records, formData.flockId]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -80,14 +73,22 @@ const Mortality: FC = () => {
       addRecord(payload);
       setMessage({ type: 'success', text: 'Mortalidade registrada com sucesso.' });
     }
+    
+    if (onClose) {
+        setTimeout(onClose, 1500);
+    } else {
+        // Reset form partially if not closing
+        setFormData(prev => ({
+            ...prev,
+            mortality: '',
+            reason: '',
+            notes: ''
+        }));
+    }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-stone-800">Registro de Mortalidade</h1>
-      </div>
-
+      <div className="space-y-6">
       {message && (
         <div
           className={`p-4 rounded-md text-sm text-white ${
@@ -174,7 +175,10 @@ const Mortality: FC = () => {
           </div>
         </div>
 
-        <div className="flex justify-end pt-4 border-t border-stone-200 mt-4">
+        <div className="flex justify-end pt-4 border-t border-stone-200 mt-4 space-x-3">
+          {onClose && (
+             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-stone-700 bg-stone-100 border border-stone-300 rounded-md hover:bg-stone-200">Cancelar</button>
+          )}
           <button
             type="submit"
             className="px-6 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 shadow-sm"
@@ -183,10 +187,47 @@ const Mortality: FC = () => {
           </button>
         </div>
       </form>
+      </div>
+  );
+};
+
+const Mortality: FC = () => {
+  const { flocks, records } = useFarm();
+  const [selectedFlockId, setSelectedFlockId] = useState('');
+
+  const selectedFlockRecords = useMemo(() => {
+    if (!selectedFlockId) return [] as DailyRecord[];
+    return records
+      .filter(r => r.flockId === selectedFlockId && r.mortality && r.mortality > 0)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [records, selectedFlockId]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-stone-800">Registro de Mortalidade</h1>
+      </div>
+
+      <AddMortalityForm />
 
       <div className="bg-white rounded-xl shadow-md p-6">
-        <h2 className="text-lg font-semibold text-stone-800 mb-4">Histórico de Mortalidade do Lote</h2>
-        {formData.flockId ? (
+        <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold text-stone-800">Histórico de Mortalidade</h2>
+            <select
+              value={selectedFlockId}
+              onChange={(e) => setSelectedFlockId(e.target.value)}
+              className="block w-64 px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm"
+            >
+              <option value="">Selecione um lote para ver histórico</option>
+              {flocks.map(flock => (
+                <option key={flock.id} value={flock.id}>
+                  {flock.name}
+                </option>
+              ))}
+            </select>
+        </div>
+        
+        {selectedFlockId ? (
           selectedFlockRecords.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-stone-500 border-collapse">
@@ -219,10 +260,10 @@ const Mortality: FC = () => {
               </table>
             </div>
           ) : (
-            <p className="text-sm text-stone-500">Nenhuma mortalidade registrada ainda para este lote.</p>
+            <p className="text-sm text-stone-500 text-center py-4">Nenhuma mortalidade registrada ainda para este lote.</p>
           )
         ) : (
-          <p className="text-sm text-stone-500">Selecione um lote para ver o histórico de mortalidade.</p>
+          <p className="text-sm text-stone-500 text-center py-4">Selecione um lote acima para visualizar o histórico.</p>
         )}
       </div>
     </div>

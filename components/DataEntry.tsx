@@ -35,7 +35,7 @@ const calculateStats = (records: DailyRecord[]) => {
     };
 };
 
-const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}> = ({ onClose, recordToEdit }) => {
+export const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord | null}> = ({ onClose, recordToEdit }) => {
     const { flocks, addRecord, updateRecord, getHensCountOnDate } = useFarm();
     const activeFlocks = flocks.filter(f => f.status === 'Ativo');
     

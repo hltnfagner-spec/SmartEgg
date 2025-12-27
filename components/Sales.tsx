@@ -10,9 +10,29 @@ const PAYMENT_METHODS: PaymentMethod[] = ['Dinheiro', 'Pix', 'Cartão Crédito',
 const PAYMENT_STATUSES: PaymentStatus[] = ['Pago', 'Pendente'];
 const DELIVERY_STATUSES: DeliveryStatus[] = ['Pendente', 'Em Rota', 'Entregue', 'Cancelada'];
 
-const AddSaleForm: FC<{onClose: () => void; saleToEdit?: Sale | null}> = ({ onClose, saleToEdit }) => {
+export const AddSaleForm: FC<{onClose: () => void; saleToEdit?: Sale | null}> = ({ onClose, saleToEdit }) => {
     const { addSale, updateSale, flocks, clients } = useFarm();
     
+    // Filtrar lotes ativos
+    const availableFlocks = useMemo(() => flocks.filter(f => f.status === 'Ativo'), [flocks]);
+    
+    // Lista de opções para o dropdown (inclui lote inativo se estiver editando uma venda dele)
+    const flockOptions = useMemo(() => {
+        if (!saleToEdit) return availableFlocks;
+        
+        const currentFlockId = saleToEdit.flockId;
+        const isAvailable = availableFlocks.some(f => f.id === currentFlockId);
+        
+        // Se estiver editando e o lote não estiver na lista de ativos, adiciona ele temporariamente
+        if (!isAvailable) {
+            const originalFlock = flocks.find(f => f.id === currentFlockId);
+            if (originalFlock) {
+                return [...availableFlocks, originalFlock].sort((a, b) => a.name.localeCompare(b.name));
+            }
+        }
+        return availableFlocks;
+    }, [availableFlocks, saleToEdit, flocks]);
+
     // Helper para formatar data para input
     const formatDateForInput = (date: Date) => {
         const offset = date.getTimezoneOffset() * 60000;
@@ -22,7 +42,7 @@ const AddSaleForm: FC<{onClose: () => void; saleToEdit?: Sale | null}> = ({ onCl
     // Usando 'any' para facilitar o manuseio de formulário complexo
     const [formData, setFormData] = useState<any>({
         date: formatDateForInput(new Date()),
-        flockId: flocks.length > 0 ? flocks[0].id : '',
+        flockId: availableFlocks.length > 0 ? availableFlocks[0].id : '',
         clientId: '',
         productType: 'Ovos',
         saleType: 'Cliente Final',
@@ -167,7 +187,7 @@ const AddSaleForm: FC<{onClose: () => void; saleToEdit?: Sale | null}> = ({ onCl
                         <label htmlFor="flockId" className="block text-xs sm:text-sm font-medium text-stone-600">Lote Origem</label>
                         <select id="flockId" name="flockId" value={formData.flockId} onChange={handleChange} required className="mt-1 block w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm">
                             <option value="">Selecione um lote</option>
-                            {flocks.map(flock => <option key={flock.id} value={flock.id}>{flock.name}</option>)}
+                            {flockOptions.map(flock => <option key={flock.id} value={flock.id}>{flock.name}</option>)}
                         </select>
                     </div>
                 </div>

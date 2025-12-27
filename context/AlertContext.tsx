@@ -20,12 +20,12 @@ export const useAlerts = () => {
   return context;
 };
 
-// Função para gerar fingerprint único
+// Função para gerar fingerprint único (sem data para consistência)
 const generateAlertFingerprint = (alert: Partial<Alert>): string => {
   const parts = [
     alert.type,
     alert.flockName || alert.itemName || 'general',
-    alert.batchDate || new Date().toISOString().slice(0, 10)
+    alert.metadata?.flockId || alert.metadata?.itemId || 'no-id'
   ];
   return btoa(parts.join('_'));
 };
@@ -34,6 +34,7 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [activeAlerts, setActiveAlerts] = useState<Alert[]>([]);
   const [alertHistory, setAlertHistory] = useState<AlertBatch[]>([]);
   const [dismissedAlerts, setDismissedAlerts] = useState<DismissedAlert[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
   const lastAlertCheck = useRef<Record<string, number>>({});
 
   // Carregar alertas do localStorage ao iniciar
@@ -42,12 +43,38 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const savedHistory = localStorage.getItem('smartegg_alert_history');
     const savedDismissed = localStorage.getItem('smartegg_dismissed_alerts');
     
+    let loadedDismissed: DismissedAlert[] = [];
+    
     if (savedActive) {
       const alerts = JSON.parse(savedActive).map((alert: any) => ({
         ...alert,
         createdAt: new Date(alert.createdAt)
       }));
-      setActiveAlerts(alerts);
+      
+      if (savedDismissed) {
+        loadedDismissed = JSON.parse(savedDismissed).map((d: any) => ({
+          ...d,
+          dismissedAt: new Date(d.dismissedAt),
+          expiresAt: new Date(d.expiresAt)
+        }));
+
+        // Filtrar expirados
+        loadedDismissed = loadedDismissed.filter((d: DismissedAlert) => 
+          d.ttl === 'forever' || new Date() < d.expiresAt
+        );
+      }
+      
+      // Filtrar ativos que já foram descartados (dupla verificação)
+      const validAlerts = alerts.filter((alert: Alert) => {
+        const isDismissed = loadedDismissed.some(d => {
+          if (d.fingerprint !== alert.fingerprint) return false;
+          if (d.ttl === 'forever') return true;
+          return new Date() < d.expiresAt;
+        });
+        return !isDismissed;
+      });
+      
+      setActiveAlerts(validAlerts);
     }
     
     if (savedHistory) {
@@ -61,27 +88,37 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setAlertHistory(history);
     }
     
-    if (savedDismissed) {
-      const dismissed = JSON.parse(savedDismissed).map((d: any) => ({
-        ...d,
-        dismissedAt: new Date(d.dismissedAt),
-        expiresAt: new Date(d.expiresAt)
-      }));
-      setDismissedAlerts(dismissed);
-    }
+    setDismissedAlerts(loadedDismissed);
+    setIsLoaded(true); // Marcar como carregado para permitir saves futuros
   }, []);
 
-  // Salvar no localStorage sempre que mudar
+  // Salvar no localStorage sempre que mudar (só após carregamento completo)
   useEffect(() => {
+    if (!isLoaded) return;
     localStorage.setItem('smartegg_active_alerts', JSON.stringify(activeAlerts));
-  }, [activeAlerts]);
+  }, [activeAlerts, isLoaded]);
 
   useEffect(() => {
+    if (!isLoaded) return;
     localStorage.setItem('smartegg_alert_history', JSON.stringify(alertHistory));
-  }, [alertHistory]);
+  }, [alertHistory, isLoaded]);
 
   useEffect(() => {
+    if (!isLoaded) return;
     localStorage.setItem('smartegg_dismissed_alerts', JSON.stringify(dismissedAlerts));
+    
+    // Limpar dados expirados do localStorage
+    const expiredDismissed = dismissedAlerts.filter(d => 
+      d.ttl !== 'forever' && new Date() >= d.expiresAt
+    );
+    
+    if (expiredDismissed.length > 0) {
+      // Se há descartados expirados, limpar o localStorage
+      const validDismissed = dismissedAlerts.filter(d => 
+        d.ttl === 'forever' || new Date() < d.expiresAt
+      );
+      localStorage.setItem('smartegg_dismissed_alerts', JSON.stringify(validDismissed));
+    }
   }, [dismissedAlerts]);
 
   // Verificar alertas com mais de 24 horas e mover para histórico
@@ -135,12 +172,14 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     // Verificar se foi descartado recentemente
     const wasDismissed = dismissedAlerts.some(d => {
-      if (d.fingerprint !== fingerprint) return false;
-      if (d.ttl === 'forever') return true;
-      return new Date() < d.expiresAt;
+      const matches = d.fingerprint === fingerprint;
+      if (d.ttl === 'forever') return matches;
+      return matches && new Date() < d.expiresAt;
     });
     
-    if (wasDismissed) return;
+    if (wasDismissed) {
+      return;
+    }
     
     // Verificar cooldown (5 minutos)
     const now = Date.now();
@@ -148,14 +187,18 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const cooldown = 5 * 60 * 1000;
     const timeSinceLastCheck = now - lastCheck;
     
-    if (timeSinceLastCheck < cooldown) return;
+    if (timeSinceLastCheck < cooldown) {
+      return;
+    }
     
     lastAlertCheck.current[fingerprint] = now;
     
     setActiveAlerts(prev => {
       // Verificar se já existe alerta ativo com mesmo fingerprint
       const isDuplicate = prev.some(existing => existing.fingerprint === fingerprint);
-      if (isDuplicate) return prev;
+      if (isDuplicate) {
+        return prev;
+      }
 
       const newAlert: Alert = {
         ...alertData,
@@ -172,7 +215,9 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const moveToHistory = useCallback((alertId: string, ttl: '1h' | '24h' | 'forever' = '24h') => {
     setActiveAlerts(prev => {
       const alert = prev.find(a => a.id === alertId);
-      if (!alert) return prev;
+      if (!alert) {
+        return prev;
+      }
       
       const remaining = prev.filter(a => a.id !== alertId);
       
@@ -205,15 +250,21 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         expiresAt.setFullYear(now.getFullYear() + 10); // "forever"
       }
       
-      setDismissedAlerts(dismissed => [
-        ...dismissed.filter(d => d.fingerprint !== alert.fingerprint),
-        {
-          fingerprint: alert.fingerprint,
-          dismissedAt: now,
-          expiresAt,
-          ttl
-        }
-      ]);
+      const newDismissedAlert = {
+        fingerprint: alert.fingerprint,
+        dismissedAt: now,
+        expiresAt,
+        ttl
+      };
+      
+      setDismissedAlerts(dismissed => {
+        const newDismissed = [
+          ...dismissed.filter(d => d.fingerprint !== alert.fingerprint),
+          newDismissedAlert
+        ];
+        
+        return newDismissed;
+      });
       
       return remaining;
     });

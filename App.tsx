@@ -26,6 +26,9 @@ import RecoveryRedirect from './components/RecoveryRedirect';
 import { SubscriptionStatus } from './components/SubscriptionStatus';
 import { useFarm } from './context/FarmContext';
 import { AlertProvider } from './context/AlertContext';
+
+console.log('🚨 App.tsx: AlertProvider importado!');
+
 import { supabase } from './services/supabaseClient';
 
 type AuthState = 'landing' | 'login' | 'register' | 'forgot-password' | 'reset-password' | 'app';
@@ -153,9 +156,16 @@ function App() {
       console.error('Erro ao fazer logout do Supabase:', error);
     }
     
-    // Limpar armazenamento em background
+    // Limpar armazenamento em background (preservando alertas)
     try {
-      localStorage.clear();
+      // Limpar apenas dados da aplicação, preservando alertas
+      Object.keys(localStorage).forEach(key => {
+        // Protege todas as chaves do sistema de alertas (active, history, dismissed)
+        if (!key.startsWith('smartegg_')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
       sessionStorage.clear();
     } catch (error) {
       console.error('Erro ao limpar storage:', error);
@@ -402,6 +412,8 @@ function App() {
       }
     }
   }
+
+  console.log('🚨 App.tsx: Renderizando AlertProvider...');
 
   return (
     <AlertProvider>
