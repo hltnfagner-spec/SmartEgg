@@ -43,7 +43,7 @@ const Sidebar: FC<SidebarProps> = ({ onLogout }) => {
     { id: 'sales', label: 'Vendas', icon: <SalesIcon /> },
     { id: 'expenses', label: 'Despesas', icon: <ExpenseIcon /> },
     { id: 'clients', label: 'Clientes', icon: <UsersIcon /> },
-    { id: 'contacts', label: 'Contatos', icon: <ContactIcon /> },
+    { id: 'contacts', label: 'Fornecedores', icon: <ContactIcon /> },
     { id: 'calculator', label: 'Formulação', icon: <CalculatorIcon /> },
     { id: 'reports', label: 'Relatórios', icon: <ReportIcon /> },
     { id: 'ai-assistant', label: 'Assistente AI', icon: <AIIcon /> },

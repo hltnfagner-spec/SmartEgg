@@ -1,6 +1,6 @@
 
 import { createContext, useState, useEffect, useContext, ReactNode, useCallback, FC, useRef } from 'react';
-import { Flock, DailyRecord, Expense, Sale, FlockTask, Shed, Client, InventoryItem, FeedFormulation, View, EggMovement, EggMovementType, EggMovementReason, CompanySettings, Subscription, SubscriptionStatus } from '../types';
+import { Flock, DailyRecord, Expense, Sale, FlockTask, Shed, Client, InventoryItem, FeedFormulation, View, EggMovement, EggMovementType, EggMovementReason, CompanySettings, Subscription, SubscriptionStatus, Contact } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { createMercadoPagoPreference, getMercadoPagoPayment, MercadoPagoPreferenceResponse } from '../services/mercadoPago';
 
@@ -12,6 +12,7 @@ interface FarmContextType {
   sales: Sale[];
   tasks: FlockTask[];
   clients: Client[];
+  contacts: Contact[]; // Nova lista de contatos/fornecedores
   inventory: InventoryItem[];
   feedFormulations: FeedFormulation[];
   eggMovements: EggMovement[];
@@ -41,6 +42,9 @@ interface FarmContextType {
   addClient: (client: Omit<Client, 'id'>) => void;
   updateClient: (clientId: string, data: Omit<Client, 'id'>) => void;
   deleteClient: (clientId: string) => void;
+  addContact: (contact: Omit<Contact, 'id' | 'user_id' | 'created_at'>) => void;
+  updateContact: (contactId: string, data: Partial<Omit<Contact, 'id' | 'user_id' | 'created_at'>>) => void;
+  deleteContact: (contactId: string) => void;
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
   updateInventoryItem: (id: string, data: Partial<Omit<InventoryItem, 'id'>>) => void;
   deleteInventoryItem: (id: string) => void;
@@ -51,6 +55,7 @@ interface FarmContextType {
   getShedById: (id: string) => Shed | undefined;
   getFlockById: (id: string) => Flock | undefined;
   getClientById: (id: string) => Client | undefined;
+  getContactById: (id: string) => Contact | undefined;
   getAvailableSheds: () => Shed[];
   getRecordsByFlockId: (flockId: string) => DailyRecord[];
   getExpensesByFlockId: (flockId: string) => Expense[];
@@ -102,6 +107,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [flocks, setFlocks] = useState<Flock[]>([]);
 
   const [clients, setClients] = useState<Client[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
 
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
 
@@ -402,6 +408,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         smartQuery('expenses', 'date', false),
         smartQuery('sales', 'date', false),
         smartQuery('clients', 'created_at', true),
+        smartQuery('user_contacts', 'created_at', true), // Carregar contatos/fornecedores
         smartQuery('tasks', 'due_date', true),
         smartQuery('feed_formulations', 'created_at', true)
       ]);
@@ -421,6 +428,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         expensesResult,
         salesResult,
         clientsResult,
+        contactsResult, // Novo resultado
         tasksResult,
         formulationsResult
       ] = results;
@@ -485,7 +493,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         const mappedInventory: InventoryItem[] = inventoryData.data.map((i: any) => ({
           id: i.id, name: i.name, category: i.category, quantity: parseFloat(i.quantity),
           unit: i.unit, minThreshold: parseFloat(i.min_threshold), costPerUnit: parseFloat(i.cost_per_unit),
-          lastUpdated: i.last_updated,
+          supplierId: i.supplier_id, lastUpdated: i.last_updated,
         }));
         setInventory(mappedInventory);
       }
@@ -495,7 +503,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       if (!expensesData.error && expensesData.data && activeUserIdRef.current === currentUserId) {
         console.log('[FarmContext] ✓ Despesas carregadas:', expensesData.data.length, 'registros');
         const mappedExpenses: Expense[] = expensesData.data.map((e: any) => ({
-          id: e.id, flockId: e.flock_id, date: e.date, description: e.description,
+          id: e.id, flockId: e.flock_id, supplierId: e.supplier_id, date: e.date, description: e.description,
           category: e.category, amount: parseFloat(e.amount),
         }));
         setExpenses(mappedExpenses);
@@ -526,6 +534,18 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           address: c.address, type: c.type, notes: c.notes,
         }));
         setClients(mappedClients);
+      }
+
+      // Contacts (Fornecedores)
+      const contactsData = getData(contactsResult);
+      if (!contactsData.error && contactsData.data && activeUserIdRef.current === currentUserId) {
+        console.log('[FarmContext] ✓ Contatos carregados:', contactsData.data.length, 'registros');
+        const mappedContacts: Contact[] = contactsData.data.map((c: any) => ({
+          id: c.id, user_id: c.user_id, name: c.name, role: c.role, phone: c.phone,
+          email: c.email, address: c.address, contact_type: c.contact_type,
+          notes: c.notes, created_at: c.created_at
+        }));
+        setContacts(mappedContacts);
       }
 
       // Tasks
@@ -1648,6 +1668,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           .insert({
             user_id: userId,
             flock_id: expenseData.flockId,
+            supplier_id: expenseData.supplierId,
             date: expenseData.date,
             description: expenseData.description,
             category: expenseData.category,
@@ -1664,6 +1685,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         const newExpense: Expense = {
           id: data.id,
           flockId: data.flock_id,
+          supplierId: data.supplier_id,
           date: data.date,
           description: data.description,
           category: data.category,
@@ -1686,6 +1708,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           .from('expenses')
           .update({
             flock_id: data.flockId,
+            supplier_id: data.supplierId,
             date: data.date,
             description: data.description,
             category: data.category,
@@ -2015,7 +2038,84 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         console.error('[FarmContext] Erro inesperado ao deletar cliente:', err);
       }
     })();
-  }
+  };
+
+  const addContact = async (contact: Omit<Contact, 'id' | 'user_id' | 'created_at'>) => {
+    if (!userId) {
+      console.error('[FarmContext] addContact: userId não disponível');
+      throw new Error('Usuário não autenticado');
+    }
+
+    console.log('[FarmContext] addContact: Iniciando inserção', { contact, userId });
+
+    const { data, error } = await supabase
+      .from('user_contacts')
+      .insert({ ...contact, user_id: userId, contact_type: 'contact' })
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('[FarmContext] addContact: Erro ao adicionar contato no Supabase:', error);
+      throw new Error(`Erro ao adicionar contato: ${error.message}`);
+    }
+
+    if (!data) {
+      console.error('[FarmContext] addContact: Nenhum dado retornado do Supabase');
+      throw new Error('Nenhum dado retornado ao adicionar contato');
+    }
+
+    console.log('[FarmContext] addContact: Contato adicionado com sucesso', data);
+
+    const newContact: Contact = {
+        id: data.id,
+        user_id: data.user_id,
+        name: data.name,
+        role: data.role,
+        phone: data.phone,
+        email: data.email,
+        address: data.address,
+        contact_type: data.contact_type,
+        notes: data.notes,
+        created_at: data.created_at
+    };
+
+    setContacts(prev => [...prev, newContact]);
+    return newContact;
+  };
+
+  const updateContact = async (contactId: string, data: Partial<Omit<Contact, 'id' | 'user_id' | 'created_at'>>) => {
+    if (!userId) return;
+    const { error } = await supabase
+      .from('user_contacts')
+      .update(data)
+      .eq('id', contactId)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error updating contact:', error);
+      return;
+    }
+
+    setContacts(prev => prev.map(c => c.id === contactId ? { ...c, ...data } : c));
+  };
+
+  const deleteContact = async (contactId: string) => {
+    if (!userId) return;
+    const { error } = await supabase
+      .from('user_contacts')
+      .delete()
+      .eq('id', contactId)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error deleting contact:', error);
+      return;
+    }
+
+    setContacts(prev => prev.filter(c => c.id !== contactId));
+  };
+
+  const getContactById = (id: string) => contacts.find(c => c.id === id);
 
   const addInventoryItem = (itemData: Omit<InventoryItem, 'id' | 'lastUpdated'>) => {
     if (!userId) return;
@@ -2032,6 +2132,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             unit: itemData.unit,
             min_threshold: itemData.minThreshold,
             cost_per_unit: itemData.costPerUnit,
+            supplier_id: itemData.supplierId,
           })
           .select()
           .single();
@@ -2049,6 +2150,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           unit: data.unit,
           minThreshold: parseFloat(data.min_threshold),
           costPerUnit: parseFloat(data.cost_per_unit),
+          supplierId: data.supplier_id,
           lastUpdated: data.last_updated,
         };
 
@@ -2071,6 +2173,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           unit: data.unit,
           min_threshold: data.minThreshold,
           cost_per_unit: data.costPerUnit,
+          supplier_id: data.supplierId,
         };
 
         // Remover valores undefined
@@ -2403,13 +2506,14 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   return (
     <FarmContext.Provider value={{ 
-        sheds, flocks, records, expenses, sales, tasks, clients, inventory, feedFormulations, eggMovements,
+        sheds, flocks, records, expenses, sales, tasks, clients, contacts, inventory, feedFormulations, eggMovements,
         currentView, viewParams, navigate,
         addShed, updateShed, deleteShed, addFlock, updateFlock, disposeFlock, deleteFlock, 
         addRecord, updateRecord, deleteRecord, 
         addExpense, updateExpense, addSale, updateSale, 
         addTask, toggleTaskCompletion, deleteTask, 
         addClient, updateClient, deleteClient, 
+        addContact, updateContact, deleteContact, getContactById,
         addInventoryItem, updateInventoryItem, deleteInventoryItem,
         addFeedFormulation, updateFeedFormulation, deleteFeedFormulation,
         addEggMovement,

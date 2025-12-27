@@ -31,10 +31,24 @@ export interface DailyRecord {
 
 export type ExpenseCategory = 'Ração' | 'Medicamentos' | 'Mão de Obra' | 'Manutenção' | 'Outros';
 
+export interface Contact {
+  id: string;
+  user_id: string;
+  name: string;
+  role: 'Fornecedor' | 'Veterinário' | 'Funcionário' | 'Outro';
+  phone: string;
+  email: string;
+  address: string;
+  contact_type: string;
+  notes?: string;
+  created_at?: string;
+}
+
 export interface Expense {
   id: string;
   date: string; // ISO string format
-  flockId: string;
+  flockId?: string; // Opcional para despesas gerais
+  supplierId?: string; // Novo campo para fornecedor
   description: string;
   category: ExpenseCategory;
   amount: number;
@@ -96,7 +110,7 @@ export interface FlockTask {
   isCompleted: boolean;
 }
 
-export type InventoryCategory = 'Ração' | 'Medicamento' | 'Embalagem' | 'Produto Final' | 'Outro';
+export type InventoryCategory = 'Ração' | 'Medicamento' | 'Embalagem' | 'Produto Final' | 'Ovos' | 'Outro';
 export type UnitType = 'kg' | 'g' | 'L' | 'ml' | 'unidade' | 'saco';
 
 export interface InventoryItem {
@@ -107,6 +121,7 @@ export interface InventoryItem {
   unit: UnitType;
   minThreshold: number; // Quantidade mínima para alerta
   costPerUnit: number;
+  supplierId?: string; // Fornecedor (opcional)
   lastUpdated: string;
 }
 

@@ -7,21 +7,26 @@ import { EditIcon } from './icons';
 const EXPENSE_CATEGORIES: ExpenseCategory[] = ['Ração', 'Medicamentos', 'Mão de Obra', 'Manutenção', 'Outros'];
 
 const AddExpenseForm: FC<{onClose: () => void; expenseToEdit?: Expense | null}> = ({ onClose, expenseToEdit }) => {
-    const { addExpense, updateExpense, flocks } = useFarm();
+    const { addExpense, updateExpense, flocks, contacts } = useFarm();
     // Usando 'any' para permitir string vazia no estado
     const [formData, setFormData] = useState<any>({
         date: new Date().toISOString().split('T')[0],
-        flockId: flocks.length > 0 ? flocks[0].id : '',
+        flockId: '', // Default para Geral
+        supplierId: '',
         category: 'Ração',
         description: '',
         amount: 0,
     });
+
+    const suppliers = contacts.filter(c => c.role === 'Fornecedor' || c.role === 'Veterinário');
 
     useEffect(() => {
         if (expenseToEdit) {
             setFormData({
                 ...expenseToEdit,
                 date: new Date(expenseToEdit.date).toISOString().split('T')[0],
+                flockId: expenseToEdit.flockId || '',
+                supplierId: expenseToEdit.supplierId || '',
             });
         }
     }, [expenseToEdit]);
@@ -49,12 +54,11 @@ const AddExpenseForm: FC<{onClose: () => void; expenseToEdit?: Expense | null}> 
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
-        if (!formData.flockId) {
-            alert("Por favor, selecione um lote.");
-            return;
-        }
+        
         const payload = {
             ...formData,
+            flockId: formData.flockId || undefined,
+            supplierId: formData.supplierId || undefined,
             amount: Number(formData.amount) || 0,
             date: new Date(formData.date).toISOString()
         };
@@ -76,25 +80,39 @@ const AddExpenseForm: FC<{onClose: () => void; expenseToEdit?: Expense | null}> 
                     <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" />
                 </div>
                 <div>
-                    <label htmlFor="flockId" className="block text-sm font-medium text-stone-600">Lote</label>
-                    <select id="flockId" name="flockId" value={formData.flockId} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
-                        <option value="">Selecione um lote</option>
-                        {flocks.map(flock => <option key={flock.id} value={flock.id}>{flock.name}</option>)}
+                    <label htmlFor="flockId" className="block text-sm font-medium text-stone-600">Destino (Lote)</label>
+                    <select id="flockId" name="flockId" value={formData.flockId} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
+                        <option value="">⚡ Despesa Geral (Sem Lote)</option>
+                        <optgroup label="Lotes Específicos">
+                            {flocks.map(flock => <option key={flock.id} value={flock.id}>{flock.name}</option>)}
+                        </optgroup>
                     </select>
                 </div>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label htmlFor="supplierId" className="block text-sm font-medium text-stone-600">Fornecedor</label>
+                    <select id="supplierId" name="supplierId" value={formData.supplierId} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
+                        <option value="">Selecione um fornecedor (opcional)</option>
+                        {suppliers.map(s => (
+                            <option key={s.id} value={s.id}>{s.name} ({s.role})</option>
+                        ))}
+                    </select>
+                </div>
                 <div>
                     <label htmlFor="category" className="block text-sm font-medium text-stone-600">Categoria</label>
                     <select id="category" name="category" value={formData.category} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
                         {EXPENSE_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                     </select>
                 </div>
-                <div>
-                    <label htmlFor="amount" className="block text-sm font-medium text-stone-600">Valor (R$)</label>
-                    <input type="number" step="0.01" id="amount" name="amount" min="0" value={formData.amount} onChange={handleChange} onFocus={handleFocus} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" />
-                </div>
             </div>
+
+            <div>
+                <label htmlFor="amount" className="block text-sm font-medium text-stone-600">Valor (R$)</label>
+                <input type="number" step="0.01" id="amount" name="amount" min="0" value={formData.amount} onChange={handleChange} onFocus={handleFocus} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" />
+            </div>
+
              <div>
                 <label htmlFor="description" className="block text-sm font-medium text-stone-600">Descrição</label>
                 <textarea id="description" name="description" value={formData.description} onChange={handleChange} rows={2} className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"></textarea>
@@ -108,7 +126,7 @@ const AddExpenseForm: FC<{onClose: () => void; expenseToEdit?: Expense | null}> 
 };
 
 const Expenses: FC = () => {
-    const { expenses, getFlockById, flocks } = useFarm();
+    const { expenses, getFlockById, flocks, getContactById } = useFarm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [expenseToEdit, setExpenseToEdit] = useState<Expense | null>(null);
 
@@ -178,7 +196,11 @@ const Expenses: FC = () => {
             }
 
             // Filtro de Lote
-            if (selectedFlock && expense.flockId !== selectedFlock) {
+            if (selectedFlock === 'general') {
+                // Se selecionado "Geral", mostra apenas os que NÃO têm flockId
+                if (expense.flockId) return false;
+            } else if (selectedFlock && expense.flockId !== selectedFlock) {
+                // Se selecionado um lote específico, mostra apenas os daquele lote
                 return false;
             }
 
@@ -319,9 +341,12 @@ const Expenses: FC = () => {
                             className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                         >
                             <option value="">Todos os Lotes</option>
-                            {flocks.map(flock => (
-                                <option key={flock.id} value={flock.id}>{flock.name}</option>
-                            ))}
+                            <option value="general">⚡ Apenas Despesas Gerais</option>
+                            <optgroup label="Lotes Específicos">
+                                {flocks.map(flock => (
+                                    <option key={flock.id} value={flock.id}>{flock.name}</option>
+                                ))}
+                            </optgroup>
                         </select>
                     </div>
 
@@ -405,6 +430,7 @@ const Expenses: FC = () => {
                             <tr>
                                 <th scope="col" className="px-6 py-3">Data</th>
                                 <th scope="col" className="px-6 py-3">Lote</th>
+                                <th scope="col" className="px-6 py-3">Fornecedor</th>
                                 <th scope="col" className="px-6 py-3">Categoria</th>
                                 <th scope="col" className="px-6 py-3">Descrição</th>
                                 <th scope="col" className="px-6 py-3 text-right">Valor</th>
@@ -415,7 +441,12 @@ const Expenses: FC = () => {
                             {filteredExpenses.length > 0 ? filteredExpenses.map(expense => (
                                 <tr key={expense.id} className="bg-white border-b hover:bg-stone-50 transition-colors group">
                                     <td className="px-6 py-4">{new Date(expense.date).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}</td>
-                                    <td className="px-6 py-4 font-medium text-stone-900">{getFlockById(expense.flockId)?.name || 'N/A'}</td>
+                                    <td className="px-6 py-4 font-medium text-stone-900">
+                                        {expense.flockId ? (getFlockById(expense.flockId)?.name || 'Lote não encontrado') : <span className="text-amber-600 font-semibold">⚡ Despesa Geral</span>}
+                                    </td>
+                                    <td className="px-6 py-4 text-stone-600">
+                                        {expense.supplierId ? (getContactById(expense.supplierId)?.name || '-') : '-'}
+                                    </td>
                                     <td className="px-6 py-4">
                                         <span className="px-2 py-1 rounded-full bg-slate-100 text-xs font-medium text-slate-600">{expense.category}</span>
                                     </td>

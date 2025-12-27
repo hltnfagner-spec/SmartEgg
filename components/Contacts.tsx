@@ -3,48 +3,20 @@ import { useState, FC, ReactNode, useEffect } from 'react';
 import { UserIcon, EditIcon, TrashIcon, ContactIcon } from './icons';
 import StatCard from './StatCard';
 import NotificationBell from './NotificationBell';
-import { supabase } from '../services/supabaseClient';
-
-interface Contact {
-  id: string;
-  name: string;
-  role: string;
-  phone: string;
-  email: string;
-  address: string;
-  icon?: ReactNode;
-}
+import { useFarm } from '../context/FarmContext';
+import { Contact } from '../types';
 
 const Contacts: FC = () => {
     const [contacts, setContacts] = useState<Contact[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { contacts: contextContacts, addContact, updateContact, deleteContact } = useFarm();
+    const [loading, setLoading] = useState(false); // Agora usamos os dados do contexto
     const [editingContact, setEditingContact] = useState<Contact | null>(null);
     const [showAddForm, setShowAddForm] = useState(false);
 
-    // Carregar contatos do Supabase
+    // Usar contatos do contexto
     useEffect(() => {
-        loadContacts();
-    }, []);
-
-    const loadContacts = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('user_contacts')
-                .select('*')
-                .eq('contact_type', 'contact')
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                console.error('Erro ao carregar contatos:', error);
-            } else {
-                setContacts(data || []);
-            }
-        } catch (error) {
-            console.error('Erro ao carregar contatos:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+        setContacts(contextContacts);
+    }, [contextContacts]);
 
     const handleEdit = (contact: Contact) => {
         setEditingContact(contact);
@@ -52,73 +24,36 @@ const Contacts: FC = () => {
     };
 
     const handleDelete = async (contactId: string) => {
-        if (window.confirm('Tem certeza que deseja excluir este contato?')) {
+        if (window.confirm('Tem certeza que deseja excluir este fornecedor?')) {
             try {
-                const { error } = await supabase
-                    .from('user_contacts')
-                    .delete()
-                    .eq('id', contactId);
-
-                if (error) {
-                    console.error('Erro ao excluir contato:', error);
-                    alert('Erro ao excluir contato');
-                } else {
-                    await loadContacts(); // Recarregar lista
-                    alert('Contato excluído com sucesso');
-                }
+                await deleteContact(contactId);
+                alert('Fornecedor excluído com sucesso');
             } catch (error) {
-                console.error('Erro ao excluir contato:', error);
-                alert('Erro ao excluir contato');
+                console.error('Erro ao excluir fornecedor:', error);
+                alert('Erro ao excluir fornecedor');
             }
         }
     };
 
-    const handleSaveContact = async (contactData: Omit<Contact, 'id'>) => {
+    const handleSaveContact = async (contactData: any) => {
         try {
+            const dataToSave = {
+                ...contactData,
+                contact_type: 'contact'
+            };
+
             if (editingContact) {
-                // Editar contato existente
-                const { error } = await supabase
-                    .from('user_contacts')
-                    .update({
-                        name: contactData.name,
-                        phone: contactData.phone,
-                        email: contactData.email,
-                        address: contactData.address,
-                        // Aqui você pode adicionar mais campos se necessário
-                    })
-                    .eq('id', editingContact.id);
-
-                if (error) {
-                    console.error('Erro ao editar contato:', error);
-                    alert('Erro ao editar contato');
-                } else {
-                    await loadContacts();
-                    alert('Contato editado com sucesso');
-                    setShowAddForm(false);
-                    setEditingContact(null);
-                }
+                await updateContact(editingContact.id, dataToSave);
+                alert('Fornecedor atualizado com sucesso');
             } else {
-                // Adicionar novo contato
-                const { error } = await supabase
-                    .from('user_contacts')
-                    .insert({
-                        ...contactData,
-                        contact_type: 'contact',
-                        user_id: (await supabase.auth.getUser()).data.user?.id
-                    });
-
-                if (error) {
-                    console.error('Erro ao adicionar contato:', error);
-                    alert('Erro ao adicionar contato');
-                } else {
-                    await loadContacts();
-                    alert('Contato adicionado com sucesso');
-                    setShowAddForm(false);
-                }
+                await addContact(dataToSave);
+                alert('Fornecedor cadastrado com sucesso');
             }
+            setShowAddForm(false);
+            setEditingContact(null);
         } catch (error) {
-            console.error('Erro ao salvar contato:', error);
-            alert('Erro ao salvar contato');
+            console.error('Erro ao salvar fornecedor:', error);
+            alert('Erro ao salvar fornecedor');
         }
     };
 
@@ -133,14 +68,14 @@ const Contacts: FC = () => {
     return (
         <div className="space-y-6">
              <div className="flex justify-between items-center mb-8">
-                <h1 className="text-2xl font-bold text-slate-800">Agenda de Contatos</h1>
+                <h1 className="text-2xl font-bold text-slate-800">Fornecedores</h1>
                 <div className="flex items-center space-x-4">
                      <NotificationBell />
                 </div>
             </div>
 
              <div className="flex justify-between items-center -mt-4 mb-6">
-                 <p className="text-slate-500">Organize seus contatos importantes</p>
+                 <p className="text-slate-500">Gerencie seus fornecedores e parceiros</p>
                  <button 
                     onClick={() => {
                         setEditingContact(null);
@@ -148,7 +83,7 @@ const Contacts: FC = () => {
                     }}
                     className="px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 shadow-sm transition-colors"
                  >
-                    + Novo Contato
+                    + Novo Fornecedor
                  </button>
              </div>
 
@@ -156,7 +91,7 @@ const Contacts: FC = () => {
              {showAddForm && (
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <h3 className="text-lg font-semibold text-slate-800 mb-4">
-                        {editingContact ? 'Editar Contato' : 'Novo Contato'}
+                        {editingContact ? 'Editar Fornecedor' : 'Novo Fornecedor'}
                     </h3>
                     <ContactForm 
                         contact={editingContact}
@@ -170,26 +105,25 @@ const Contacts: FC = () => {
              )}
 
              {/* Stats */}
-             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <StatCard title="Total de Contatos" value={contacts.length} icon={<ContactIcon />} iconColorClass="bg-blue-100 text-blue-600" />
-                <StatCard title="Veterinário" value={contacts.filter(c => c.role === 'Veterinário').length} icon={<UserIcon />} iconColorClass="bg-green-100 text-green-600" />
-                <StatCard title="Fornecedor" value={contacts.filter(c => c.role === 'Fornecedor').length} icon={<UserIcon />} iconColorClass="bg-purple-100 text-purple-600" />
-                <StatCard title="Funcionário" value={contacts.filter(c => c.role === 'Funcionário').length} icon={<UserIcon />} iconColorClass="bg-yellow-100 text-yellow-600" />
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <StatCard title="Total de Fornecedores" value={contacts.length} icon={<ContactIcon />} iconColorClass="bg-blue-100 text-blue-600" />
+                <StatCard title="Ativos Recentemente" value={contacts.length} icon={<UserIcon />} iconColorClass="bg-green-100 text-green-600" />
+                <StatCard title="Parceiros Chave" value={contacts.filter(c => c.role === 'Fornecedor').length} icon={<UserIcon />} iconColorClass="bg-purple-100 text-purple-600" />
             </div>
 
              {/* Filter Bar */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4">
                  <div className="flex-1">
-                     <label className="text-xs font-semibold text-slate-500 uppercase mb-1 block">Buscar contatos</label>
+                     <label className="text-xs font-semibold text-slate-500 uppercase mb-1 block">Buscar fornecedores</label>
                      <input type="text" placeholder="Nome, telefone ou email..." className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
                  </div>
                   <div className="md:w-64">
                      <label className="text-xs font-semibold text-slate-500 uppercase mb-1 block">Filtrar por categoria</label>
                      <select className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white">
-                         <option>Todas as categorias</option>
-                         <option>Veterinários</option>
-                         <option>Fornecedores</option>
-                         <option>Funcionários</option>
+                         <option value="">Todas as categorias</option>
+                         <option value="Fornecedor">Fornecedores</option>
+                         <option value="Veterinário">Veterinários</option>
+                         <option value="Outro">Outros</option>
                      </select>
                  </div>
             </div>
@@ -200,8 +134,8 @@ const Contacts: FC = () => {
                     <div className="bg-orange-100 h-16 w-16 rounded-full flex items-center justify-center text-orange-600 text-2xl mx-auto mb-4">
                         <ContactIcon />
                     </div>
-                    <h3 className="text-lg font-semibold text-slate-800 mb-2">Nenhum contato cadastrado</h3>
-                    <p className="text-slate-500 mb-4">Comece adicionando seus primeiros contatos importantes</p>
+                    <h3 className="text-lg font-semibold text-slate-800 mb-2">Nenhum fornecedor cadastrado</h3>
+                    <p className="text-slate-500 mb-4">Comece adicionando seus fornecedores para vincular às despesas.</p>
                     <button 
                         onClick={() => {
                             setEditingContact(null);
@@ -209,7 +143,7 @@ const Contacts: FC = () => {
                         }}
                         className="px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 shadow-sm transition-colors"
                     >
-                        + Adicionar Primeiro Contato
+                        + Adicionar Fornecedor
                     </button>
                 </div>
             )}
@@ -237,7 +171,7 @@ const Contacts: FC = () => {
                             </div>
                             <div className="flex items-center space-x-4 mb-4">
                                 <div className="bg-orange-100 h-12 w-12 rounded-full flex items-center justify-center text-orange-600 text-lg font-bold">
-                                    {contact.icon || <UserIcon />}
+                                    <UserIcon />
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-slate-800">{contact.name}</h3>
@@ -263,9 +197,9 @@ const ContactForm: FC<{
     onSave: (contact: Omit<Contact, 'id'>) => Promise<void>;
     onCancel: () => void;
 }> = ({ contact, onSave, onCancel }) => {
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<any>({
         name: contact?.name || '',
-        role: contact?.role || 'Funcionário',
+        role: contact?.role || 'Fornecedor',
         phone: contact?.phone || '',
         email: contact?.email || '',
         address: contact?.address || ''
