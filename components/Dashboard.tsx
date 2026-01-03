@@ -27,6 +27,8 @@ const Dashboard: FC = () => {
   const { addAlert } = useAlerts();
   
   const [activeModal, setActiveModal] = useState<'collection' | 'expense' | 'sale' | 'mortality' | null>(null);
+  const [performanceFilter, setPerformanceFilter] = useState<'this-month' | 'last-month' | 'all-time'>('this-month');
+  const [flockFilter, setFlockFilter] = useState<string>('all');
 
   const chartContainer = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<any>(null);
@@ -64,6 +66,21 @@ const Dashboard: FC = () => {
       .reduce((sum, s) => sum + s.totalAmount, 0);
     return total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }, [sales]);
+
+  const monthlyProfit = useMemo(() => {
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const totalRevenue = sales
+      .filter(s => new Date(s.date) >= firstDayOfMonth)
+      .reduce((sum, s) => sum + s.totalAmount, 0);
+    const totalExpenses = expenses
+      .filter(e => new Date(e.date) >= firstDayOfMonth)
+      .reduce((sum, e) => sum + e.amount, 0);
+    return {
+      value: totalRevenue - totalExpenses,
+      formatted: (totalRevenue - totalExpenses).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    };
+  }, [sales, expenses]);
 
   // Egg Stock Logic for Dashboard
   const eggStock = useMemo(() => {
@@ -103,89 +120,52 @@ const Dashboard: FC = () => {
           const avgPrev2 = prev2Days.reduce((acc, d) => acc + d.total, 0) / 2;
 
           if (avgPrev2 > 0) {
-              const variation = ((avgLast2 - avgPrev2) / avgPrev2) * 100;
+              const change = ((avgLast2 - avgPrev2) / avgPrev2) * 100;
               
-              if (variation < -10) { // Queda maior que 10%
+              // Generate fingerprint
+              const fingerprint = `prod_trend_${flock.id}_${dailyTotals[0].date}`;
+
+              if (Math.abs(change) >= 10) { // 10% threshold
+                  const type = change > 0 ? 'production_up' : 'production_down';
+                  const title = change > 0 ? 'Aumento de Produção' : 'Queda de Produção';
+                  const message = `O lote ${flock.name} teve uma ${change > 0 ? 'alta' : 'queda'} de ${Math.abs(change).toFixed(1)}% na produção média recente.`;
+                  
                   addAlert({
-                      type: 'production_down',
-                      title: `Alerta de Queda de Produção - ${flock.name}`,
-                      message: `Variação de ${Math.abs(variation).toFixed(1)}% comparado aos 2 dias anteriores.`,
-                      percentage: Math.abs(variation),
+                      type,
+                      title,
+                      message,
                       flockName: flock.name,
                       metadata: {
-                          threshold: -10,
-                          value: variation,
-                          flockId: flock.id
-                      }
-                  });
-              } else if (variation > 10) { // Aumento maior que 10%
-                  addAlert({
-                      type: 'production_up',
-                      title: `Aumento de Produção - ${flock.name}`,
-                      message: `Variação de ${variation.toFixed(1)}% comparado aos 2 dias anteriores.`,
-                      percentage: variation,
-                      flockName: flock.name,
-                      metadata: {
-                          threshold: 10,
-                          value: variation,
-                          flockId: flock.id
+                          flockId: flock.id,
+                          value: Math.abs(change)
                       }
                   });
               }
           }
       }
     });
-  }, [flocks, records, addAlert]); // Adicionando addAlert dependência
+  }, [flocks, records, addAlert]);
 
-  // ALERT LOGIC: Feed Inventory - agora integrado com o contexto
-  useEffect(() => {
-    const feedItem = inventory.find(i => i.category === 'Ração');
-    
-    if (feedItem) {
-        const today = new Date();
-        const weekAgo = new Date();
-        weekAgo.setDate(today.getDate() - 7);
-
-        const recentRecords = records.filter(r => new Date(r.date) >= weekAgo);
-        const totalConsumed = recentRecords.reduce((acc, r) => acc + r.feedConsumedKg, 0);
-        
-        const uniqueDays = new Set(recentRecords.map(r => getLocalYMD(new Date(r.date)))).size;
-        
-        const dailyConsumption = uniqueDays > 0 ? totalConsumed / uniqueDays : 0;
-
-        if (dailyConsumption > 0) {
-            const daysRemaining = feedItem.quantity / dailyConsumption;
-            if (daysRemaining < 5) {
-                addAlert({
-                    type: 'inventory_low',
-                    title: `Estoque Baixo: ${feedItem.name}`,
-                    message: `Restam aproximadamente ${daysRemaining.toFixed(1)} dias com base no consumo atual.`,
-                    itemName: feedItem.name,
-                    daysRemaining,
-                    metadata: {
-                        threshold: 5,
-                        value: daysRemaining,
-                        itemId: feedItem.id
-                    }
-                });
-            }
-        }
-    }
-  }, [inventory, records, addAlert]); // Adicionando addAlert dependência
-
-
-  // Quality metrics for the last 7 days
-  const qualityMetrics = useMemo(() => {
+  const productionData = useMemo(() => {
+    // ... existing logic ...
     const today = new Date();
-    const weekAgo = new Date(today);
-    weekAgo.setDate(today.getDate() - 7);
+    const last30Days = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
     
-    const recentRecords = records.filter(r => new Date(r.date) >= weekAgo);
-    
-    const totalCollected = recentRecords.reduce((sum, r) => sum + r.eggsCollected, 0);
-    const totalBroken = recentRecords.reduce((sum, r) => sum + (r.brokenEggs || 0), 0);
-    
-    const goodEggs = totalCollected - totalBroken;
+    return records
+        .filter(r => new Date(r.date) >= last30Days)
+        .reduce((acc, curr) => {
+            const total = acc.totalCollected + curr.eggsCollected;
+            const broken = acc.totalBroken + (curr.brokenEggs || 0);
+            return {
+                totalCollected: total,
+                totalBroken: broken,
+                goodEggs: total - broken
+            };
+        }, { totalCollected: 0, totalBroken: 0, goodEggs: 0 });
+  }, [records]);
+
+  const qualityMetrics = useMemo(() => {
+    const { totalCollected, totalBroken, goodEggs } = productionData;
     const lossPercentage = totalCollected > 0 ? (totalBroken / totalCollected) * 100 : 0;
     
     return {
@@ -194,65 +174,99 @@ const Dashboard: FC = () => {
         totalBroken,
         lossPercentage: lossPercentage.toFixed(1)
     };
-  }, [records]);
+  }, [productionData]);
 
   const flockSummaryData = useMemo(() => {
+    // Definir datas de filtro
+    const today = new Date();
+    let startDate: Date;
+    let endDate: Date = today;
+
+    if (performanceFilter === 'this-month') {
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+    } else if (performanceFilter === 'last-month') {
+        startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        endDate = new Date(today.getFullYear(), today.getMonth(), 0);
+    } else {
+        startDate = new Date(0); // All time
+    }
+
     return flocks
       .filter(flock => flock.status === 'Ativo')
       .map(flock => {
-        const flockExpenses = expenses.filter(e => e.flockId === flock.id);
+        // Filtros de data
+        const isWithinPeriod = (dateStr: string) => {
+            const date = new Date(dateStr);
+            return date >= startDate && date <= endDate;
+        };
+
+        const flockExpenses = expenses.filter(e => e.flockId === flock.id && isWithinPeriod(e.date));
         
         const flockSales = sales.filter(s => 
             s.flockId === flock.id && 
             s.productType !== 'Aves' && 
-            s.productType !== 'Cama'
+            s.productType !== 'Cama' &&
+            isWithinPeriod(s.date)
         );
         
-        const flockRecords = records.filter(r => r.flockId === flock.id);
+        const flockRecords = records.filter(r => r.flockId === flock.id && isWithinPeriod(r.date));
 
         const totalCost = flockExpenses.reduce((sum, expense) => sum + expense.amount, 0);
         const totalRevenue = flockSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
         const totalProduction = flockRecords.reduce((sum, record) => sum + record.eggsCollected, 0);
         const profitability = totalRevenue - totalCost;
         const costPerEgg = totalProduction > 0 ? totalCost / totalProduction : 0;
+        
+        // Calcular custo por ovo apenas com ração de postura (registrada nas coletas)
+        const feedItem = inventory.find(i => i.category === 'Ração');
+        const feedPricePerKg = feedItem ? (typeof feedItem.costPerUnit === 'number' ? feedItem.costPerUnit : parseFloat(feedItem.costPerUnit || '0')) : 0;
+        const totalFeedConsumedKg = flockRecords.reduce((sum, record) => sum + (record.feedConsumedKg || 0), 0);
+        const totalFeedCost = totalFeedConsumedKg * feedPricePerKg;
+        const feedCostPerEgg = totalProduction > 0 ? totalFeedCost / totalProduction : 0;
 
-        // Calcular porcentagem de postura (últimos 7 dias)
-        const today = new Date();
-        const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const currentHensCount = getHensCountOnDate(flock.id, today);
-        
-        // Filtrar registros dos últimos 7 dias
-        const recentRecords = flockRecords.filter(r => {
-          const recordDate = new Date(r.date);
-          return recordDate >= sevenDaysAgo && recordDate <= today;
-        });
-        
-        // Calcular total de ovos nos últimos 7 dias
-        const totalRecentEggs = recentRecords.reduce((sum, record) => sum + record.eggsCollected, 0);
-        const daysWithRecords = recentRecords.length;
-        
-        // Porcentagem de postura = (Produção real / Produção esperada nos dias com coleta) * 100
+        // Calcular porcentagem de postura (média do período)
         let layingRatePercentage = 0;
-        if (daysWithRecords > 0 && currentHensCount > 0) {
-          // Produção esperada = número de aves × dias com coleta
-          const expectedProduction = currentHensCount * daysWithRecords;
-          
-          // Porcentagem = (produção real / produção esperada) × 100
-          layingRatePercentage = (totalRecentEggs / expectedProduction) * 100;
-          
-          // Limitar a 100% no máximo
-          layingRatePercentage = Math.min(layingRatePercentage, 100);
-          
-          // Debug: mostrar cálculo no console
-          console.log(`[Dashboard] Lote ${flock.name}:`, {
-            totalRecentEggs: totalRecentEggs,
-            currentHensCount: currentHensCount,
-            daysWithRecords: daysWithRecords,
-            expectedProduction: expectedProduction,
-            rawPercentage: (totalRecentEggs / expectedProduction) * 100,
-            finalPercentage: layingRatePercentage
-          });
+        
+        if (flockRecords.length > 0) {
+            // Agrupar registros por dia para evitar duplicatas e contar dias com coleta
+            const uniqueDays = new Set(flockRecords.map(r => getLocalYMD(r.date))).size;
+            
+            // Calcular média de aves no período
+            // Para ser mais preciso, deveria iterar dia a dia, mas vamos pegar a média dos registros
+            const totalHensInRecords = flockRecords.reduce((sum, r) => {
+                return sum + getHensCountOnDate(flock.id, new Date(r.date));
+            }, 0);
+            
+            // Se temos registros de produção, usamos eles para calcular a média de aves
+            // Nota: se houver dias sem registro, eles não entram na média de postura, o que é correto (não baixam a média artificialmente)
+            const averageHens = flockRecords.length > 0 ? totalHensInRecords / flockRecords.length : 0;
+
+            if (uniqueDays > 0 && averageHens > 0) {
+                // Média diária de ovos
+                const avgDailyEggs = totalProduction / uniqueDays;
+                
+                // Taxa = (Ovos / Dias) / Aves * 100
+                layingRatePercentage = (avgDailyEggs / averageHens) * 100;
+                layingRatePercentage = Math.min(layingRatePercentage, 100);
+            }
+        } else if (performanceFilter === 'this-month') {
+             // Fallback para comportamento antigo se não tiver registros no mês (mostra status atual)
+             const today = new Date();
+             const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+             const currentHensCount = getHensCountOnDate(flock.id, today);
+             const recentRecords = records.filter(r => {
+                 const d = new Date(r.date);
+                 return r.flockId === flock.id && d >= sevenDaysAgo && d <= today;
+             });
+             const totalRecent = recentRecords.reduce((s, r) => s + r.eggsCollected, 0);
+             const days = recentRecords.length;
+             if (days > 0 && currentHensCount > 0) {
+                 layingRatePercentage = Math.min(((totalRecent/days)/currentHensCount)*100, 100);
+             }
         }
+
+        // Get current hens count for display (always current status)
+        const currentHensCount = getHensCountOnDate(flock.id, new Date());
 
         return {
           id: flock.id,
@@ -262,11 +276,12 @@ const Dashboard: FC = () => {
           totalProduction,
           profitability,
           costPerEgg,
+          feedCostPerEgg,
           layingRatePercentage: layingRatePercentage.toFixed(1),
           currentHensCount,
         };
       });
-  }, [flocks, expenses, sales, records, getHensCountOnDate]);
+  }, [flocks, expenses, sales, records, getHensCountOnDate, performanceFilter]);
   
   const latestTransactions = useMemo(() => {
     const combined = [
@@ -499,18 +514,6 @@ const Dashboard: FC = () => {
           >
             Produtividade
           </button>
-          <button
-            className="px-6 py-3 text-sm font-medium text-slate-400 cursor-not-allowed"
-            disabled
-          >
-            Aves
-          </button>
-          <button
-            className="px-6 py-3 text-sm font-medium text-slate-400 cursor-not-allowed"
-            disabled
-          >
-            Estoque
-          </button>
         </div>
       </div>
 
@@ -526,7 +529,10 @@ const Dashboard: FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {/* NEW FEATURE: Egg Stock Highlight */}
-        <div className="bg-gradient-to-br from-amber-500 to-orange-600 p-6 rounded-xl shadow-md flex items-center space-x-4 text-white transform hover:scale-105 transition-transform duration-200 cursor-default">
+        <div 
+            onClick={() => navigate('inventory')}
+            className="bg-gradient-to-br from-amber-500 to-orange-600 p-6 rounded-xl shadow-md flex items-center space-x-4 text-white transform hover:scale-105 transition-transform duration-200 cursor-pointer hover:shadow-lg"
+        >
             <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
                 <InventoryIcon className="h-8 w-8 text-white" />
             </div>
@@ -565,6 +571,50 @@ const Dashboard: FC = () => {
             description="Custos operacionais"
             iconColorClass="bg-red-100 text-red-600"
         />
+      </div>
+
+      {/* Monthly Profit Card */}
+      <div className="mt-6">
+        <div className={`rounded-xl shadow-sm p-6 border ${
+          monthlyProfit.value >= 0 
+            ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200' 
+            : 'bg-gradient-to-br from-red-50 to-rose-50 border-red-200'
+        }`}>
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <div className={`p-3 rounded-lg ${
+                  monthlyProfit.value >= 0 
+                    ? 'bg-green-100' 
+                    : 'bg-red-100'
+                }`}>
+                  {monthlyProfit.value >= 0 ? (
+                    <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                  ) : (
+                    <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                    </svg>
+                  )}
+                </div>
+                <div>
+                  <h3 className={`text-sm font-medium uppercase tracking-wide ${
+                    monthlyProfit.value >= 0 ? 'text-green-700' : 'text-red-700'
+                  }`}>
+                    {monthlyProfit.value >= 0 ? 'Lucro Mensal' : 'Prejuízo Mensal'}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Receitas - Despesas</p>
+                </div>
+              </div>
+              <p className={`text-3xl font-bold ${
+                monthlyProfit.value >= 0 ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {monthlyProfit.value >= 0 ? '+' : ''}{monthlyProfit.formatted}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Quick Actions */}
@@ -658,53 +708,116 @@ const Dashboard: FC = () => {
           </div>
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-         <div className="flex justify-between items-center mb-6">
-             <h2 className="text-lg font-semibold text-slate-800">Performance por Lote (Ovos)</h2>
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+         {/* Header com gradiente */}
+         <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-5 border-b border-slate-200">
+             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                 <div>
+                     <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                         <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                         </svg>
+                         Performance por Lote
+                     </h2>
+                     <p className="text-sm text-slate-600 mt-1">Análise de rentabilidade e eficiência por período</p>
+                 </div>
+                 
+                 {/* Filtros aprimorados */}
+                 <div className="flex flex-col sm:flex-row gap-3">
+                     <div className="relative">
+                         <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
+                             🐔 Lote
+                         </label>
+                         <select 
+                             value={flockFilter}
+                             onChange={(e) => setFlockFilter(e.target.value)}
+                             className="w-full sm:w-auto min-w-[180px] text-sm font-medium border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white py-2 pl-3 pr-10 shadow-sm hover:border-slate-300 transition-colors cursor-pointer"
+                         >
+                             <option value="all">📊 Todos os Lotes</option>
+                             {flocks.filter(f => f.status === 'Ativo').map(flock => (
+                                 <option key={flock.id} value={flock.id}>🐓 {flock.name}</option>
+                             ))}
+                         </select>
+                     </div>
+                     
+                     <div className="relative">
+                         <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
+                             📅 Período
+                         </label>
+                         <select 
+                             value={performanceFilter}
+                             onChange={(e) => setPerformanceFilter(e.target.value as any)}
+                             className="w-full sm:w-auto min-w-[160px] text-sm font-medium border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white py-2 pl-3 pr-10 shadow-sm hover:border-slate-300 transition-colors cursor-pointer"
+                         >
+                             <option value="this-month">📆 Este Mês</option>
+                             <option value="last-month">📋 Mês Passado</option>
+                             <option value="all-time">🕐 Desde o Início</option>
+                         </select>
+                     </div>
+                 </div>
+             </div>
          </div>
-         <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-slate-500">
-                <thead className="text-xs text-slate-700 uppercase bg-slate-50">
-                    <tr>
-                        <th scope="col" className="px-6 py-3 rounded-l-lg">Lote</th>
-                        <th scope="col" className="px-6 py-3 text-right">Produção</th>
-                        <th scope="col" className="px-6 py-3 text-right">% Postura</th>
-                        <th scope="col" className="px-6 py-3 text-right">Custo Total</th>
-                        <th scope="col" className="px-6 py-3 text-right">Custo/Ovo</th>
-                        <th scope="col" className="px-6 py-3 text-right">Receita (Ovos)</th>
-                        <th scope="col" className="px-6 py-3 text-right rounded-r-lg">Lucro/Prejuízo</th>
-                    </tr>
-                </thead>
-                <tbody className="space-y-2">
-                    {flockSummaryData.length > 0 ? flockSummaryData.map((flock, idx) => (
-                        <tr key={flock.id} className="bg-white border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                            <td className="px-6 py-4 font-medium text-slate-900">{flock.name}</td>
-                            <td className="px-6 py-4 text-right">{flock.totalProduction.toLocaleString('pt-BR')}</td>
-                            <td className="px-6 py-4 text-right">
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                    parseFloat(flock.layingRatePercentage) >= 85 
-                                        ? 'bg-green-100 text-green-800'
-                                        : parseFloat(flock.layingRatePercentage) >= 70
-                                        ? 'bg-yellow-100 text-yellow-800'
-                                        : 'bg-red-100 text-red-800'
-                                }`}>
-                                    {flock.layingRatePercentage}%
-                                </span>
-                            </td>
-                            <td className="px-6 py-4 text-right text-red-600">{flock.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                            <td className="px-6 py-4 text-right text-slate-600">{flock.costPerEgg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 3 })}</td>
-                            <td className="px-6 py-4 text-right text-green-600">{flock.totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                            <td className={`px-6 py-4 text-right font-bold ${flock.profitability >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {flock.profitability.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                            </td>
-                        </tr>
-                    )) : (
-                        <tr>
-                            <td colSpan={6} className="text-center py-10 text-slate-500">Nenhum lote ativo para exibir.</td>
-                        </tr>
-                    )}
-                </tbody>
-            </table>
+         
+         {/* Conteúdo dos cards */}
+         <div className="p-6">
+         
+         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {flockSummaryData.length > 0 ? flockSummaryData
+                .filter(flock => flockFilter === 'all' || flock.id === flockFilter)
+                .map((flock, idx) => (
+                <div key={flock.id} className={`p-4 rounded-xl border-2 transition-all hover:shadow-md ${
+                    flock.profitability > 0 ? 'bg-green-50 border-green-100' : 
+                    flock.profitability < 0 ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-100'
+                }`}>
+                    <div className="flex justify-between items-start mb-3">
+                        <h3 className="font-bold text-slate-800">{flock.name}</h3>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                            parseFloat(flock.layingRatePercentage) >= 85 ? 'bg-green-200 text-green-800' :
+                            parseFloat(flock.layingRatePercentage) >= 70 ? 'bg-amber-200 text-amber-800' :
+                            'bg-red-200 text-red-800'
+                        }`}>
+                            {flock.layingRatePercentage}% Postura
+                        </span>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center py-4 space-y-1">
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Resultado</span>
+                        <span className={`text-2xl font-black ${
+                            flock.profitability > 0 ? 'text-green-600' : 
+                            flock.profitability < 0 ? 'text-red-600' : 'text-slate-600'
+                        }`}>
+                            {flock.profitability > 0 ? '+' : ''}
+                            {flock.profitability.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                    </div>
+
+                    <div className="border-t border-black/5 pt-3 mt-2 space-y-2">
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <p className="text-slate-500 font-medium">Custo Total/Ovo</p>
+                                <p className="font-bold text-slate-800">
+                                    {flock.costPerEgg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })}
+                                </p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-slate-500 font-medium">Produção</p>
+                                <p className="font-bold text-slate-800">{flock.totalProduction.toLocaleString('pt-BR')}</p>
+                            </div>
+                        </div>
+                        <div className="bg-amber-50 border border-amber-100 rounded-lg p-2">
+                            <p className="text-[10px] text-amber-700 font-semibold uppercase tracking-wide mb-0.5">🌾 Custo Ração/Ovo</p>
+                            <p className="font-bold text-amber-900 text-sm">
+                                {flock.feedCostPerEgg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )) : (
+                <div className="col-span-full text-center py-10 text-slate-500">
+                    Nenhum dado encontrado para o período selecionado.
+                </div>
+            )}
+         </div>
          </div>
       </div>
 

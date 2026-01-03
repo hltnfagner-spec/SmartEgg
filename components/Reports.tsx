@@ -87,7 +87,7 @@ type ClientSummary = {
 type ReportData = ProductionReportData | FinancialReportData | EggsReportData | SalesReportData | ExpensesReportData | PostureReportData | ClientsReportData | AlertsReportData | null;
 
 const Reports: FC = () => {
-	const { flocks, records, expenses, sales, clients } = useFarm();
+	const { flocks, records, expenses, sales, clients, getHensCountOnDate } = useFarm();
 	const [reportType, setReportType] = useState<ReportType | null>(null);
 	const [periodType, setPeriodType] = useState<PeriodType>('monthly');
 	
@@ -562,6 +562,7 @@ const Reports: FC = () => {
             )}
 
             {/* Área de visualização do relatório na tela */}
+
             {reportData && (reportData.type === 'eggs' || reportData.type === 'production') && (
                 <div className="bg-white p-6 rounded-xl shadow-md space-y-4 print:bg-white print:shadow-none">
                     <h2 className="text-xl font-semibold text-stone-800">Relatório de Ovos Produzidos</h2>
