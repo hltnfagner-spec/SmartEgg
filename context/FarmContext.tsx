@@ -34,6 +34,7 @@ interface FarmContextType {
   deleteRecord: (recordId: string) => void;
   addExpense: (expense: Omit<Expense, 'id'>) => void;
   updateExpense: (expenseId: string, data: Omit<Expense, 'id'>) => void;
+  deleteExpense: (expenseId: string) => void;
   addSale: (sale: Omit<Sale, 'id' | 'totalAmount' | 'saleNumber'>) => void;
   updateSale: (saleId: string, data: Omit<Sale, 'id' | 'totalAmount'>) => void;
   addTask: (task: Omit<FlockTask, 'id'>) => void;
@@ -1729,6 +1730,29 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     })();
   };
 
+  const deleteExpense = (expenseId: string) => {
+    if (!userId) return;
+
+    (async () => {
+      try {
+        const { error } = await supabase
+          .from('expenses')
+          .delete()
+          .eq('id', expenseId)
+          .eq('user_id', userId);
+
+        if (error) {
+          console.error('[FarmContext] Erro ao deletar despesa no Supabase:', error);
+          return;
+        }
+
+        setExpenses(prev => prev.filter(exp => exp.id !== expenseId));
+      } catch (err) {
+        console.error('[FarmContext] Erro inesperado ao deletar despesa:', err);
+      }
+    })();
+  };
+
   const addSale = (saleData: Omit<Sale, 'id' | 'totalAmount' | 'saleNumber'>) => {
     if (!userId) return;
 
@@ -2510,7 +2534,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         currentView, viewParams, navigate,
         addShed, updateShed, deleteShed, addFlock, updateFlock, disposeFlock, deleteFlock, 
         addRecord, updateRecord, deleteRecord, 
-        addExpense, updateExpense, addSale, updateSale, 
+        addExpense, updateExpense, deleteExpense, addSale, updateSale, 
         addTask, toggleTaskCompletion, deleteTask, 
         addClient, updateClient, deleteClient, 
         addContact, updateContact, deleteContact, getContactById,

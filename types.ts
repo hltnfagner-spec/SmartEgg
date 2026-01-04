@@ -29,7 +29,26 @@ export interface DailyRecord {
   createdAt?: string; // Timestamp de criação para ordenação
 }
 
-export type ExpenseCategory = 'Ração' | 'Medicamentos' | 'Mão de Obra' | 'Manutenção' | 'Outros';
+export type ExpenseCategory = 
+  | 'Ração' 
+  | 'Medicamentos' 
+  | 'Vacinas'
+  | 'Mão de Obra'
+  | 'Manutenção'
+  | 'Energia/Água'
+  | 'Transporte'
+  | 'Equipamentos'
+  | 'Material de Limpeza'
+  | 'Embalagens'
+  | 'Marketing/Vendas'
+  | 'Impostos/Taxas'
+  | 'Aluguel'
+  | 'Seguros'
+  | 'Veterinário'
+  | 'Nutrição/Suplementos'
+  | 'Desinfetantes'
+  | 'Controle de Pragas'
+  | 'Outros';
 
 export interface Contact {
   id: string;

@@ -268,8 +268,8 @@ const DataEntry: FC = () => {
                 });
                 break;
             case 'mensal':
-                start = new Date(today.getTime() - 29 * 24 * 60 * 60 * 1000);
-                end = today;
+                start = new Date(today.getFullYear(), today.getMonth(), 1); // Primeiro dia do mês atual
+                end = new Date(today.getFullYear(), today.getMonth() + 1, 0); // Último dia do mês atual
                 setDateFilter({
                     start: toLocalDateString(start),
                     end: toLocalDateString(end)

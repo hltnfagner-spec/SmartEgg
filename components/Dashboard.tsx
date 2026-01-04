@@ -11,6 +11,7 @@ import { AddRecordForm } from './DataEntry';
 import { AddExpenseForm } from './Expenses';
 import { AddSaleForm } from './Sales';
 import { AddMortalityForm } from './Mortality';
+import PerformanceDashboardV2 from './PerformanceDashboardV2';
 
 const getLocalYMD = (date: Date | string) => {
     // Se for string, assume que já está no formato YYYY-MM-DD ou ISO
@@ -122,24 +123,31 @@ const Dashboard: FC = () => {
           if (avgPrev2 > 0) {
               const change = ((avgLast2 - avgPrev2) / avgPrev2) * 100;
               
-              // Generate fingerprint
-              const fingerprint = `prod_trend_${flock.id}_${dailyTotals[0].date}`;
+              // Generate fingerprint sem data para evitar duplicatas
+              const fingerprint = `prod_trend_${flock.id}`;
 
               if (Math.abs(change) >= 10) { // 10% threshold
-                  const type = change > 0 ? 'production_up' : 'production_down';
-                  const title = change > 0 ? 'Aumento de Produção' : 'Queda de Produção';
-                  const message = `O lote ${flock.name} teve uma ${change > 0 ? 'alta' : 'queda'} de ${Math.abs(change).toFixed(1)}% na produção média recente.`;
+                  // Verificar se a mudança é persistente (não um pico de um dia)
+                  const isPersistentChange = 
+                    (change > 0 && last2Days.every(d => d.total >= avgPrev2 * 0.9)) || // Aumento persistente
+                    (change < 0 && last2Days.every(d => d.total <= avgPrev2 * 1.1));    // Queda persistente
                   
-                  addAlert({
-                      type,
-                      title,
-                      message,
-                      flockName: flock.name,
-                      metadata: {
-                          flockId: flock.id,
-                          value: Math.abs(change)
-                      }
-                  });
+                  if (isPersistentChange) {
+                      const type = change > 0 ? 'production_up' : 'production_down';
+                      const title = change > 0 ? 'Aumento de Produção' : 'Queda de Produção';
+                      const message = `O lote ${flock.name} teve uma ${change > 0 ? 'alta' : 'queda'} de ${Math.abs(change).toFixed(1)}% na produção média recente.`;
+                      
+                      addAlert({
+                          type,
+                          title,
+                          message,
+                          flockName: flock.name,
+                          metadata: {
+                              flockId: flock.id,
+                              value: Math.abs(change)
+                          }
+                      });
+                  }
               }
           }
       }
@@ -708,118 +716,11 @@ const Dashboard: FC = () => {
           </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-         {/* Header com gradiente */}
-         <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-5 border-b border-slate-200">
-             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                 <div>
-                     <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                         <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                         </svg>
-                         Performance por Lote
-                     </h2>
-                     <p className="text-sm text-slate-600 mt-1">Análise de rentabilidade e eficiência por período</p>
-                 </div>
-                 
-                 {/* Filtros aprimorados */}
-                 <div className="flex flex-col sm:flex-row gap-3">
-                     <div className="relative">
-                         <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
-                             🐔 Lote
-                         </label>
-                         <select 
-                             value={flockFilter}
-                             onChange={(e) => setFlockFilter(e.target.value)}
-                             className="w-full sm:w-auto min-w-[180px] text-sm font-medium border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white py-2 pl-3 pr-10 shadow-sm hover:border-slate-300 transition-colors cursor-pointer"
-                         >
-                             <option value="all">📊 Todos os Lotes</option>
-                             {flocks.filter(f => f.status === 'Ativo').map(flock => (
-                                 <option key={flock.id} value={flock.id}>🐓 {flock.name}</option>
-                             ))}
-                         </select>
-                     </div>
-                     
-                     <div className="relative">
-                         <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
-                             📅 Período
-                         </label>
-                         <select 
-                             value={performanceFilter}
-                             onChange={(e) => setPerformanceFilter(e.target.value as any)}
-                             className="w-full sm:w-auto min-w-[160px] text-sm font-medium border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white py-2 pl-3 pr-10 shadow-sm hover:border-slate-300 transition-colors cursor-pointer"
-                         >
-                             <option value="this-month">📆 Este Mês</option>
-                             <option value="last-month">📋 Mês Passado</option>
-                             <option value="all-time">🕐 Desde o Início</option>
-                         </select>
-                     </div>
-                 </div>
-             </div>
-         </div>
-         
-         {/* Conteúdo dos cards */}
-         <div className="p-6">
-         
-         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {flockSummaryData.length > 0 ? flockSummaryData
-                .filter(flock => flockFilter === 'all' || flock.id === flockFilter)
-                .map((flock, idx) => (
-                <div key={flock.id} className={`p-4 rounded-xl border-2 transition-all hover:shadow-md ${
-                    flock.profitability > 0 ? 'bg-green-50 border-green-100' : 
-                    flock.profitability < 0 ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-100'
-                }`}>
-                    <div className="flex justify-between items-start mb-3">
-                        <h3 className="font-bold text-slate-800">{flock.name}</h3>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                            parseFloat(flock.layingRatePercentage) >= 85 ? 'bg-green-200 text-green-800' :
-                            parseFloat(flock.layingRatePercentage) >= 70 ? 'bg-amber-200 text-amber-800' :
-                            'bg-red-200 text-red-800'
-                        }`}>
-                            {flock.layingRatePercentage}% Postura
-                        </span>
-                    </div>
-
-                    <div className="flex flex-col items-center justify-center py-4 space-y-1">
-                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Resultado</span>
-                        <span className={`text-2xl font-black ${
-                            flock.profitability > 0 ? 'text-green-600' : 
-                            flock.profitability < 0 ? 'text-red-600' : 'text-slate-600'
-                        }`}>
-                            {flock.profitability > 0 ? '+' : ''}
-                            {flock.profitability.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </span>
-                    </div>
-
-                    <div className="border-t border-black/5 pt-3 mt-2 space-y-2">
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div>
-                                <p className="text-slate-500 font-medium">Custo Total/Ovo</p>
-                                <p className="font-bold text-slate-800">
-                                    {flock.costPerEgg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })}
-                                </p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-slate-500 font-medium">Produção</p>
-                                <p className="font-bold text-slate-800">{flock.totalProduction.toLocaleString('pt-BR')}</p>
-                            </div>
-                        </div>
-                        <div className="bg-amber-50 border border-amber-100 rounded-lg p-2">
-                            <p className="text-[10px] text-amber-700 font-semibold uppercase tracking-wide mb-0.5">🌾 Custo Ração/Ovo</p>
-                            <p className="font-bold text-amber-900 text-sm">
-                                {flock.feedCostPerEgg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )) : (
-                <div className="col-span-full text-center py-10 text-slate-500">
-                    Nenhum dado encontrado para o período selecionado.
-                </div>
-            )}
-         </div>
-         </div>
-      </div>
+      {/* Performance por Lote - Novo Componente */}
+      <PerformanceDashboardV2 
+        initialPeriod={performanceFilter} 
+        initialFlockId={flockFilter} 
+      />
 
       {/* Upcoming Tasks Section - Full Width at Bottom */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col">

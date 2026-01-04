@@ -2,15 +2,35 @@
 import { useState, useEffect, FC, ChangeEvent, FormEvent, FocusEvent, useMemo } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { Expense, ExpenseCategory } from '../types';
-import { EditIcon } from './icons';
+import { EditIcon, TrashIcon } from './icons';
 
-const EXPENSE_CATEGORIES: ExpenseCategory[] = ['Ração', 'Medicamentos', 'Mão de Obra', 'Manutenção', 'Outros'];
+const EXPENSE_CATEGORIES: ExpenseCategory[] = [
+  'Ração',
+  'Medicamentos', 
+  'Vacinas',
+  'Mão de Obra',
+  'Manutenção',
+  'Energia/Água',
+  'Transporte',
+  'Equipamentos',
+  'Material de Limpeza',
+  'Embalagens',
+  'Marketing/Vendas',
+  'Impostos/Taxas',
+  'Aluguel',
+  'Seguros',
+  'Veterinário',
+  'Nutrição/Suplementos',
+  'Desinfetantes',
+  'Controle de Pragas',
+  'Outros'
+];
 
 export const AddExpenseForm: FC<{onClose: () => void; expenseToEdit?: Expense | null}> = ({ onClose, expenseToEdit }) => {
-    const { addExpense, updateExpense, flocks, contacts } = useFarm();
+    const { addExpense, updateExpense, deleteExpense, flocks, contacts } = useFarm();
     // Usando 'any' para permitir string vazia no estado
     const [formData, setFormData] = useState<any>({
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toLocaleDateString('en-CA'), // Formato YYYY-MM-DD local
         flockId: '', // Default para Geral
         supplierId: '',
         category: 'Ração',
@@ -24,7 +44,7 @@ export const AddExpenseForm: FC<{onClose: () => void; expenseToEdit?: Expense | 
         if (expenseToEdit) {
             setFormData({
                 ...expenseToEdit,
-                date: new Date(expenseToEdit.date).toISOString().split('T')[0],
+                date: new Date(expenseToEdit.date).toLocaleDateString('en-CA'),
                 flockId: expenseToEdit.flockId || '',
                 supplierId: expenseToEdit.supplierId || '',
             });
@@ -83,8 +103,8 @@ export const AddExpenseForm: FC<{onClose: () => void; expenseToEdit?: Expense | 
                     <label htmlFor="flockId" className="block text-sm font-medium text-stone-600">Destino (Lote)</label>
                     <select id="flockId" name="flockId" value={formData.flockId} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
                         <option value="">⚡ Despesa Geral (Sem Lote)</option>
-                        <optgroup label="Lotes Específicos">
-                            {flocks.map(flock => <option key={flock.id} value={flock.id}>{flock.name}</option>)}
+                        <optgroup label="Lotes Ativos">
+                            {flocks.filter(flock => flock.status === 'Ativo').map(flock => <option key={flock.id} value={flock.id}>{flock.name}</option>)}
                         </optgroup>
                     </select>
                 </div>
@@ -103,7 +123,35 @@ export const AddExpenseForm: FC<{onClose: () => void; expenseToEdit?: Expense | 
                 <div>
                     <label htmlFor="category" className="block text-sm font-medium text-stone-600">Categoria</label>
                     <select id="category" name="category" value={formData.category} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
-                        {EXPENSE_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                        <optgroup label="🐔 Produção">
+                            <option value="Ração">🌾 Ração</option>
+                            <option value="Nutrição/Suplementos">💊 Nutrição/Suplementos</option>
+                            <option value="Vacinas">💉 Vacinas</option>
+                            <option value="Medicamentos">🧴 Medicamentos</option>
+                            <option value="Veterinário">🩺 Veterinário</option>
+                        </optgroup>
+                        <optgroup label="🏠 Operação">
+                            <option value="Mão de Obra">👥 Mão de Obra</option>
+                            <option value="Energia/Água">⚡ Energia/Água</option>
+                            <option value="Manutenção">🔧 Manutenção</option>
+                            <option value="Material de Limpeza">🧹 Material de Limpeza</option>
+                            <option value="Desinfetantes">🧼 Desinfetantes</option>
+                            <option value="Controle de Pragas">🐛 Controle de Pragas</option>
+                        </optgroup>
+                        <optgroup label="📦 Logística">
+                            <option value="Transporte">🚚 Transporte</option>
+                            <option value="Embalagens">📦 Embalagens</option>
+                            <option value="Equipamentos">🔨 Equipamentos</option>
+                        </optgroup>
+                        <optgroup label="📊 Administrativo">
+                            <option value="Marketing/Vendas">📈 Marketing/Vendas</option>
+                            <option value="Impostos/Taxas">🏛️ Impostos/Taxas</option>
+                            <option value="Aluguel">🏢 Aluguel</option>
+                            <option value="Seguros">🛡️ Seguros</option>
+                        </optgroup>
+                        <optgroup label="📌 Outros">
+                            <option value="Outros">📌 Outros</option>
+                        </optgroup>
                     </select>
                 </div>
             </div>
@@ -126,7 +174,7 @@ export const AddExpenseForm: FC<{onClose: () => void; expenseToEdit?: Expense | 
 };
 
 const Expenses: FC = () => {
-    const { expenses, getFlockById, flocks, getContactById } = useFarm();
+    const { expenses, deleteExpense, getFlockById, flocks, getContactById } = useFarm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [expenseToEdit, setExpenseToEdit] = useState<Expense | null>(null);
 
@@ -250,6 +298,12 @@ const Expenses: FC = () => {
     const handleOpenEditModal = (expense: Expense) => {
         setExpenseToEdit(expense);
         setIsModalOpen(true);
+    };
+
+    const handleDeleteExpense = (expense: Expense) => {
+        if (window.confirm(`Tem certeza que deseja deletar esta despesa?\n\n${expense.description}\nValor: ${expense.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`)) {
+            deleteExpense(expense.id);
+        }
     };
 
     const handleCloseModal = () => {
@@ -458,11 +512,14 @@ const Expenses: FC = () => {
                                         <button onClick={() => handleOpenEditModal(expense)} className="p-2 text-stone-500 hover:text-amber-600 transition-colors" aria-label="Editar Despesa">
                                             <EditIcon />
                                         </button>
+                                        <button onClick={() => handleDeleteExpense(expense)} className="p-2 text-stone-500 hover:text-red-600 transition-colors ml-1" aria-label="Deletar Despesa">
+                                            <TrashIcon />
+                                        </button>
                                     </td>
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-10 text-stone-500">Nenhuma despesa registrada no período.</td>
+                                    <td colSpan={7} className="text-center py-10 text-stone-500">Nenhuma despesa registrada no período.</td>
                                 </tr>
                             )}
                         </tbody>
