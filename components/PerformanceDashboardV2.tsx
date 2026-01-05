@@ -25,6 +25,7 @@ interface FlockPerformance {
   phase: FlockPhase;
   status: 'profit' | 'loss' | 'breakeven';
   layingRatePercentage: number; // NOVO: Taxa de postura
+  weeklyEggs?: number;
   // Variações vs período anterior
   profitChange: number;
   productionChange: number;
@@ -36,6 +37,12 @@ interface PerformanceDashboardV2Props {
   initialPeriod?: 'this-month' | 'last-month' | 'all-time';
   initialFlockId?: string;
 }
+
+const parseLocalDate = (value?: string) => {
+  if (!value) return null;
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, (month || 1) - 1, day || 1);
+};
 
 const PerformanceDashboardV2: FC<PerformanceDashboardV2Props> = ({ 
   initialPeriod = 'this-month',
@@ -89,6 +96,7 @@ const PerformanceDashboardV2: FC<PerformanceDashboardV2Props> = ({
     let end = new Date(today);
     let start = new Date(today);
     
+    
     // Normalizar para início/fim do dia usando data local
     end.setHours(23, 59, 59, 999);
     
@@ -99,7 +107,7 @@ const PerformanceDashboardV2: FC<PerformanceDashboardV2Props> = ({
         end.setHours(23, 59, 59, 999);
         break;
       case 'weekly':
-        start.setDate(today.getDate() - 7);
+        start.setDate(today.getDate() - 6); // Últimos 7 dias incluindo hoje
         start.setHours(0, 0, 0, 0);
         break;
       case 'monthly':
@@ -108,12 +116,18 @@ const PerformanceDashboardV2: FC<PerformanceDashboardV2Props> = ({
         break;
       case 'custom':
         if (customStartDate) {
-          start = new Date(customStartDate);
-          start.setHours(0, 0, 0, 0);
+          const parsedStart = parseLocalDate(customStartDate);
+          if (parsedStart) {
+            start = parsedStart;
+            start.setHours(0, 0, 0, 0);
+          }
         }
         if (customEndDate) {
-          end = new Date(customEndDate);
-          end.setHours(23, 59, 59, 999);
+          const parsedEnd = parseLocalDate(customEndDate);
+          if (parsedEnd) {
+            end = parsedEnd;
+            end.setHours(23, 59, 59, 999);
+          }
         }
         break;
     }
@@ -144,16 +158,16 @@ const PerformanceDashboardV2: FC<PerformanceDashboardV2Props> = ({
     return { start: prevStart, end: prevEnd };
   }, [dateRange, periodType]);
 
-  // Função para calcular a idade do lote em semanas
+  // Função para calcular idade do lote em semanas
   const calculateFlockAge = (flock: any): { ageInWeeks: number, phase: FlockPhase } => {
     const today = new Date();
     const birthDate = new Date(flock.birthDate);
     const ageInDays = Math.floor((today.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24));
     const ageInWeeks = Math.floor(ageInDays / 7);
     
-    // Determinar fase baseado na idade
+    // Determinar fase baseado na idade (FRANGAS POSTURAM AOS 18 SEMANAS)
     let phase: FlockPhase;
-    if (ageInWeeks < 25) {
+    if (ageInWeeks < 18) {
       phase = 'Crescimento';
     } else if (ageInWeeks < 65) {
       phase = 'Pico';
@@ -162,6 +176,57 @@ const PerformanceDashboardV2: FC<PerformanceDashboardV2Props> = ({
     }
     
     return { ageInWeeks, phase };
+  };
+
+  // Função para calcular investimento por ave (fase crescimento)
+  const calculateInvestmentPerHen = (flockId: string, startDate: Date, endDate: Date) => {
+    // Pegar todas as despesas do lote até 25 semanas
+    const flockExpenses = expenses.filter(e => 
+      e.flockId === flockId && 
+      new Date(e.date) <= endDate
+    );
+    
+    // Número de aves no lote
+    const henCount = getHensCountOnDate(flockId, endDate);
+    
+    // Custo total dividido por número de aves
+    const totalCost = flockExpenses.reduce((sum, e) => sum + e.amount, 0);
+    return henCount > 0 ? totalCost / henCount : 0;
+  };
+
+  // Função para calcular preço médio de venda
+  const calculateAverageSalePrice = (flockId: string, startDate: Date, endDate: Date) => {
+    const flockSales = sales.filter(s => 
+      s.flockId === flockId && 
+      new Date(s.date) >= startDate && 
+      new Date(s.date) <= endDate
+    );
+    
+    if (flockSales.length === 0) return 0;
+    
+    const totalRevenue = flockSales.reduce((sum, s) => sum + s.totalAmount, 0);
+    const totalQuantity = flockSales.reduce((sum, s) => sum + s.quantity, 0);
+    
+    return totalQuantity > 0 ? totalRevenue / totalQuantity : 0;
+  };
+
+  // Função para separar custos de ração vs outros
+  const getCostBreakdown = (flockId: string, startDate: Date, endDate: Date) => {
+    const flockExpenses = expenses.filter(e => 
+      e.flockId === flockId && 
+      new Date(e.date) >= startDate && 
+      new Date(e.date) <= endDate
+    );
+    
+    const feedExpenses = flockExpenses.filter(e => 
+      e.category?.toLowerCase().includes('ração') || 
+      e.description?.toLowerCase().includes('ração')
+    );
+    
+    const feedCost = feedExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const otherCost = flockExpenses.reduce((sum, e) => sum + e.amount, 0) - feedCost;
+    
+    return { feedCost, otherCost, totalCost: feedCost + otherCost };
   };
 
   // Função auxiliar para calcular dados de um período
@@ -217,18 +282,6 @@ const PerformanceDashboardV2: FC<PerformanceDashboardV2Props> = ({
 
     // Calcular custo específico do lote
     const flockSpecificCost = flockExpenses.reduce((sum, e) => sum + e.amount, 0);
-    
-    // Debug para verificar rateio
-    if (periodType === 'weekly' && flockId.includes('28bb75')) {
-      console.log('[DEBUG RATEIO]');
-      console.log(`  Custo geral total: R$${totalGeneralCost}`);
-      console.log(`  Total aves todos lotes: ${totalHensAllFlocks}`);
-      console.log(`  Aves deste lote: ${flockHens}`);
-      console.log(`  Rateio por ave: R$${rateioPerHen.toFixed(4)}`);
-      console.log(`  Rateio total lote: R$${generalExpensesRateio.toFixed(2)}`);
-      console.log(`  Despesas específicas: R$${flockSpecificCost}`);
-      console.log(`  Custo final: R$${flockSpecificCost + generalExpensesRateio}`);
-    }
 
     // Filtrar vendas do período - usar UTC para compatibilidade
     const flockSales = sales.filter(s => {
@@ -283,21 +336,28 @@ const PerformanceDashboardV2: FC<PerformanceDashboardV2Props> = ({
         const feedCostPerEgg = current.totalEggs > 0 ? current.feedCost / current.totalEggs : 0;
         const roi = current.totalCost > 0 ? (current.profit / current.totalCost) * 100 : 0;
 
-        // Calcular taxa de postura
+        // Calcular taxa de postura baseada no período selecionado
         let layingRatePercentage = 0;
-        // Calcular com base nos dados do período atual
-        if (current.totalEggs > 0) {
-          // Obter os registros do período atual para calcular dias únicos
-          const periodRecords = records.filter(r => {
-            const d = new Date(r.date);
-            return r.flockId === flock.id && d >= dateRange.start && d <= dateRange.end;
-          });
-          
-          const uniqueDays = new Set(periodRecords.map(r => r.date.split('T')[0])).size;
-          const avgDailyEggs = current.totalEggs / uniqueDays;
-          const currentHens = getHensCountOnDate(flock.id, new Date());
-          layingRatePercentage = (avgDailyEggs / currentHens) * 100;
+        let weeklyEggs = 0;
+        
+        // Calcular dias incluindo início e fim (29/12 a 04/01 = 7 dias)
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const startDay = new Date(dateRange.start);
+        startDay.setHours(0, 0, 0, 0);
+        const endDay = new Date(dateRange.end);
+        endDay.setHours(0, 0, 0, 0);
+        const totalPeriodDays = Math.max(1, Math.floor((endDay.getTime() - startDay.getTime()) / msPerDay) + 1);
+        
+        // Para taxa de postura: usar número de aves no final do período (padrão avícola)
+        const hensAtEnd = getHensCountOnDate(flock.id, dateRange.end);
+
+        if (current.totalEggs > 0 && hensAtEnd > 0) {
+          // Taxa de postura: ovos totais no período ÷ (aves atuais × dias do período)
+          layingRatePercentage = (current.totalEggs / (hensAtEnd * totalPeriodDays)) * 100;
           layingRatePercentage = Math.min(layingRatePercentage, 100);
+          
+          const avgDailyEggs = current.totalEggs / totalPeriodDays;
+          weeklyEggs = avgDailyEggs * 7;
         }
 
         // Calcular variações (deltas) em relação ao período anterior
@@ -323,7 +383,8 @@ const PerformanceDashboardV2: FC<PerformanceDashboardV2Props> = ({
           costPerEgg,
           feedCostPerEgg,
           roi,
-          layingRatePercentage, // NOVO: Adicionar taxa de postura
+          layingRatePercentage,
+          weeklyEggs,
           ageInWeeks,
           phase,
           status: current.profit > 0 ? 'profit' : current.profit < 0 ? 'loss' : 'breakeven',
@@ -404,6 +465,7 @@ const PerformanceDashboardV2: FC<PerformanceDashboardV2Props> = ({
   // Gerar insights automáticos baseados nos dados
   const insights = useMemo(() => {
     const results: string[] = [];
+    const periodDays = Math.max(1, Math.round((dateRange.end.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
     
     filteredPerformanceData.forEach(flock => {
       // Alerta de margem baixa persistente
@@ -413,7 +475,11 @@ const PerformanceDashboardV2: FC<PerformanceDashboardV2Props> = ({
       
       // Alerta de custo de ração alto
       const feedCostRatio = flock.feedCost / flock.totalCost * 100;
-      if (feedCostRatio > 80) {
+      if (
+        feedCostRatio > 80 &&
+        flock.totalCost >= 100 &&
+        (periodType !== 'daily' ? true : periodDays >= 3)
+      ) {
         results.push(`📈 Lote ${flock.name}: custo de ração acima de 80%. Revisar formulação.`);
       }
       
@@ -429,7 +495,7 @@ const PerformanceDashboardV2: FC<PerformanceDashboardV2Props> = ({
     });
     
     return results;
-  }, [filteredPerformanceData]);
+  }, [filteredPerformanceData, dateRange, periodType]);
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden">
@@ -655,14 +721,26 @@ const PerformanceDashboardV2: FC<PerformanceDashboardV2Props> = ({
           
           {filteredPerformanceData.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
-              {filteredPerformanceData.map((flock, index) => (
-                <div 
-                  key={flock.id}
-                  className={`bg-white rounded-xl border-l-4 shadow-sm hover:shadow-md transition-all p-5 ${
-                    flock.status === 'profit' ? 'border-l-green-500' : 
-                    flock.status === 'loss' ? 'border-l-red-500' : 'border-l-gray-300'
-                  }`}
-                >
+              {filteredPerformanceData.map((flock, index) => {
+                const averageSalePrice = calculateAverageSalePrice(flock.id, dateRange.start, dateRange.end);
+                const lossAmount = Math.abs(flock.profit);
+                const lossRatio = flock.totalCost > 0 ? (lossAmount / flock.totalCost) * 100 : 0;
+                const recommendation = flock.profit >= 0
+                  ? '🎉 Continue assim! Lote está lucrativo'
+                  : lossAmount < 200 || lossRatio < 10
+                    ? '🔍 Revisar custos da semana'
+                    : averageSalePrice > 0 && flock.costPerEgg > averageSalePrice * 1.5
+                      ? '🚨 Ação urgente: Reformar lote ou reduzir custos drasticamente'
+                      : '📝 Atenção: Reduzir custos ou aumentar preço de venda';
+
+                return (
+                  <div 
+                    key={flock.id}
+                    className={`bg-white rounded-xl border-l-4 shadow-sm hover:shadow-md transition-all p-5 ${
+                      flock.status === 'profit' ? 'border-l-green-500' : 
+                      flock.status === 'loss' ? 'border-l-red-500' : 'border-l-gray-300'
+                    }`}
+                  >
                   <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
                     
                     {/* Lote Info & Rank */}
@@ -694,68 +772,167 @@ const PerformanceDashboardV2: FC<PerformanceDashboardV2Props> = ({
                       </div>
                     </div>
 
-                    {/* Financial & Production Metrics Grid */}
-                    <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-4 md:border-l md:border-r border-slate-100 md:px-6">
-                      
-                      <div>
-                        <p className="text-xs text-slate-500 uppercase tracking-wide">Lucro</p>
-                        <div className="flex items-end gap-2">
-                          <span className={`text-lg font-bold ${flock.profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
-                            {flock.profit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </span>
+                    {/* Simplified Metrics Grid - Language for Farmers */}
+                    <div className="flex-1 space-y-4 md:border-l md:border-r border-slate-100 md:px-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                        {/* 1. Lucro/Ganho */}
+                        <div className="bg-white border border-slate-100 rounded-lg p-4">
+                          <p className="text-xs text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                            <span>💰</span> Ganho/Perda
+                          </p>
+                          <div className="flex items-end gap-2">
+                            <span className={`text-lg font-bold ${flock.profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                              {flock.profit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {flock.profitChange !== 0 && Number.isFinite(flock.profitChange)
+                              ? `${flock.profitChange > 0 ? 'Ganhou' : 'Perdeu'} R$ ${Math.abs(flock.profit * flock.profitChange / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ${flock.profitChange > 0 ? 'a mais' : 'a menos'} que período anterior`
+                              : 'Sem comparação com período anterior'}
+                          </p>
+                          <p className="text-xs font-semibold mt-1 ${flock.profit >= 0 ? 'text-green-600' : 'text-red-600'}">
+                            {flock.profit >= 0 ? '✅ Lucrando' : '❌ Prejuízo'}
+                          </p>
                         </div>
-                        <div className="flex items-center gap-1 mt-1">
-                          <span className="text-xs text-slate-400">vs anterior:</span>
-                          <TrendBadge value={flock.profitChange} />
-                        </div>
-                      </div>
 
-                      <div>
-                        <p className="text-xs text-slate-500 uppercase tracking-wide">Margem %</p>
-                        <div className="flex items-end gap-2">
-                          <span className={`text-lg font-bold ${flock.profitMargin >= 20 ? 'text-green-600' : flock.profitMargin > 0 ? 'text-amber-600' : 'text-red-600'}`}>
-                            {flock.profitMargin.toFixed(1)}%
-                          </span>
+                        {/* 2. Rentabilidade/Margem */}
+                        <div className="bg-white border border-slate-100 rounded-lg p-4">
+                          <p className="text-xs text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                            <span>📊</span> Rentabilidade
+                          </p>
+                          <div className="flex items-end gap-2">
+                            <span className={`text-lg font-bold ${flock.profitMargin >= 20 ? 'text-green-600' : flock.profitMargin > 0 ? 'text-amber-600' : 'text-red-600'}`}>
+                              {flock.profitMargin.toFixed(1)}%
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {flock.profitMargin >= 0
+                              ? `De cada R$ 100 vendido, sobram R$ ${flock.profitMargin.toFixed(0)}`
+                              : `De cada R$ 100 vendido, perde R$ ${Math.abs(flock.profitMargin).toFixed(0)}`}
+                          </p>
+                          <p className="text-xs font-semibold mt-1 ${flock.profitMargin >= 20 ? 'text-green-600' : flock.profitMargin > 0 ? 'text-amber-600' : flock.profitMargin === 0 ? 'text-amber-500' : 'text-red-600'}">
+                            {flock.profitMargin >= 20
+                              ? '✅ Ótima'
+                              : flock.profitMargin > 0
+                                ? '⚠️ Baixa'
+                                : flock.profitMargin === 0
+                                  ? '⚠️ Sem lucro'
+                                  : '❌ Prejuízo'}
+                          </p>
                         </div>
-                        <div className="flex items-center gap-1 mt-1">
-                          <TrendBadge value={flock.marginChange} isPercent={true} />
-                        </div>
-                      </div>
 
-                      <div>
-                        <p className="text-xs text-slate-500 uppercase tracking-wide">Postura %</p>
-                        <div className="flex items-end gap-2">
-                          <span className={`text-lg font-bold ${
-                            flock.layingRatePercentage >= 85 ? 'text-green-600' : 
-                            flock.layingRatePercentage >= 70 ? 'text-amber-600' : 
+                        {/* 3. Produção/Postura */}
+                        <div className="bg-white border border-slate-100 rounded-lg p-4">
+                          <p className="text-xs text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                            <span>🥚</span> Produção
+                          </p>
+                          <div className="flex items-end gap-2">
+                            <span className={`text-lg font-bold ${
+                              flock.layingRatePercentage >= 95 ? 'text-green-600' : 
+                              flock.layingRatePercentage >= 70 ? 'text-amber-600' : 
+                              'text-red-600'
+                            }`}>
+                              {flock.layingRatePercentage.toFixed(1)}%
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-1">
+                            {flock.totalEggs > 0 ? `${flock.totalEggs.toLocaleString()} ovos no período selecionado` : 'Sem ovos registrados'}
+                          </p>
+                          <p className={`text-xs font-semibold mt-1 ${
+                            flock.layingRatePercentage >= 95 ? 'text-green-600' :
+                            flock.layingRatePercentage >= 70 ? 'text-amber-600' :
                             'text-red-600'
                           }`}>
-                            {flock.layingRatePercentage.toFixed(1)}%
-                          </span>
+                            {flock.layingRatePercentage >= 95 ? '✅ Excelente' : flock.layingRatePercentage >= 70 ? '⚠️ Atenção' : '❌ Baixa'}
+                          </p>
                         </div>
-                        <p className="text-xs text-slate-400 mt-1">
-                          {flock.totalEggs > 0 ? `${(flock.totalEggs / Math.max(1, flock.ageInWeeks)).toFixed(0)} ovos/sem` : 'Sem dados'}
-                        </p>
+
+                        {/* 4. ROI/Retorno */}
+                        <div className="bg-white border border-slate-100 rounded-lg p-4">
+                          <p className="text-xs text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                            <span>📈</span> Retorno
+                          </p>
+                          <p className={`text-lg font-bold ${flock.roi >= 0 ? 'text-blue-600' : 'text-red-500'}`}>
+                            {flock.roi.toFixed(0)}%
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {flock.roi >= 0
+                              ? `De cada R$ 100 investido, ganhou R$ ${flock.roi.toFixed(0)}`
+                              : `De cada R$ 100 investido, perdeu R$ ${Math.abs(flock.roi).toFixed(0)}`}
+                          </p>
+                          <p className="text-xs font-semibold mt-1 ${flock.roi >= 20 ? 'text-blue-600' : flock.roi >= 0 ? 'text-amber-600' : 'text-red-600'}">
+                            {flock.roi >= 20 ? '✅ Excelente' : flock.roi >= 0 ? '⚠️ Baixo' : '❌ Prejuízo'}
+                          </p>
+                        </div>
                       </div>
 
-                      <div>
-                        <p className="text-xs text-slate-500 uppercase tracking-wide">Custo/Ovo</p>
-                        <p className="text-lg font-bold text-slate-700">
-                          {flock.costPerEgg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })}
+                      {/* Custo por Ovo - Bloco detalhado */}
+                      <div className="bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                        <p className="text-xs text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                          <span>💸</span> Custo por Ovo
                         </p>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Ração: {((flock.feedCost / flock.totalCost) * 100 || 0).toFixed(0)}%
-                        </p>
+                        
+                        {flock.ageInWeeks < 18 ? (
+                          // FASE DE CRESCIMENTO
+                          <div className="mt-3">
+                            <div className="flex items-baseline gap-2">
+                              <p className="text-2xl font-bold text-blue-700">
+                                {calculateInvestmentPerHen(flock.id, dateRange.start, dateRange.end).toLocaleString('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL',
+                                  minimumFractionDigits: 2
+                                })}
+                              </p>
+                              <span className="text-sm text-blue-600">por ave investido</span>
+                            </div>
+                            <p className="text-xs text-slate-600 mt-2">
+                              🌾 Ração: R$ {((flock.feedCost / getHensCountOnDate(flock.id, dateRange.end)) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} • Outros: R$ {((flock.otherCost / getHensCountOnDate(flock.id, dateRange.end)) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                              <p className="text-sm text-amber-800 font-medium">
+                                ⏳ Faltam {Math.max(0, 18 - flock.ageInWeeks)} semanas para começar a postura
+                              </p>
+                              <p className="text-xs text-amber-600 mt-1">Prejuízo é normal nesta fase de crescimento</p>
+                            </div>
+                          </div>
+                        ) : (
+                          // FASE DE POSTURA
+                          <div className="mt-3">
+                            <div className="flex items-baseline gap-2 flex-wrap">
+                              <p className="text-2xl font-bold text-slate-800">
+                                {flock.costPerEgg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })}
+                              </p>
+                              <span className="text-sm text-slate-600">por ovo</span>
+                              {averageSalePrice > 0 && (
+                                <>
+                                  <span className="text-slate-400">•</span>
+                                  <span className="text-sm text-slate-600">
+                                    Vende por {averageSalePrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })}
+                                  </span>
+                                  <span className="text-slate-400">•</span>
+                                  <span className={`text-sm font-semibold ${flock.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {flock.profit >= 0 ? 'Lucra' : 'Perde'} {Math.abs(averageSalePrice - flock.costPerEgg).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })}/ovo
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            {averageSalePrice === 0 && (
+                              <p className="text-xs text-slate-500 mt-1">Sem vendas registradas no período</p>
+                            )}
+                            <p className="text-xs text-slate-600 mt-2">
+                              🌾 Ração: R$ {(flock.feedCost / flock.totalEggs || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({((flock.feedCost / flock.totalCost) * 100 || 0).toFixed(0)}%) • Outros: R$ {(flock.otherCost / flock.totalEggs || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({((flock.otherCost / flock.totalCost) * 100 || 0).toFixed(0)}%)
+                            </p>
+                            <div className={`mt-3 p-3 rounded-lg border ${flock.profit >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                              <p className={`text-sm font-medium ${flock.profit >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+                                {flock.profit >= 0 ? '✅' : '❌'} Total no período: {flock.profit >= 0 ? 'Ganhou' : 'Perdeu'} {lossAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                              </p>
+                              <p className={`text-xs mt-1 ${flock.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {recommendation}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
-
-                      <div>
-                        <p className="text-xs text-slate-500 uppercase tracking-wide">ROI</p>
-                        <p className={`text-lg font-bold ${flock.roi >= 0 ? 'text-blue-600' : 'text-red-500'}`}>
-                          {flock.roi.toFixed(0)}%
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">Retorno Invest.</p>
-                      </div>
-
                     </div>
 
                     {/* Action */}
@@ -785,7 +962,8 @@ const PerformanceDashboardV2: FC<PerformanceDashboardV2Props> = ({
                   </div>
 
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-300">

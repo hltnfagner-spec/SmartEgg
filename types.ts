@@ -132,19 +132,18 @@ export interface FlockTask {
 export type InventoryCategory = 'Ração' | 'Medicamento' | 'Embalagem' | 'Produto Final' | 'Ovos' | 'Outro';
 export type UnitType = 'kg' | 'g' | 'L' | 'ml' | 'unidade' | 'saco';
 
-export interface InventoryItem {
+export interface FlockPerformance {
   id: string;
   name: string;
   category: InventoryCategory;
   quantity: number;
   unit: UnitType;
-  minThreshold: number; // Quantidade mínima para alerta
-  costPerUnit: number;
-  supplierId?: string; // Fornecedor (opcional)
-  lastUpdated: string;
+  eggsPerHen?: number;
+  feedCostPerEgg: number;
+  layingRatePercentage: number;
+  weeklyEggs?: number;
 }
 
-// Nova interface para ingredientes dentro de uma formulação
 export interface FeedIngredient {
   id: string;
   name: string;
@@ -152,7 +151,6 @@ export interface FeedIngredient {
   quantityKg: number;
 }
 
-// Nova interface para Formulação de Ração
 export interface FeedFormulation {
   id: string;
   name: string;
