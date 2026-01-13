@@ -211,12 +211,6 @@ export const AddSaleForm: FC<{onClose: () => void; saleToEdit?: Sale | null}> = 
                             {PRODUCT_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
                         </select>
                     </div>
-                    <div className="lg:col-span-1">
-                        <label htmlFor="saleType" className="block text-xs sm:text-sm font-medium text-stone-600">Tipo Venda</label>
-                        <select id="saleType" name="saleType" value={formData.saleType} onChange={handleChange} required className="mt-1 block w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm">
-                            {SALE_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
-                        </select>
-                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">

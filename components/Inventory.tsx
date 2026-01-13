@@ -591,16 +591,55 @@ const Inventory: FC = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Quantidade Atual</label>
-                                    <input type="number" step="0.01" required value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.valueAsNumber})} className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                                    <input 
+                                        type="number" 
+                                        step="0.01" 
+                                        required 
+                                        value={formData.quantity} 
+                                        onChange={e => setFormData({...formData, quantity: e.target.valueAsNumber})} 
+                                        onFocus={e => {
+                                            // Seleciona automaticamente se o valor for 0
+                                            if (e.target.value === '0' || e.target.value === '0.00') {
+                                                e.target.select();
+                                            }
+                                        }}
+                                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" 
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Estoque Mínimo (Alerta)</label>
-                                    <input type="number" step="0.01" required value={formData.minThreshold} onChange={e => setFormData({...formData, minThreshold: e.target.valueAsNumber})} className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                                    <input 
+                                        type="number" 
+                                        step="0.01" 
+                                        required 
+                                        value={formData.minThreshold} 
+                                        onChange={e => setFormData({...formData, minThreshold: e.target.valueAsNumber})} 
+                                        onFocus={e => {
+                                            // Seleciona automaticamente se o valor for 0
+                                            if (e.target.value === '0' || e.target.value === '0.00') {
+                                                e.target.select();
+                                            }
+                                        }}
+                                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" 
+                                    />
                                 </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Custo por Unidade (R$)</label>
-                                <input type="number" step="0.01" required value={formData.costPerUnit} onChange={e => setFormData({...formData, costPerUnit: e.target.valueAsNumber})} className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                                <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    required 
+                                    value={formData.costPerUnit} 
+                                    onChange={e => setFormData({...formData, costPerUnit: e.target.valueAsNumber})} 
+                                    onFocus={e => {
+                                        // Seleciona automaticamente se o valor for 0
+                                        if (e.target.value === '0' || e.target.value === '0.00') {
+                                            e.target.select();
+                                        }
+                                    }}
+                                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" 
+                                />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Fornecedor (opcional)</label>
@@ -656,6 +695,12 @@ const Inventory: FC = () => {
                                     required 
                                     value={eggOutputForm.quantity} 
                                     onChange={e => setEggOutputForm({...eggOutputForm, quantity: e.target.value})} 
+                                    onFocus={e => {
+                                        // Seleciona automaticamente se o campo estiver vazio
+                                        if (e.target.value === '') {
+                                            e.target.select();
+                                        }
+                                    }}
                                     placeholder="Ex: 30"
                                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" 
                                 />

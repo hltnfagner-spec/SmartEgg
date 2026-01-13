@@ -177,6 +177,18 @@ export interface EggMovement {
   referenceId?: string; // ID do registro relacionado (coleta, venda, etc)
 }
 
+export interface InventoryItem {
+  id: string;
+  name: string;
+  category: InventoryCategory;
+  quantity: number;
+  unit: UnitType;
+  minThreshold: number;
+  costPerUnit: number;
+  supplierId?: string;
+  lastUpdated: string;
+}
+
 export type View = 'dashboard' | 'data-entry' | 'flocks' | 'sheds' | 'expenses' | 'sales' | 'reports' | 'ai-assistant' | 'calculator' | 'clients' | 'contacts' | 'inventory' | 'mortality' | 'alerts' | 'transactions' | 'produtividade' | 'settings' | 'admin';
 
 // Configurações da Empresa/Granja

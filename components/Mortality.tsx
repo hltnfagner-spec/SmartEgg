@@ -91,7 +91,7 @@ export const AddMortalityForm: FC<{ onClose?: () => void }> = ({ onClose }) => {
       <div className="space-y-6">
       {message && (
         <div
-          className={`p-4 rounded-md text-sm text-white ${
+          className={`p-4 rounded-lg text-sm text-white ${
             message.type === 'error' ? 'bg-red-500' : 'bg-green-600'
           }`}
         >
@@ -99,18 +99,18 @@ export const AddMortalityForm: FC<{ onClose?: () => void }> = ({ onClose }) => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6 bg-white rounded-xl shadow-md p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Lote</label>
+            <label className="block text-sm font-medium text-stone-700 mb-2">Lote</label>
             <select
               name="flockId"
               value={formData.flockId}
               onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"
+              className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
               required
             >
-              <option value="">Selecione um lote</option>
+              <option value="">Selecione...</option>
               {activeFlocks.map(flock => (
                 <option key={flock.id} value={flock.id}>
                   {flock.name}
@@ -120,41 +120,40 @@ export const AddMortalityForm: FC<{ onClose?: () => void }> = ({ onClose }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Data</label>
+            <label className="block text-sm font-medium text-stone-700 mb-2">Data</label>
             <input
               type="date"
               name="date"
               value={formData.date}
               onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"
+              className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Qtd Mortas</label>
+            <label className="block text-sm font-medium text-stone-700 mb-2">Qtd Mortas</label>
             <input
               type="number"
               name="mortality"
               min={0}
               value={formData.mortality}
               onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"
+              className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+              placeholder="0"
               required
             />
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Motivo</label>
+            <label className="block text-sm font-medium text-stone-700 mb-2">Motivo</label>
             <select
               name="reason"
               value={formData.reason}
               onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"
+              className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
             >
-              <option value="">Selecione um motivo (opcional)</option>
+              <option value="">Selecione...</option>
               <option value="doença">Doença</option>
               <option value="descarte">Descarte</option>
               <option value="consumo">Consumo</option>
@@ -162,26 +161,33 @@ export const AddMortalityForm: FC<{ onClose?: () => void }> = ({ onClose }) => {
               <option value="acidente">Acidente</option>
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Observações</label>
-            <textarea
-              name="notes"
-              value={formData.notes}
-              onChange={handleChange}
-              rows={2}
-              className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"
-              placeholder="Ex: Ave com problema de perna, descarte por bem-estar."
-            />
-          </div>
         </div>
 
-        <div className="flex justify-end pt-4 border-t border-stone-200 mt-4 space-x-3">
+        <div>
+          <label className="block text-sm font-medium text-stone-700 mb-2">Observações</label>
+          <textarea
+            name="notes"
+            value={formData.notes}
+            onChange={handleChange}
+            rows={3}
+            className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors resize-none"
+            placeholder="Ex: Ave com problema de perna, descarte por bem-estar..."
+          />
+        </div>
+
+        <div className="flex justify-end pt-4 border-t border-stone-200 space-x-3">
           {onClose && (
-             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-stone-700 bg-stone-100 border border-stone-300 rounded-md hover:bg-stone-200">Cancelar</button>
+             <button 
+               type="button" 
+               onClick={onClose} 
+               className="px-6 py-2 text-sm font-medium text-stone-700 bg-stone-100 border border-stone-300 rounded-lg hover:bg-stone-200 transition-colors"
+             >
+               Cancelar
+             </button>
           )}
           <button
             type="submit"
-            className="px-6 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 shadow-sm"
+            className="px-6 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 shadow-sm transition-colors"
           >
             Salvar Registro
           </button>
@@ -203,68 +209,144 @@ const Mortality: FC = () => {
   }, [records, selectedFlockId]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-stone-800">Registro de Mortalidade</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-stone-800">Registro de Mortalidade</h1>
+          <p className="text-stone-600 mt-1 text-sm sm:text-base">Controle e acompanhamento de mortalidade por lote</p>
+        </div>
       </div>
 
-      <AddMortalityForm />
-
-      <div className="bg-white rounded-xl shadow-md p-6">
-        <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-stone-800">Histórico de Mortalidade</h2>
-            <select
-              value={selectedFlockId}
-              onChange={(e) => setSelectedFlockId(e.target.value)}
-              className="block w-64 px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 text-sm"
-            >
-              <option value="">Selecione um lote para ver histórico</option>
-              {flocks.map(flock => (
-                <option key={flock.id} value={flock.id}>
-                  {flock.name}
-                </option>
-              ))}
-            </select>
+      {/* Formulário */}
+      <div className="bg-white rounded-xl shadow-lg border border-stone-200">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-stone-200 bg-gradient-to-r from-stone-50 to-white">
+          <h2 className="text-base sm:text-lg font-semibold text-stone-800 flex items-center">
+            <span className="w-2 h-2 bg-amber-500 rounded-full mr-2"></span>
+            Novo Registro
+          </h2>
         </div>
         
-        {selectedFlockId ? (
-          selectedFlockRecords.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-stone-500 border-collapse">
-                <thead className="text-xs text-stone-700 uppercase bg-stone-50">
-                  <tr>
-                    <th className="px-4 py-3 text-center">Data</th>
-                    <th className="px-4 py-3 text-center">Qtd Mortas</th>
-                    <th className="px-4 py-3 text-center">Motivo</th>
-                    <th className="px-4 py-3 text-center">Observações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedFlockRecords.map(record => {
-                    // Extrai motivo e observações do campo notes
-                    const parts = (record.notes || '').split(' || ');
-                    const motivo = parts[0]?.replace('Motivo: ', '') || '-';
-                    const obs = parts[1] || '-';
-                    return (
-                      <tr key={record.id} className="border-b hover:bg-stone-50">
-                        <td className="px-4 py-2 text-center">
-                          {new Date(record.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
-                        </td>
-                        <td className="px-4 py-2 text-center font-medium text-stone-800">{record.mortality}</td>
-                        <td className="px-4 py-2 text-center text-stone-600 capitalize">{motivo}</td>
-                        <td className="px-4 py-2 text-center text-stone-600">{obs}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+        <AddMortalityForm />
+      </div>
+
+      {/* Tabela de Histórico com Filtro Integrado */}
+      <div className="bg-white rounded-xl shadow-lg border border-stone-200">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-stone-200 bg-gradient-to-r from-stone-50 to-white">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
+            <h2 className="text-base sm:text-lg font-semibold text-stone-800 flex items-center">
+              <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+              Histórico de Mortalidade
+              {selectedFlockId && (
+                <span className="ml-2 sm:ml-3 text-sm font-normal text-stone-600">
+                  - {flocks.find(f => f.id === selectedFlockId)?.name}
+                </span>
+              )}
+            </h2>
+            
+            {/* Filtro Integrado */}
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+              <label className="text-sm font-medium text-stone-700 whitespace-nowrap">Filtrar:</label>
+              <select
+                value={selectedFlockId}
+                onChange={(e) => setSelectedFlockId(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm"
+              >
+                <option value="">Todos os lotes</option>
+                {flocks.map(flock => (
+                  <option key={flock.id} value={flock.id}>
+                    {flock.name}
+                  </option>
+                ))}
+              </select>
+              {selectedFlockRecords.length > 0 && (
+                <span className="text-xs sm:text-sm text-stone-500 whitespace-nowrap">
+                  {selectedFlockRecords.length} registros
+                </span>
+              )}
             </div>
+          </div>
+        </div>
+        
+        <div className="p-4 sm:p-6">
+          {selectedFlockId ? (
+            selectedFlockRecords.length > 0 ? (
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <div className="inline-block min-w-full align-middle">
+                  <table className="w-full">
+                    <thead className="bg-stone-50 border-b border-stone-200">
+                      <tr>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-stone-700 uppercase tracking-wider">Data</th>
+                        <th className="px-4 sm:px-6 py-3 text-center text-xs font-medium text-stone-700 uppercase tracking-wider">Qtd Mortas</th>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-stone-700 uppercase tracking-wider hidden sm:table-cell">Motivo</th>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-stone-700 uppercase tracking-wider hidden lg:table-cell">Observações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-stone-200">
+                      {selectedFlockRecords.map((record, index) => {
+                        const parts = (record.notes || '').split(' || ');
+                        const motivo = parts[0]?.replace('Motivo: ', '') || '-';
+                        const obs = parts[1] || '-';
+                        
+                        return (
+                          <tr key={record.id} className={`hover:bg-stone-50 transition-colors ${index === 0 ? 'bg-red-50' : ''}`}>
+                            <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-stone-900">
+                              <div className="flex items-center">
+                                <span className="text-stone-600">
+                                  {new Date(record.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                                </span>
+                                {index === 0 && (
+                                  <span className="ml-2 px-2 py-1 text-xs bg-red-100 text-red-700 rounded-full hidden sm:inline">Recente</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-center">
+                              <span className="inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium bg-red-100 text-red-800">
+                                {record.mortality}
+                              </span>
+                            </td>
+                            <td className="px-4 sm:px-6 py-3 sm:py-4 text-sm text-stone-600 capitalize hidden sm:table-cell">
+                              {motivo === '-' ? (
+                                <span className="text-stone-400 italic">Não informado</span>
+                              ) : (
+                                motivo
+                              )}
+                            </td>
+                            <td className="px-4 sm:px-6 py-3 sm:py-4 text-sm text-stone-600 hidden lg:table-cell">
+                              {obs === '-' ? (
+                                <span className="text-stone-400 italic">Sem observações</span>
+                              ) : (
+                                <div className="max-w-xs truncate" title={obs}>
+                                  {obs}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 sm:py-12">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                  <span className="text-xl sm:text-2xl">📋</span>
+                </div>
+                <h3 className="text-base sm:text-lg font-medium text-stone-700 mb-2">Nenhum registro encontrado</h3>
+                <p className="text-stone-500 text-sm">Este lote ainda não possui registros de mortalidade.</p>
+              </div>
+            )
           ) : (
-            <p className="text-sm text-stone-500 text-center py-4">Nenhuma mortalidade registrada ainda para este lote.</p>
-          )
-        ) : (
-          <p className="text-sm text-stone-500 text-center py-4">Selecione um lote acima para visualizar o histórico.</p>
-        )}
+            <div className="text-center py-8 sm:py-12">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <span className="text-xl sm:text-2xl">🔍</span>
+              </div>
+              <h3 className="text-base sm:text-lg font-medium text-stone-700 mb-2">Selecione um lote</h3>
+              <p className="text-stone-500 text-sm">Escolha um lote no filtro acima para visualizar o histórico.</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
