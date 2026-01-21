@@ -8,7 +8,10 @@ import { FeedIngredient, FeedFormulation } from '../types';
 // v1.1 - Added inline edit button for each ingredient
 const FeedCalculator: FC = () => {
   const { feedFormulations, addFeedFormulation, updateFeedFormulation, deleteFeedFormulation } = useFarm();
-  const [activeTab, setActiveTab] = useState<'list' | 'editor'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'calculator'>('list');
+  const [selectedFormulation, setSelectedFormulation] = useState<string>('');
+  const [targetWeight, setTargetWeight] = useState<number>(0);
+  const [batchResults, setBatchResults] = useState<any>(null);
   
   // Editor State
   const [formulationId, setFormulationId] = useState<string | null>(null); // If editing existing
@@ -42,7 +45,8 @@ const FeedCalculator: FC = () => {
       setFormulationPhase(formulation.phase);
       setFormulationNotes(formulation.notes || '');
       setIngredients([...formulation.ingredients]);
-      setActiveTab('editor');
+      // Abrir modal de edição em vez de mudar de aba
+      // setActiveTab('list'); // Mantém na aba de lista
   };
 
   const handleDelete = (id: string) => {
@@ -57,7 +61,8 @@ const FeedCalculator: FC = () => {
       setFormulationPhase('Postura');
       setFormulationNotes('');
       setIngredients([]);
-      setActiveTab('editor');
+      // Abrir modal de criação em vez de mudar de aba
+      // setActiveTab('list'); // Mantém na aba de lista
   };
 
   const addIngredient = () => {
@@ -140,6 +145,26 @@ const FeedCalculator: FC = () => {
   const totalCost = ingredients.reduce((sum, item) => sum + (item.pricePerKg * item.quantityKg), 0);
   const costPerKg = totalWeight > 0 ? totalCost / totalWeight : 0;
 
+  const calculateBatch = () => {
+    const formulation = feedFormulations.find(f => f.id === selectedFormulation);
+    if (!formulation || !targetWeight) return;
+
+    const ratio = targetWeight / formulation.totalWeight;
+    const calculatedIngredients = formulation.ingredients.map(ing => ({
+      ...ing,
+      calculatedWeight: ing.quantityKg * ratio,
+      calculatedCost: ing.pricePerKg * (ing.quantityKg * ratio)
+    }));
+
+    setBatchResults({
+      formulation: formulation.name,
+      targetWeight,
+      ingredients: calculatedIngredients,
+      totalCost: calculatedIngredients.reduce((sum, ing) => sum + ing.calculatedCost, 0),
+      costPerKg: calculatedIngredients.reduce((sum, ing) => sum + ing.calculatedCost, 0) / targetWeight
+    });
+  };
+
   const handleSaveFormulation = () => {
       if (!formulationName) {
           alert('Por favor, dê um nome para a formulação.');
@@ -171,6 +196,21 @@ const FeedCalculator: FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Botões de Navegação */}
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setActiveTab('list')}
+          className={`px-4 py-2 rounded-lg font-bold transition ${activeTab === 'list' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          📋 Formulações
+        </button>
+        <button
+          onClick={() => setActiveTab('calculator')}
+          className={`px-4 py-2 rounded-lg font-bold transition ${activeTab === 'calculator' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          🧮 Calculadora de Batidas
+        </button>
+      </div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-slate-800">Formulação e Custo de Ração</h1>
         <div className="flex items-center space-x-4">
@@ -323,239 +363,110 @@ const FeedCalculator: FC = () => {
               </div>
           </div>
       ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            {/* Form Side */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-fit space-y-6">
-                <div>
-                    <h2 className="text-lg font-semibold text-slate-800 mb-4">Detalhes da Ração</h2>
-                    <div className="space-y-3">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-600 mb-1">Nome da Fórmula</label>
-                            <input 
-                                type="text" 
-                                value={formulationName}
-                                onChange={e => setFormulationName(e.target.value)}
-                                placeholder="Ex: Ração Postura Fase 1" 
-                                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" 
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-600 mb-1">Fase</label>
-                            <select 
-                                value={formulationPhase}
-                                onChange={e => setFormulationPhase(e.target.value as any)}
-                                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                            >
-                                <option value="Pré-inicial">Pré-inicial</option>
-                                <option value="Inicial">Inicial</option>
-                                <option value="Crescimento">Crescimento</option>
-                                <option value="Postura">Postura</option>
-                                <option value="Engorda">Engorda</option>
-                                <option value="Outra">Outra</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-600 mb-1">Observações</label>
-                            <textarea 
-                                value={formulationNotes}
-                                onChange={e => setFormulationNotes(e.target.value)}
-                                rows={2}
-                                placeholder="Ex: Mistura para inverno" 
-                                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" 
-                            />
-                        </div>
-                    </div>
-                </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Coluna de Configuração */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">Calculadora de Batidas</h3>
+            
+            {/* Seletor de Formulação */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Selecione a Formulação</label>
+                <select 
+                  value={selectedFormulation}
+                  onChange={(e) => setSelectedFormulation(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="">Escolha uma formulação...</option>
+                  {feedFormulations.map(form => (
+                    <option key={form.id} value={form.id}>{form.name}</option>
+                  ))}
+                </select>
+              </div>
 
-                <div className="pt-6 border-t border-slate-100">
-                    <h2 className="text-lg font-semibold text-slate-800 mb-4">Adicionar Ingrediente</h2>
-                    <div className="space-y-3">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-600 mb-1">Ingrediente</label>
-                            <input 
-                                type="text" 
-                                value={currentIngredient.name}
-                                onChange={e => setCurrentIngredient({...currentIngredient, name: e.target.value})}
-                                placeholder="Ex: Milho" 
-                                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" 
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-1">Preço/Kg (R$)</label>
-                                <input 
-                                    type="text" 
-                                    ref={priceInputRef}
-                                    onChange={e => {
-    let value = e.target.value;
-    // Permite apenas números, ponto e vírgula
-    value = value.replace(/[^0-9.,]/g, '');
-    e.target.value = value; // Força o valor no DOM
-}}
-                                    placeholder="0.00" 
-                                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" 
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-1">Qtd (kg)</label>
-                                <input 
-                                    type="text" 
-                                    ref={quantityInputRef}
-                                    onChange={e => {
-    let value = e.target.value;
-    // Permite apenas números, ponto e vírgula
-    value = value.replace(/[^0-9.,]/g, '');
-    e.target.value = value; // Força o valor no DOM
-}}
-                                    placeholder="0.0" 
-                                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" 
-                                />
-                            </div>
-                        </div>
-                        <button 
-                            onClick={addIngredient}
-                            className="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg transition-colors mt-2"
-                        >
-                            + Adicionar Ingrediente
-                        </button>
-                    </div>
-                </div>
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Peso da Batida (kg)</label>
+                <input 
+                  type="number"
+                  value={targetWeight === 0 ? '' : targetWeight}
+                  onChange={(e) => setTargetWeight(Number(e.target.value) || 0)}
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  placeholder="Ex: 150"
+                />
+              </div>
 
-            {/* Results Side */}
-            <div className="lg:col-span-2 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <StatCard 
-                        title="Peso Total" 
-                        value={`${totalWeight.toFixed(1)} kg`}
-                        icon={<span className="text-xl font-bold">⚖️</span>}
-                        colorClass="bg-white"
-                        iconColorClass="bg-blue-100 text-blue-600"
-                    />
-                    <StatCard 
-                        title="Custo Total" 
-                        value={`R$ ${totalCost.toFixed(2)}`}
-                        icon={<span className="text-xl font-bold">$</span>}
-                        colorClass="bg-white"
-                        iconColorClass="bg-green-100 text-green-600"
-                    />
-                    <StatCard 
-                        title="Custo por Kg" 
-                        value={`R$ ${costPerKg.toFixed(2)}`}
-                        icon={<span className="text-xl font-bold">🧮</span>}
-                        colorClass="bg-white"
-                        iconColorClass="bg-orange-100 text-orange-600"
-                    />
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 min-h-[300px] flex flex-col">
-                    <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-4">
-                        <h2 className="text-lg font-semibold text-slate-800">Composição: {formulationName || 'Nova Mistura'}</h2>
-                        <button onClick={() => setIngredients([])} className="text-sm text-slate-400 hover:text-red-500 transition-colors flex items-center">
-                            Limpar Tudo
-                        </button>
-                    </div>
-
-                    {ingredients.length > 0 ? (
-                        <div className="overflow-x-auto flex-1">
-                            <table className="w-full text-sm text-left text-slate-500">
-                                <thead className="text-xs text-slate-700 uppercase bg-slate-50">
-                                    <tr>
-                                        <th className="px-4 py-3 rounded-l-lg">Ingrediente</th>
-                                        <th className="px-4 py-3 text-right">Preço/Kg</th>
-                                        <th className="px-4 py-3 text-right">Qtd (kg)</th>
-                                        <th className="px-4 py-3 text-right">Subtotal</th>
-                                        <th className="px-4 py-3 rounded-r-lg w-10"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="space-y-1">
-                                    {ingredients.map(item => (
-                                        <tr key={item.id} className="border-b border-slate-50">
-                                            {editingIngredientId === item.id ? (
-                                                <>
-                                                    <td className="px-4 py-2">
-                                                        <input 
-                                                            type="text"
-                                                            value={editingIngredient.name}
-                                                            onChange={e => setEditingIngredient({...editingIngredient, name: e.target.value})}
-                                                            className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
-                                                        />
-                                                    </td>
-                                                    <td className="px-4 py-2">
-                                                        <input 
-                                                            type="text"
-                                                            value={editingIngredient.pricePerKg}
-                                                            onChange={e => setEditingIngredient({...editingIngredient, pricePerKg: e.target.value.replace(/[^0-9.,]/g, '')})}
-                                                            className="w-20 px-2 py-1 border border-slate-300 rounded text-sm text-right"
-                                                        />
-                                                    </td>
-                                                    <td className="px-4 py-2">
-                                                        <input 
-                                                            type="text"
-                                                            value={editingIngredient.quantityKg}
-                                                            onChange={e => setEditingIngredient({...editingIngredient, quantityKg: e.target.value.replace(/[^0-9.,]/g, '')})}
-                                                            className="w-20 px-2 py-1 border border-slate-300 rounded text-sm text-right"
-                                                        />
-                                                    </td>
-                                                    <td className="px-4 py-2 text-right font-medium text-slate-400 text-sm">
-                                                        --
-                                                    </td>
-                                                    <td className="px-4 py-2 text-center space-x-1">
-                                                        <button onClick={saveEditIngredient} className="text-green-500 hover:text-green-600 text-xs font-medium">
-                                                            Salvar
-                                                        </button>
-                                                        <button onClick={cancelEditIngredient} className="text-slate-400 hover:text-slate-600 text-xs">
-                                                            Cancelar
-                                                        </button>
-                                                    </td>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <td className="px-4 py-3 font-medium text-slate-800">{item.name}</td>
-                                                    <td className="px-4 py-3 text-right">R$ {item.pricePerKg.toFixed(2)}</td>
-                                                    <td className="px-4 py-3 text-right">{formatQuantity(item.quantityKg)}</td>
-                                                    <td className="px-4 py-3 text-right font-medium text-slate-800">
-                                                        R$ {(item.pricePerKg * item.quantityKg).toFixed(2)}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-center space-x-1">
-                                                        <button onClick={() => startEditIngredient(item)} className="text-slate-400 hover:text-orange-500 transition-colors">
-                                                            <EditIcon />
-                                                        </button>
-                                                        <button onClick={() => removeIngredient(item.id)} className="text-slate-400 hover:text-red-500 transition-colors">
-                                                            <TrashIcon />
-                                                        </button>
-                                                    </td>
-                                                </>
-                                            )}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200 m-4">
-                            <CalculatorIcon className="h-12 w-12 mb-2 opacity-20" />
-                            <p>Adicione ingredientes para calcular o custo.</p>
-                        </div>
-                    )}
-                    
-                    <div className="p-6 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end space-x-3">
-                        <button 
-                            onClick={() => setActiveTab('list')}
-                            className="px-6 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 shadow-sm"
-                        >
-                            Cancelar
-                        </button>
-                        <button 
-                            onClick={handleSaveFormulation}
-                            className="px-6 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 shadow-sm"
-                        >
-                            Salvar Formulação
-                        </button>
-                    </div>
-                </div>
+              <button
+                onClick={calculateBatch}
+                disabled={!selectedFormulation || !targetWeight}
+                className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Calcular Batida
+              </button>
             </div>
           </div>
+
+          {/* Coluna de Resultados */}
+          <div className="lg:col-span-2">
+            {batchResults ? (
+              <div className="space-y-6">
+                {/* Resumo */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <StatCard
+                    title="Peso Total"
+                    value={`${batchResults.targetWeight.toFixed(1)} kg`}
+                    icon={<span className="text-xl">⚖️</span>}
+                    colorClass="bg-white"
+                    iconColorClass="bg-blue-100 text-blue-600"
+                  />
+                  <StatCard
+                    title="Custo Total"
+                    value={`R$ ${batchResults.totalCost.toFixed(2)}`}
+                    icon={<span className="text-xl">$</span>}
+                    colorClass="bg-white"
+                    iconColorClass="bg-green-100 text-green-600"
+                  />
+                  <StatCard
+                    title="Custo por Kg"
+                    value={`R$ ${batchResults.costPerKg.toFixed(2)}`}
+                    icon={<span className="text-xl">🧮</span>}
+                    colorClass="bg-white"
+                    iconColorClass="bg-orange-100 text-orange-600"
+                  />
+                </div>
+
+                {/* Lista de Ingredientes */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                  <h4 className="text-lg font-semibold text-slate-800 mb-4">
+                    Ingredientes para {batchResults.formulation}
+                  </h4>
+                  <div className="space-y-4">
+                    {batchResults.ingredients.map((ing: any) => (
+                      <div key={ing.id} className="grid grid-cols-12 gap-2 items-center bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <div className="col-span-4 font-bold text-slate-700">{ing.name}</div>
+                        <div className="col-span-3 text-center font-medium text-blue-600">
+                          {ing.calculatedWeight.toFixed(2)} kg
+                        </div>
+                        <div className="col-span-2 text-center text-slate-600">
+                          R$ {ing.pricePerKg.toFixed(2)}/kg
+                        </div>
+                        <div className="col-span-3 text-right font-bold text-green-600">
+                          R$ {ing.calculatedCost.toFixed(2)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-50 rounded-xl border border-slate-200 p-12 text-center">
+                <CalculatorIcon className="w-12 h-12 mx-auto mb-4 text-slate-400" />
+                <p className="text-slate-600">
+                  Selecione uma formulação e informe o peso desejado para calcular a batida.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
