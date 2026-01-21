@@ -1,25 +1,18 @@
 
-import { useState, FC, FormEvent, useEffect } from 'react';
+import { useState, FC, FormEvent, useEffect, useMemo } from 'react';
 import { UserIcon, EditIcon, TrashIcon, UsersIcon } from './icons';
-import StatCard from './StatCard';
 import { useFarm } from '../context/FarmContext';
 import { Client, DeliveryStatus } from '../types';
 import NotificationBell from './NotificationBell';
 
 const Clients: FC = () => {
-    const { clients, sales, updateSale, addClient, updateClient, deleteClient, getClientById, viewParams } = useFarm();
-    const [activeTab, setActiveTab] = useState<'clients' | 'deliveries'>('clients');
+    const { clients, sales, updateSale, addClient, updateClient, deleteClient, getClientById } = useFarm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [clientToEdit, setClientToEdit] = useState<Client | null>(null);
-    const [deliveryFilter, setDeliveryFilter] = useState<DeliveryStatus | 'Todas'>('Todas');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [activeFilter, setActiveFilter] = useState<'clientes' | 'entregas'>('clientes');
+    const [expandedClient, setExpandedClient] = useState<string | null>(null);
 
-    // Effect to handle navigation parameters (deep linking to tabs)
-    useEffect(() => {
-        if (viewParams && viewParams.tab === 'deliveries') {
-            setActiveTab('deliveries');
-            // Opcional: Limpar params para evitar reset ao desmontar/remontar, mas neste contexto simples não é crítico
-        }
-    }, [viewParams]);
 
     const [formData, setFormData] = useState<Omit<Client, 'id'>>({
         name: '',
@@ -96,212 +89,367 @@ const Clients: FC = () => {
         }
     };
 
-    // Lógica de Entregas
-    const deliveries = sales
-        .filter(sale => {
-            // Se houver filtro, aplica
-            if (deliveryFilter !== 'Todas' && sale.deliveryStatus !== deliveryFilter) return false;
-            // Se não tiver status definido, consideramos 'Entregue' para legado, 
-            // mas para gestão logística focamos em Pendente/Em Rota geralmente.
-            // Vamos mostrar tudo se 'Todas', ordenado por data de entrega.
-            return true;
-        })
-        .map(sale => {
-            const client = sale.clientId ? getClientById(sale.clientId) : null;
-            return {
-                ...sale,
-                clientName: client?.name || 'Venda Avulsa',
-                clientAddress: sale.deliveryAddress || client?.address || 'Endereço não informado',
-                clientPhone: client?.phone || '-'
-            };
-        })
-        .sort((a, b) => {
-            // Ordenar por data de entrega (se houver) ou data da venda
-            const dateA = new Date(a.deliveryDate || a.date).getTime();
-            const dateB = new Date(b.deliveryDate || b.date).getTime();
-            return dateB - dateA; // Mais recentes primeiro
-        });
+    // Dados filtrados com busca
+    const filteredData = useMemo(() => {
+        const searchLower = searchTerm.toLowerCase();
+        
+        if (activeFilter === 'clientes') {
+            return clients
+                .filter(client => 
+                    client.name.toLowerCase().includes(searchLower) ||
+                    client.phone.includes(searchLower) ||
+                    client.email.toLowerCase().includes(searchLower)
+                )
+                .map(client => ({
+                    type: 'client' as const,
+                    id: client.id,
+                    name: client.name,
+                    phone: client.phone,
+                    email: client.email,
+                    address: client.address,
+                    clientType: client.type,
+                    client
+                }));
+        }
+        
+        // activeFilter === 'entregas'
+        return sales
+            .filter(sale => {
+                const client = sale.clientId ? getClientById(sale.clientId) : null;
+                const clientName = client?.name || 'Venda Avulsa';
+                return clientName.toLowerCase().includes(searchLower) ||
+                       sale.deliveryAddress?.toLowerCase().includes(searchLower) ||
+                       sale.productType?.toLowerCase().includes(searchLower);
+            })
+            .map(sale => {
+                const client = sale.clientId ? getClientById(sale.clientId) : null;
+                return {
+                    type: 'delivery' as const,
+                    id: sale.id,
+                    clientName: client?.name || 'Venda Avulsa',
+                    clientPhone: client?.phone || '-',
+                    address: sale.deliveryAddress || client?.address || 'Endereço não informado',
+                    quantity: sale.quantity,
+                    productType: sale.productType || 'Ovos',
+                    deliveryStatus: sale.deliveryStatus || 'Entregue',
+                    deliveryDate: sale.deliveryDate || sale.date,
+                    paymentStatus: sale.paymentStatus,
+                    deliveryNotes: sale.deliveryNotes,
+                    sale
+                };
+            });
+    }, [searchTerm, activeFilter, clients, sales, getClientById]);
 
-    // Stats Calculation
+    // Stats simplificados
     const pendingDeliveries = sales.filter(s => s.deliveryStatus === 'Pendente').length;
-    const inRouteDeliveries = sales.filter(s => s.deliveryStatus === 'Em Rota').length;
+
+    const getNextStatus = (currentStatus: DeliveryStatus): DeliveryStatus => {
+        switch (currentStatus) {
+            case 'Pendente': return 'Em Rota';
+            case 'Em Rota': return 'Entregue';
+            default: return currentStatus;
+        }
+    };
 
     return (
-        <div className="space-y-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
             {/* Header */}
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-2xl font-bold text-slate-800">Clientes e Logística</h1>
-                <div className="flex items-center space-x-4">
+            <div className="flex flex-col gap-4">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-stone-800">Clientes e Logística</h1>
+                        <p className="text-stone-600 mt-1 text-sm sm:text-base">Gerencie clientes e controle entregas</p>
+                    </div>
                     <NotificationBell />
                 </div>
-            </div>
-            
-            <p className="text-slate-500 -mt-4 mb-6">Gerencie base de clientes e controle o fluxo de entregas.</p>
-
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <StatCard title="Clientes Ativos" value={clients.length} icon={<UsersIcon />} iconColorClass="bg-blue-100 text-blue-600" />
-                <StatCard title="Entregas Pendentes" value={pendingDeliveries} icon={<span className="text-xl">⏳</span>} iconColorClass="bg-yellow-100 text-yellow-600" />
-                <StatCard title="Em Rota" value={inRouteDeliveries} icon={<span className="text-xl">🚚</span>} iconColorClass="bg-orange-100 text-orange-600" />
-                <StatCard title="Entregues (Total)" value={sales.filter(s => s.deliveryStatus === 'Entregue').length} icon={<span className="text-xl">✅</span>} iconColorClass="bg-green-100 text-green-600" />
-            </div>
-
-            {/* Actions & Tabs */}
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                 <div className="flex space-x-2 bg-slate-200 p-1 rounded-lg">
-                    <button 
-                        onClick={() => setActiveTab('clients')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'clients' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-300/50'}`}
+                <div className="flex justify-center sm:justify-end">
+                    <button
+                        onClick={handleOpenAddModal}
+                        className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors flex items-center justify-center gap-2 shadow-sm"
                     >
-                        Base de Clientes
+                        <span className="text-base">+</span>
+                        <span>Novo Cliente</span>
                     </button>
-                    <button 
-                        onClick={() => setActiveTab('deliveries')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'deliveries' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-300/50'}`}
-                    >
-                        Gestão de Entregas
-                    </button>
-                 </div>
-                 
-                 {activeTab === 'clients' ? (
-                     <button onClick={handleOpenAddModal} className="px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 shadow-sm transition-colors flex items-center">
-                        + Novo Cliente
-                     </button>
-                 ) : (
-                    <select 
-                        value={deliveryFilter} 
-                        onChange={(e) => setDeliveryFilter(e.target.value as any)}
-                        className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    >
-                        <option value="Todas">Todas as Entregas</option>
-                        <option value="Pendente">Pendentes</option>
-                        <option value="Em Rota">Em Rota</option>
-                        <option value="Entregue">Entregues</option>
-                    </select>
-                 )}
-            </div>
-
-            {/* Content Area */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                <div className="overflow-x-auto min-h-[400px]">
-                    {activeTab === 'clients' ? (
-                        <table className="w-full text-sm text-left text-slate-500">
-                            <thead className="text-xs text-slate-700 uppercase bg-slate-50">
-                                <tr>
-                                    <th className="px-6 py-3">Cliente</th>
-                                    <th className="px-6 py-3">Contato</th>
-                                    <th className="px-6 py-3">Tipo</th>
-                                    <th className="px-6 py-3">Endereço</th>
-                                    <th className="px-6 py-3 text-right">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {clients.length > 0 ? clients.map(client => (
-                                    <tr key={client.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="font-medium text-slate-900">{client.name}</div>
-                                            <div className="text-xs text-slate-400">{client.email}</div>
-                                        </td>
-                                        <td className="px-6 py-4">{client.phone}</td>
-                                        <td className="px-6 py-4">
-                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${client.type === 'Atacado' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                {client.type}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 truncate max-w-xs">{client.address}</td>
-                                        <td className="px-6 py-4 text-right space-x-2">
-                                            <button onClick={() => handleOpenEditModal(client)} className="text-slate-400 hover:text-orange-500 transition-colors"><EditIcon /></button>
-                                            <button onClick={() => handleDelete(client.id)} className="text-slate-400 hover:text-red-500 transition-colors"><TrashIcon /></button>
-                                        </td>
-                                    </tr>
-                                )) : (
-                                    <tr>
-                                        <td colSpan={5} className="text-center py-8 text-slate-500">Nenhum cliente cadastrado.</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    ) : (
-                        <table className="w-full text-sm text-left text-slate-500">
-                            <thead className="text-xs text-slate-700 uppercase bg-slate-50">
-                                <tr>
-                                    <th className="px-6 py-3">Data Prevista</th>
-                                    <th className="px-6 py-3">Destinatário</th>
-                                    <th className="px-6 py-3">Endereço / Notas</th>
-                                    <th className="px-6 py-3">Carga</th>
-                                    <th className="px-6 py-3">Status Atual</th>
-                                    <th className="px-6 py-3 text-right">Ações de Rota</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {deliveries.length > 0 ? deliveries.map(item => {
-                                    const deliveryDate = item.deliveryDate ? new Date(item.deliveryDate) : new Date(item.date);
-                                    return (
-                                    <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="font-medium text-slate-900">{deliveryDate.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</div>
-                                            <div className="text-xs text-slate-400">Venda: {new Date(item.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="font-medium text-slate-900">{item.clientName}</div>
-                                            <div className="text-xs text-slate-400">{item.clientPhone}</div>
-                                        </td>
-                                        <td className="px-6 py-4 max-w-xs">
-                                            <div className="truncate text-slate-700" title={item.clientAddress}>{item.clientAddress}</div>
-                                            {item.deliveryNotes && <div className="text-xs text-amber-600 mt-1 italic">Obs: {item.deliveryNotes}</div>}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {item.quantity} {item.productType || 'Ovos'}
-                                            <div className={`text-xs mt-0.5 ${item.paymentStatus === 'Pago' ? 'text-green-600' : 'text-red-600'}`}>
-                                                {item.paymentStatus}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                             <span className={`px-2 py-1 rounded-full text-xs font-medium 
-                                                ${item.deliveryStatus === 'Entregue' ? 'bg-green-100 text-green-800' : 
-                                                  item.deliveryStatus === 'Em Rota' ? 'bg-blue-100 text-blue-800' :
-                                                  item.deliveryStatus === 'Cancelada' ? 'bg-red-100 text-red-800' :
-                                                  'bg-yellow-100 text-yellow-800'}`}>
-                                                {item.deliveryStatus || 'Entregue'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            {item.deliveryStatus === 'Pendente' && (
-                                                <button 
-                                                    onClick={() => handleUpdateDeliveryStatus(item.id, 'Em Rota')}
-                                                    className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-200 hover:bg-blue-100 mr-2"
-                                                >
-                                                    Iniciar Rota
-                                                </button>
-                                            )}
-                                            {item.deliveryStatus === 'Em Rota' && (
-                                                <button 
-                                                    onClick={() => handleUpdateDeliveryStatus(item.id, 'Entregue')}
-                                                    className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded border border-green-200 hover:bg-green-100"
-                                                >
-                                                    Confirmar
-                                                </button>
-                                            )}
-                                             {item.deliveryStatus === 'Entregue' && (
-                                                <span className="text-xs text-green-600">Concluído</span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                )}) : (
-                                    <tr>
-                                        <td colSpan={6} className="text-center py-12 text-slate-500">
-                                            <div className="flex flex-col items-center">
-                                                <span className="text-2xl mb-2">🚚</span>
-                                                <p>Nenhuma entrega encontrada para este filtro.</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    )}
                 </div>
             </div>
+
+            {/* Stats Simplificados */}
+            <div className="grid grid-cols-2 gap-4 sm:gap-6">
+                <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-4 sm:p-6">
+                    <div className="flex items-center">
+                        <div className="p-3 rounded-lg bg-blue-100 text-blue-600 mr-4">
+                            <UsersIcon className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <p className="text-sm text-stone-500 font-medium">Clientes Ativos</p>
+                            <p className="text-2xl font-bold text-stone-800">{clients.length}</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-4 sm:p-6">
+                    <div className="flex items-center">
+                        <div className="p-3 rounded-lg bg-amber-100 text-amber-600 mr-4">
+                            <span className="text-xl">🚚</span>
+                        </div>
+                        <div>
+                            <p className="text-sm text-stone-500 font-medium">Entregas Pendentes</p>
+                            <p className="text-2xl font-bold text-stone-800">{pendingDeliveries}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Card de Filtros */}
+            <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-4 sm:p-6">
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setActiveFilter('clientes')}
+                        className={`flex-1 px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+                            activeFilter === 'clientes'
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                        }`}
+                    >
+                        Clientes
+                    </button>
+                    <button
+                        onClick={() => setActiveFilter('entregas')}
+                        className={`flex-1 px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+                            activeFilter === 'entregas'
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                        }`}
+                    >
+                        Entregas
+                    </button>
+                </div>
+            </div>
+
+            {/* Card de Busca */}
+            <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="relative flex-1">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg className="h-5 w-5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Buscar cliente ou entrega..."
+                            className="w-full pl-10 pr-3 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Cards de Clientes */}
+            {activeFilter === 'clientes' && (
+                <div className="space-y-6">
+                    {filteredData.length > 0 ? (
+                        filteredData.filter(item => item.type === 'client').map((item) => (
+                            <div key={item.id} className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden hover:shadow-lg transition-shadow">
+                                {/* Header Simplificado - Apenas Nome */}
+                                <div 
+                                    onClick={() => setExpandedClient(expandedClient === item.id ? null : item.id)}
+                                    className="p-2 sm:p-4 md:p-6 cursor-pointer hover:bg-stone-50 transition-colors"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1 sm:gap-2 md:gap-4 flex-1 min-w-0">
+                                            <div className="p-2 sm:p-3 md:p-4 rounded-lg bg-blue-50 text-blue-600 flex-shrink-0">
+                                                <UserIcon className="h-5 w-5" />
+                                            </div>
+                                            <h3 className="font-semibold text-stone-900 text-xs sm:text-sm md:text-base truncate flex-1 min-w-0">{item.name}</h3>
+                                        </div>
+                                        <div className="flex items-center gap-3 flex-shrink-0">
+                                            <span className={`px-2 py-1 sm:px-3 sm:py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap ${
+                                                item.clientType === 'Atacado' 
+                                                    ? 'bg-purple-100 text-purple-700' 
+                                                    : 'bg-blue-100 text-blue-700'
+                                            }`}>
+                                                {item.clientType}
+                                            </span>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleOpenEditModal(item.client);
+                                                }}
+                                                className="p-3 text-stone-400 hover:text-amber-500 transition-colors flex-shrink-0"
+                                                title="Editar"
+                                            >
+                                                <EditIcon />
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDelete(item.id);
+                                                }}
+                                                className="p-3 text-stone-400 hover:text-red-500 transition-colors flex-shrink-0"
+                                                title="Excluir"
+                                            >
+                                                <TrashIcon />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Conteúdo Expansivo */}
+                                {expandedClient === item.id && (
+                                    <div className="px-6 sm:px-8 pb-6 sm:pb-8 border-t border-stone-100">
+                                        <div className="pt-6 space-y-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                                <div>
+                                                    <p className="text-sm font-medium text-stone-500 mb-2">Telefone</p>
+                                                    <p className="text-base text-stone-900 flex items-center gap-3">
+                                                        <span className="text-lg">📱</span> {item.phone}
+                                                    </p>
+                                                </div>
+                                                {item.email && (
+                                                    <div>
+                                                        <p className="text-sm font-medium text-stone-500 mb-2">Email</p>
+                                                        <p className="text-base text-stone-900 flex items-center gap-3">
+                                                            <span className="text-lg">✉️</span> {item.email}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {item.address && (
+                                                    <div className="sm:col-span-2">
+                                                        <p className="text-sm font-medium text-stone-500 mb-2">Endereço</p>
+                                                        <p className="text-base text-stone-900 flex items-center gap-3">
+                                                            <span className="text-lg">🏠</span> {item.address}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {item.client.document && (
+                                                    <div>
+                                                        <p className="text-sm font-medium text-stone-500 mb-2">CPF/CNPJ</p>
+                                                        <p className="text-base text-stone-900">{item.client.document}</p>
+                                                    </div>
+                                                )}
+                                                {item.client.city && (
+                                                    <div>
+                                                        <p className="text-sm font-medium text-stone-500 mb-2">Cidade/UF</p>
+                                                        <p className="text-base text-stone-900">
+                                                            {item.client.city}{item.client.state ? `/${item.client.state}` : ''}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {item.client.neighborhood && (
+                                                    <div>
+                                                        <p className="text-sm font-medium text-stone-500 mb-2">Bairro</p>
+                                                        <p className="text-base text-stone-900">{item.client.neighborhood}</p>
+                                                    </div>
+                                                )}
+                                                {item.client.notes && (
+                                                    <div className="sm:col-span-2">
+                                                        <p className="text-sm font-medium text-stone-500 mb-2">Observações</p>
+                                                        <p className="text-base text-stone-900 italic">{item.client.notes}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    ) : (
+                        <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-12 sm:p-16 text-center">
+                            <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <span className="text-3xl">👥</span>
+                            </div>
+                            <h3 className="text-xl font-medium text-stone-700 mb-3">Nenhum cliente encontrado</h3>
+                            <p className="text-stone-500 text-lg">
+                                {searchTerm ? 'Tente buscar com outros termos' : 'Nenhum cliente cadastrado ainda'}
+                            </p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Cards de Entregas */}
+            {activeFilter === 'entregas' && (
+                <div className="space-y-6">
+                    {filteredData.length > 0 ? (
+                        filteredData.filter(item => item.type === 'delivery').map((item) => {
+                            const nextStatus = getNextStatus(item.deliveryStatus);
+                            const canUpdate = item.deliveryStatus !== 'Entregue' && item.deliveryStatus !== 'Cancelada';
+                            
+                            return (
+                                <div key={item.id} className="bg-white rounded-xl shadow-sm border border-stone-200 p-6 sm:p-8 hover:shadow-lg transition-shadow">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-6">
+                                        <div className="flex-1">
+                                            <div className="flex items-start gap-4">
+                                                <div className="p-4 rounded-lg bg-amber-50 text-amber-600">
+                                                    <span className="text-2xl">📦</span>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h3 className="font-semibold text-stone-900 text-lg sm:text-xl mb-4 truncate">{item.clientName}</h3>
+                                                    <div className="space-y-3">
+                                                        <p className="text-base text-stone-600 flex items-center gap-3">
+                                                            <span className="text-lg">📦</span> <span className="font-medium">{item.quantity} {item.productType}</span>
+                                                        </p>
+                                                        <p className="text-base text-stone-600 flex items-center gap-3">
+                                                            <span className="text-lg">📱</span> {item.clientPhone}
+                                                        </p>
+                                                        <p className="text-base text-stone-600 flex items-center gap-3">
+                                                            <span className="text-lg">🏠</span> {item.address}
+                                                        </p>
+                                                        <p className="text-base text-stone-600 flex items-center gap-3">
+                                                            <span className="text-lg">📅</span> {new Date(item.deliveryDate).toLocaleDateString('pt-BR')}
+                                                        </p>
+                                                        {item.deliveryNotes && (
+                                                            <p className="text-base text-amber-600 italic flex items-start gap-3">
+                                                                <span className="text-lg">💬</span> <span>{item.deliveryNotes}</span>
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div className="mt-4 flex flex-wrap gap-3">
+                                                        <span className={`px-3 py-2 rounded-full text-sm font-medium ${
+                                                            item.deliveryStatus === 'Entregue' ? 'bg-green-100 text-green-800' : 
+                                                            item.deliveryStatus === 'Em Rota' ? 'bg-blue-100 text-blue-800' :
+                                                            item.deliveryStatus === 'Cancelada' ? 'bg-red-100 text-red-800' :
+                                                            'bg-amber-100 text-amber-800'
+                                                        }`}>
+                                                            {item.deliveryStatus}
+                                                        </span>
+                                                        <span className={`px-3 py-2 rounded-full text-sm font-medium ${
+                                                            item.paymentStatus === 'Pago' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                                        }`}>
+                                                            {item.paymentStatus}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            {canUpdate && (
+                                                <button
+                                                    onClick={() => handleUpdateDeliveryStatus(item.id, nextStatus)}
+                                                    className="px-4 py-3 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+                                                >
+                                                    {item.deliveryStatus === 'Pendente' ? 'Iniciar Rota' : 'Confirmar Entrega'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    ) : (
+                        <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-12 sm:p-16 text-center">
+                            <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <span className="text-3xl">🚚</span>
+                            </div>
+                            <h3 className="text-xl font-medium text-stone-700 mb-3">Nenhuma entrega encontrada</h3>
+                            <p className="text-stone-500 text-lg">
+                                {searchTerm ? 'Tente buscar com outros termos' : 'Nenhuma entrega cadastrada ainda'}
+                            </p>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Modal */}
             {isModalOpen && (
