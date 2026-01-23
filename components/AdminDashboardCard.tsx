@@ -134,40 +134,40 @@ const AdminDashboardCard = () => {
       </div>
 
       {/* Estatísticas Principais */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-        <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-          <div className="text-3xl font-bold">{stats.total}</div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+        <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+          <div className="text-2xl sm:text-3xl font-bold">{stats.total}</div>
           <div className="text-purple-100 text-xs mt-1">Total Cadastros</div>
         </div>
-        <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-          <div className="text-3xl font-bold text-green-300">{stats.active}</div>
+        <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+          <div className="text-2xl sm:text-3xl font-bold text-green-300">{stats.active}</div>
           <div className="text-purple-100 text-xs mt-1">Assinaturas Ativas</div>
         </div>
-        <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-          <div className="text-3xl font-bold text-blue-300">{stats.trial}</div>
+        <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+          <div className="text-2xl sm:text-3xl font-bold text-blue-300">{stats.trial}</div>
           <div className="text-purple-100 text-xs mt-1">Em Trial</div>
         </div>
-        <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-          <div className="text-3xl font-bold text-red-300">{stats.expired}</div>
+        <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+          <div className="text-2xl sm:text-3xl font-bold text-red-300">{stats.expired}</div>
           <div className="text-purple-100 text-xs mt-1">Expiradas</div>
         </div>
-        <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-          <div className="text-3xl font-bold text-gray-300">{stats.blocked}</div>
+        <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+          <div className="text-2xl sm:text-3xl font-bold text-gray-300">{stats.blocked}</div>
           <div className="text-purple-100 text-xs mt-1">Bloqueadas</div>
         </div>
       </div>
 
       {/* Últimos Cadastros */}
-      <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+      <div className="bg-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm">
         <h4 className="font-semibold mb-3 text-sm">📋 Últimos Cadastros</h4>
         <div className="space-y-2">
           {recentUsers.length > 0 ? (
             recentUsers.map((user, index) => (
-              <div key={index} className="flex justify-between items-center text-sm py-2 border-b border-white/10 last:border-0">
+              <div key={index} className="flex flex-col sm:flex-row sm:justify-between sm:items-start text-sm py-2 border-b border-white/10 last:border-0 gap-1">
                 <div className="flex-1 truncate">
-                  <span className="font-medium">{user.email}</span>
+                  <span className="font-medium text-xs sm:text-sm">{user.email}</span>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center justify-between sm:justify-end space-x-2">
                   <span className={`text-xs font-medium ${getStatusColor(user.status)}`}>
                     {getStatusLabel(user.status)}
                   </span>
@@ -186,7 +186,7 @@ const AdminDashboardCard = () => {
       </div>
 
       {/* Ações Rápidas */}
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex flex-col sm:flex-row gap-2">
         <button
           onClick={() => navigate('admin')}
           className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition backdrop-blur-sm"

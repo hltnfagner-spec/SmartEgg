@@ -319,15 +319,15 @@ const AdminPanel = () => {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Painel Administrativo</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Painel Administrativo</h1>
           <p className="text-gray-600 mt-1">Gerenciamento de usuários e assinaturas</p>
         </div>
         <button
           onClick={loadUsers}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition w-full sm:w-auto"
         >
           🔄 Atualizar
         </button>
@@ -340,39 +340,41 @@ const AdminPanel = () => {
       )}
 
       {/* Estatísticas */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Total de Usuários</p>
-          <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{stats.total}</p>
         </div>
         <div className="bg-green-50 rounded-lg shadow p-4">
           <p className="text-sm text-green-600">Assinaturas Ativas</p>
-          <p className="text-3xl font-bold text-green-900">{stats.active}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-green-900">{stats.active}</p>
         </div>
         <div className="bg-red-50 rounded-lg shadow p-4">
           <p className="text-sm text-red-600">Inativos/Expirados</p>
-          <p className="text-3xl font-bold text-red-900">{stats.inactive}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-red-900">{stats.inactive}</p>
         </div>
         <div className="bg-blue-50 rounded-lg shadow p-4">
           <p className="text-sm text-blue-600">Pagantes</p>
-          <p className="text-3xl font-bold text-blue-900">{stats.paying}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-blue-900">{stats.paying}</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-md p-6">
+      <div className="bg-white rounded-xl shadow-md p-4 sm:p-6">
         {/* Filtros */}
-        <div className="mb-4 flex gap-4">
-          <input
-            type="text"
-            placeholder="Buscar por email ou nome da fazenda..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <div className="flex gap-2">
+        <div className="mb-4 space-y-4">
+          <div>
+            <input
+              type="text"
+              placeholder="Buscar por email ou nome da fazenda..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setFilterType('all')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
+              className={`px-3 py-2 rounded-lg font-medium transition text-sm ${
                 filterType === 'all' 
                   ? 'bg-blue-600 text-white' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -382,7 +384,7 @@ const AdminPanel = () => {
             </button>
             <button
               onClick={() => setFilterType('active')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
+              className={`px-3 py-2 rounded-lg font-medium transition text-sm ${
                 filterType === 'active' 
                   ? 'bg-green-600 text-white' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -392,7 +394,7 @@ const AdminPanel = () => {
             </button>
             <button
               onClick={() => setFilterType('inactive')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
+              className={`px-3 py-2 rounded-lg font-medium transition text-sm ${
                 filterType === 'inactive' 
                   ? 'bg-red-600 text-white' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -402,7 +404,7 @@ const AdminPanel = () => {
             </button>
             <button
               onClick={() => setFilterType('paying')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
+              className={`px-3 py-2 rounded-lg font-medium transition text-sm ${
                 filterType === 'paying' 
                   ? 'bg-blue-600 text-white' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -413,7 +415,8 @@ const AdminPanel = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Tabela Desktop */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
@@ -525,8 +528,119 @@ const AdminPanel = () => {
               })}
             </tbody>
           </table>
+        </div>
 
-          {filteredUsers.length === 0 && (
+        {/* Cards Mobile */}
+        <div className="lg:hidden space-y-4">
+          {filteredUsers.length > 0 ? (
+            filteredUsers.map((user) => {
+              // Calcular vencimento e dias restantes
+              let dueDate: string | null = null;
+              let daysRemaining: number | null = null;
+
+              if (user.subscription) {
+                if (user.subscription.payment_due_date) {
+                  dueDate = user.subscription.payment_due_date;
+                  daysRemaining = getDaysRemaining(dueDate);
+                } else if (user.subscription.status === 'trial') {
+                  const trialDate = new Date(user.subscription.created_at);
+                  trialDate.setDate(trialDate.getDate() + 15);
+                  dueDate = trialDate.toISOString();
+                  daysRemaining = getDaysRemaining(dueDate);
+                }
+              }
+
+              return (
+                <div key={user.user_id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  {/* Header */}
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold text-gray-900 truncate">{user.email}</h3>
+                      <p className="text-xs text-gray-500 truncate">{user.farm_name}</p>
+                    </div>
+                    {user.subscription ? getStatusBadge(user.subscription.status) : (
+                      <span className="text-xs text-gray-400">Sem assinatura</span>
+                    )}
+                  </div>
+
+                  {/* Info Grid */}
+                  <div className="grid grid-cols-2 gap-3 mb-3 text-xs">
+                    <div>
+                      <span className="text-gray-500">Telefone:</span>
+                      <p className="font-medium text-gray-900">{user.phone}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Plano:</span>
+                      <p className="font-medium text-gray-900">{user.subscription?.plan_name || '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Vencimento:</span>
+                      <p className="font-medium text-gray-900">
+                        {dueDate ? new Date(dueDate).toLocaleDateString('pt-BR') : '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Dias Restantes:</span>
+                      <p className={`font-medium ${
+                        daysRemaining !== null ? (
+                          daysRemaining < 0 ? 'text-red-600' : 
+                          daysRemaining < 3 ? 'text-yellow-600' : 
+                          'text-green-600'
+                        ) : 'text-gray-900'
+                      }`}>
+                        {daysRemaining !== null ? (
+                          daysRemaining < 0 ? 'Expirado' : `${daysRemaining} dias`
+                        ) : '—'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Inatividade */}
+                  <div className="mb-3 pb-3 border-b border-gray-100">
+                    <span className="text-xs text-gray-500">Tempo sem usar: </span>
+                    <span className={`text-xs font-medium ${
+                      user.daysInactive > 30 ? 'text-red-600' : 
+                      user.daysInactive > 7 ? 'text-yellow-600' : 
+                      'text-green-600'
+                    }`}>
+                      {user.daysInactive === 0 ? 'Hoje' : `${user.daysInactive} dias`}
+                    </span>
+                  </div>
+
+                  {/* Ações */}
+                  <div className="flex flex-wrap gap-2">
+                    {user.subscription?.status !== 'active' && (
+                      <button
+                        onClick={() => activateSubscription(user.user_id, 30)}
+                        disabled={actionLoading === user.user_id}
+                        className="flex-1 px-3 py-2 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 font-medium"
+                      >
+                        Ativar 30d
+                      </button>
+                    )}
+                    {user.subscription?.status === 'active' && (
+                      <>
+                        <button
+                          onClick={() => extendSubscription(user.user_id, 30)}
+                          disabled={actionLoading === user.user_id}
+                          className="flex-1 px-3 py-2 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 font-medium"
+                        >
+                          +30 dias
+                        </button>
+                        <button
+                          onClick={() => deactivateSubscription(user.user_id)}
+                          disabled={actionLoading === user.user_id}
+                          className="flex-1 px-3 py-2 text-xs bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 font-medium"
+                        >
+                          Desativar
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
             <div className="text-center py-8 text-gray-500">
               Nenhum usuário encontrado
             </div>
