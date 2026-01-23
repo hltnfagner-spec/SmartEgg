@@ -74,8 +74,8 @@ const SubscriptionCard = () => {
           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs sm:text-sm text-slate-200">
             <span>Vencimento:</span>
             <span className="font-semibold">
-              {subscription?.paymentDueDate
-                ? new Date(subscription.paymentDueDate).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit', year: '2-digit'})
+              {endDate
+                ? endDate.toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit', year: '2-digit'})
                 : '—'}
             </span>
           </div>
