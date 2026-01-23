@@ -23,17 +23,6 @@ const SubscriptionCard = () => {
   const daysRemaining = endDate
     ? Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : null;
-    
-  // Debug: mostrar valores para verificar cálculo
-  if (process.env.NODE_ENV === 'development' && daysRemaining !== null) {
-    console.log('[SubscriptionCard] Debug:', {
-      status: subscription?.status,
-      paymentDueDate: subscription?.paymentDueDate,
-      endDate: endDate?.toISOString(),
-      now: new Date().toISOString(),
-      daysRemaining
-    });
-  }
 
   const statusLabel = useMemo(() => {
     if (subscription?.status === 'active') return 'Assinatura ativa';

@@ -28,9 +28,6 @@ import RecoveryRedirect from './components/RecoveryRedirect';
 import { SubscriptionStatus } from './components/SubscriptionStatus';
 import { useFarm } from './context/FarmContext';
 import { AlertProvider } from './context/AlertContext';
-
-console.log('🚨 App.tsx: AlertProvider importado!');
-
 import { supabase } from './services/supabaseClient';
 
 type AuthState = 'landing' | 'login' | 'register' | 'forgot-password' | 'reset-password' | 'app';
@@ -47,10 +44,6 @@ function App() {
   const [initialUrlParams] = useState(() => new URLSearchParams(window.location.search));
   const [initialHashParams] = useState(() => new URLSearchParams(window.location.hash.substring(1)));
   
-  // Debug: Log URL parameters (apenas na montagem)
-  useEffect(() => {
-    console.log('[App] Initial URL:', window.location.href);
-  }, []);
   
   // Detectar link intermediário de recuperação (para evitar consumo por scanners de email)
   const recoveryUrl = initialUrlParams.get('recovery_url');
@@ -62,7 +55,6 @@ function App() {
   // Efeito para capturar erro de token expirado e persistir no estado
   useEffect(() => {
     if (error === 'access_denied' && errorCode === 'otp_expired') {
-        console.log('[App] Token expirado detectado. Mostrando tela de recuperação.');
         setOtpError(true);
         // Limpar a URL para não processar o erro novamente num reload
         window.history.replaceState(null, '', '/');
@@ -83,11 +75,6 @@ function App() {
     
     // Confirmação de email: type=email E token_hash presente
     const isConfirm = typeParam === 'email' && tokenHashParam;
-    
-    if (isConfirm) {
-      console.log('[App] Email confirmation route detected');
-    }
-    
     return isConfirm;
   });
   
@@ -102,10 +89,6 @@ function App() {
     // Recuperação de senha: type=recovery E (access_token OU refresh_token)
     // NÃO é confirmação de email (type !== 'email')
     const isRecovery = typeParam === 'recovery' && (accessTokenParam || refreshTokenParam);
-    
-    if (isRecovery) {
-      console.log('[App] Recovery route detected on mount!');
-    }
     return isRecovery;
   });
 
@@ -189,7 +172,6 @@ function App() {
   // Estado inicial baseado na URL para evitar flicker
   useEffect(() => {
     if (isRecoveryRoute) {
-      console.log('[App] Recovery route detected via URL params, forcing reset-password state');
       setIsPasswordRecovery(true);
       setAuthState('reset-password');
     }
@@ -206,8 +188,6 @@ function App() {
       const status = urlParams.get('status') || hashParams.get('status');
       
       if (paymentId && status) {
-        console.log('[App] Mercado Pago return detected:', { paymentId, status });
-        
         // Process the payment return
         handleMercadoPagoReturn(paymentId);
         
@@ -241,7 +221,6 @@ function App() {
         }
         
         if (data?.session) {
-          console.log('[App] Sessão inicial detectada via checkSession');
           setAuthState('app');
         }
       } catch (err) {
@@ -252,17 +231,13 @@ function App() {
     checkSession();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[App] Auth event:', event, 'Session:', !!session);
-      
       // Se estamos numa rota de recuperação, ignorar eventos que nos tirariam dela
       if (isRecoveryRoute) {
-         console.log('[App] Ignoring auth event due to forced recovery route');
          return;
       }
 
       // Detectar evento de recuperação de senha
       if (event === 'PASSWORD_RECOVERY') {
-        console.log('[App] PASSWORD_RECOVERY detected!');
         setIsPasswordRecovery(true);
         setAuthState('reset-password');
         return;
@@ -270,7 +245,6 @@ function App() {
       
       // Se está em modo de recuperação de senha, não mudar estado automaticamente
       if (isPasswordRecovery) {
-        console.log('[App] In password recovery mode, ignoring auth event');
         return;
       }
       
@@ -416,8 +390,6 @@ function App() {
       }
     }
   }
-
-  console.log('🚨 App.tsx: Renderizando AlertProvider...');
 
   return (
     <AlertProvider>
