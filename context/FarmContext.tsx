@@ -88,7 +88,7 @@ const PLAN_PRICE = 29.99;
 export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   // Log de versão para debug
   useEffect(() => {
-    console.log(`[FarmContext] 🆕 Versão carregada: ${FARM_CONTEXT_VERSION}`);
+
   }, []);
 
   // Navigation State
@@ -317,7 +317,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   // Rastrear mudanças no estado de sheds
   useEffect(() => {
-    console.log('[FarmContext] 📊 Estado de sheds mudou:', sheds.length, 'registros');
+
     if (sheds.length === 0) {
       console.trace('[FarmContext] Stack trace: sheds foi zerado');
     }
@@ -327,7 +327,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const loadDataForUser = useCallback(async (currentUserId: string, accessToken?: string) => {
     // Se já estiver carregando o MESMO usuário, não faça nada
     if (isLoadingRef.current) {
-       console.log('[FarmContext] Já existe um carregamento em andamento.');
+
        return; 
     }
 
@@ -340,13 +340,13 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     try {
       isLoadingRef.current = true;
       activeUserIdRef.current = currentUserId; // Definir imediatamente
-      console.log('[FarmContext] 🚀 INICIANDO loadDataForUser para:', currentUserId);
+
       const startTime = Date.now();
       
       // CRÍTICO: Usar token passado via argumento ou do ref, EVITANDO chamar getSession() que trava
       if (accessToken) {
         accessTokenRef.current = accessToken;
-        console.log('[FarmContext] 🔑 Token recebido via argumento');
+
       } else if (!accessTokenRef.current) {
          console.warn('[FarmContext] ⚠️ Nenhum token disponível (nem argumento, nem ref). Fetch direto falhará.');
       }
@@ -416,10 +416,10 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       
       const turboEndTime = performance.now();
       const totalTime = Math.round(turboEndTime - turboStartTime);
-      console.log(`[FarmContext] 🚀 Carregamento Turbo CONCLUÍDO em ${totalTime}ms`);
 
-      console.log('[FarmContext] 🚨 CHECKPOINT: Promise.allSettled RETORNOU');
-      console.log('[FarmContext] ✅ Promise.allSettled completou!');
+
+
+
       
       const [
         shedsResult,
@@ -436,12 +436,12 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
       // Verificação CRÍTICA: O usuário mudou durante a requisição? (Principal causa do problema)
       if (activeUserIdRef.current !== currentUserId) {
-         console.log('[FarmContext] 🛑 Usuário mudou durante carregamento. Abortando para evitar sobrescrever dados.');
+
          return;
       }
 
       // Processar resultados e atualizar estado IMEDIATAMENTE
-      console.log('[FarmContext] 📊 Processando resultados paralelos...');
+
 
       // Helper para extrair dados tipados
       const getData = (result: PromiseSettledResult<QueryResult>) => {
@@ -454,7 +454,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       // Sheds
       const shedsData = getData(shedsResult);
       if (!shedsData.error && shedsData.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Sheds carregados:', shedsData.data.length, 'registros');
+
         const mappedSheds: Shed[] = shedsData.data.map((s: any) => ({
           id: s.id, name: s.name, capacity: s.capacity, notes: s.notes ?? undefined,
         }));
@@ -466,7 +466,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       // Flocks
       const flocksData = getData(flocksResult);
       if (!flocksData.error && flocksData.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Flocks carregados:', flocksData.data.length, 'registros');
+
         const mappedFlocks: Flock[] = flocksData.data.map((f: any) => ({
           id: f.id, shedId: f.shed_id, name: f.name, breed: f.breed, birthDate: f.birth_date,
           arrivalDate: f.arrival_date, plannedDisposalDate: f.planned_disposal_date,
@@ -478,7 +478,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       // Records
       const recordsData = getData(recordsResult);
       if (!recordsData.error && recordsData.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Registros diários carregados:', recordsData.data.length, 'registros');
+
         const mappedRecords: DailyRecord[] = recordsData.data.map((r: any) => ({
           id: r.id, flockId: r.flock_id, date: r.date, eggsCollected: r.eggs_collected,
           brokenEggs: r.broken_eggs, feedConsumedKg: parseFloat(r.feed_consumed_kg),
@@ -490,7 +490,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       // Inventory
       const inventoryData = getData(inventoryResult);
       if (!inventoryData.error && inventoryData.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Estoque carregado:', inventoryData.data.length, 'registros');
+
         const mappedInventory: InventoryItem[] = inventoryData.data.map((i: any) => ({
           id: i.id, name: i.name, category: i.category, quantity: parseFloat(i.quantity),
           unit: i.unit, minThreshold: parseFloat(i.min_threshold), costPerUnit: parseFloat(i.cost_per_unit),
@@ -502,7 +502,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       // Expenses
       const expensesData = getData(expensesResult);
       if (!expensesData.error && expensesData.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Despesas carregadas:', expensesData.data.length, 'registros');
+
         const mappedExpenses: Expense[] = expensesData.data.map((e: any) => ({
           id: e.id, flockId: e.flock_id, supplierId: e.supplier_id, date: e.date, description: e.description,
           category: e.category, amount: parseFloat(e.amount),
@@ -513,7 +513,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       // Sales
       const salesData = getData(salesResult);
       if (!salesData.error && salesData.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Vendas carregadas:', salesData.data.length, 'registros');
+
         const mappedSales: Sale[] = salesData.data.map((s: any, index: number) => ({
           id: s.id, saleNumber: s.sale_number || index + 1, flockId: s.flock_id, clientId: s.client_id,
           date: s.date, productType: s.product_type, saleType: s.sale_type,
@@ -529,7 +529,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       // Clients
       const clientsData = getData(clientsResult);
       if (!clientsData.error && clientsData.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Clientes carregados:', clientsData.data.length, 'registros');
+
         const mappedClients: Client[] = clientsData.data.map((c: any) => ({
           id: c.id, name: c.name, phone: c.phone, email: c.email,
           address: c.address, type: c.type, notes: c.notes,
@@ -540,7 +540,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       // Contacts (Fornecedores)
       const contactsData = getData(contactsResult);
       if (!contactsData.error && contactsData.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Contatos carregados:', contactsData.data.length, 'registros');
+
         const mappedContacts: Contact[] = contactsData.data.map((c: any) => ({
           id: c.id, user_id: c.user_id, name: c.name, role: c.role, phone: c.phone,
           email: c.email, address: c.address, contact_type: c.contact_type,
@@ -552,7 +552,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       // Tasks
       const tasksData = getData(tasksResult);
       if (!tasksData.error && tasksData.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Tarefas carregadas:', tasksData.data.length, 'registros');
+
         const mappedTasks: FlockTask[] = tasksData.data.map((t: any) => ({
           id: t.id, flockId: t.flock_id, taskType: t.task_type, dueDate: t.due_date,
           notes: t.notes, isCompleted: t.is_completed,
@@ -563,7 +563,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       // Formulations
       const formulationsData = getData(formulationsResult);
       if (!formulationsData.error && formulationsData.data && activeUserIdRef.current === currentUserId) {
-        console.log('[FarmContext] ✓ Formulações carregadas:', formulationsData.data.length, 'registros');
+
         const mappedFormulations: FeedFormulation[] = formulationsData.data.map((f: any) => {
           const formData = f.data || {};
           return {
@@ -576,12 +576,12 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setFeedFormulations(mappedFormulations);
       }
       const endTime = Date.now();
-      console.log('[FarmContext] ✅ CONCLUÍDO loadDataForUser em', endTime - startTime, 'ms');
+
     } catch (error) {
       console.error('[FarmContext] ❌ ERRO em loadDataForUser:', error);
     } finally {
       isLoadingRef.current = false;
-      console.log('[FarmContext] ✅ Carregamento finalizado.');
+
     }
   }, []);
 
@@ -652,28 +652,28 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     let isMounted = true;
     let hasLoadedData = false; // Flag para evitar carregamento duplicado
     
-    console.log('[FarmContext] 🔧 useEffect de auth montado');
+
     
     // Removido init() - usar apenas onAuthStateChange para evitar race condition
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[FarmContext] 🔔 onAuthStateChange DISPARADO - event:', event, 'session:', !!session);
+
       
       if (!isMounted) return;
       
-      console.log('[FarmContext] 🔔 Auth state changed:', event, 'Session:', !!session, 'User:', session?.user?.id);
+
       
       if (session) {
         const currentUserId = session.user.id;
         
         // Se o usuário mudou, atualizamos o ref imediatamente
         if (activeUserIdRef.current !== currentUserId) {
-            console.log(`[FarmContext] 🔄 Mudança de usuário detectada: ${activeUserIdRef.current} -> ${currentUserId}`);
+
             activeUserIdRef.current = currentUserId;
             hasLoadedData = false; // Reset para novo usuário
         }
 
-        console.log('[FarmContext] 👤 Definindo userId:', currentUserId);
+
         setUserId(currentUserId);
         fetchSubscription(currentUserId).catch((err) => {
           console.error('[FarmContext] Erro ao buscar assinatura após login:', err);
@@ -681,7 +681,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         
         // Garantir que usuário este salvo em user_contacts (apenas no primeiro cadastro)
         if (event === 'SIGNED_IN') {
-          console.log('[FarmContext] ✅ Evento SIGNED_IN detectado');
+
           
           // Executar em background para não bloquear o carregamento de dados
           ensureUserInContacts(session.user).catch(err => {
@@ -703,12 +703,12 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         
         // Carregar dados apenas UMA VEZ por sessão de usuário
         if (!hasLoadedData && !isLoadingRef.current) {
-          console.log('[FarmContext] 📥 Carregando dados para evento:', event);
+
           hasLoadedData = true;
           try {
             // Passar token explicitamente para evitar getSession()
             await loadDataForUser(currentUserId, session.access_token);
-            console.log('[FarmContext] ✅ Dados carregados com sucesso');
+
           } catch (error) {
             console.error('[FarmContext] ❌ Erro ao chamar loadDataForUser:', error);
             hasLoadedData = false; // Permitir retry em caso de erro
@@ -718,7 +718,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         }
       } else {
         // Usuário fez logout - limpar todos os dados
-        console.log('[FarmContext] 🚪 Limpando dados após logout');
+
         console.trace('[FarmContext] Stack trace do logout');
         activeUserIdRef.current = null;
         hasLoadedData = false;
@@ -2095,7 +2095,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       throw new Error('Usuário não autenticado');
     }
 
-    console.log('[FarmContext] addContact: Iniciando inserção', { contact, userId });
+
 
     const { data, error } = await supabase
       .from('user_contacts')
@@ -2113,7 +2113,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       throw new Error('Nenhum dado retornado ao adicionar contato');
     }
 
-    console.log('[FarmContext] addContact: Contato adicionado com sucesso', data);
+
 
     const newContact: Contact = {
         id: data.id,
