@@ -1282,9 +1282,13 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             eggs_collected: recordData.eggsCollected,
             broken_eggs: recordData.brokenEggs ?? 0,
             feed_consumed_kg: recordData.feedConsumedKg,
-            water_consumed_liters: 0,
+            water_consumed_liters: recordData.waterConsumptionLiters ?? 0,
             mortality: recordData.mortality,
             notes: recordData.notes ?? null,
+            feed_provided_kg: recordData.feedProvidedKg ?? 0,
+            feed_wasted_kg: recordData.feedWastedKg ?? 0,
+            feed_cost_per_kg: recordData.feedCostPerKg ?? 0,
+            average_weight: recordData.averageWeight ?? 0,
           })
           .select()
           .single();
@@ -1304,6 +1308,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           mortality: data.mortality,
           notes: data.notes ?? undefined,
           createdAt: data.created_at ?? undefined,
+          feedProvidedKg: data.feed_provided_kg ? parseFloat(data.feed_provided_kg) : undefined,
+          feedWastedKg: data.feed_wasted_kg ? parseFloat(data.feed_wasted_kg) : undefined,
+          feedCostPerKg: data.feed_cost_per_kg ? parseFloat(data.feed_cost_per_kg) : undefined,
+          averageWeight: data.average_weight ? parseFloat(data.average_weight) : undefined,
+          waterConsumptionLiters: data.water_consumed_liters ? parseFloat(data.water_consumed_liters) : undefined,
         };
 
         setRecords(prev => [...prev, newRecord].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
@@ -1448,9 +1457,13 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             eggs_collected: data.eggsCollected,
             broken_eggs: data.brokenEggs ?? 0,
             feed_consumed_kg: data.feedConsumedKg,
-            water_consumed_liters: 0,
+            water_consumed_liters: data.waterConsumptionLiters ?? 0,
             mortality: data.mortality,
             notes: data.notes ?? null,
+            feed_provided_kg: data.feedProvidedKg ?? 0,
+            feed_wasted_kg: data.feedWastedKg ?? 0,
+            feed_cost_per_kg: data.feedCostPerKg ?? 0,
+            average_weight: data.averageWeight ?? 0,
           })
           .eq('id', recordId)
           .eq('user_id', userId);
@@ -1982,7 +1995,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             name: clientData.name,
             phone: clientData.phone,
             email: clientData.email,
+            document: clientData.document,
             address: clientData.address,
+            city: clientData.city,
+            neighborhood: clientData.neighborhood,
+            state: clientData.state,
             type: clientData.type,
             notes: clientData.notes,
           })
@@ -1999,7 +2016,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           name: data.name,
           phone: data.phone,
           email: data.email,
+          document: data.document,
           address: data.address,
+          city: data.city,
+          neighborhood: data.neighborhood,
+          state: data.state,
           type: data.type,
           notes: data.notes,
         };
@@ -2022,7 +2043,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             name: data.name,
             phone: data.phone,
             email: data.email,
+            document: data.document,
             address: data.address,
+            city: data.city,
+            neighborhood: data.neighborhood,
+            state: data.state,
             type: data.type,
             notes: data.notes,
           })

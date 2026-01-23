@@ -27,6 +27,12 @@ export interface DailyRecord {
   mortality: number;
   notes?: string;
   createdAt?: string; // Timestamp de criação para ordenação
+  // Campos adicionais do banco de dados
+  feedProvidedKg?: number;
+  feedWastedKg?: number;
+  feedCostPerKg?: number;
+  averageWeight?: number;
+  waterConsumptionLiters?: number;
 }
 
 export type ExpenseCategory = 
@@ -61,6 +67,9 @@ export interface Contact {
   contact_type: string;
   notes?: string;
   created_at?: string;
+  // Campos adicionais do banco de dados
+  farm_name?: string;
+  updated_at?: string;
 }
 
 export interface Expense {
@@ -144,17 +153,34 @@ export interface FlockPerformance {
   weeklyEggs?: number;
 }
 
+export interface PriceHistory {
+  date: string;
+  pricePerKg: number;
+  source: 'sack' | 'kg' | 'bulk-update';
+  sackInfo?: {
+    weight: number;
+    price: number;
+  };
+}
+
 export interface FeedIngredient {
   id: string;
   name: string;
   pricePerKg: number;
   quantityKg: number;
+  purchaseInfo?: {
+    mode: 'sack' | 'kg';
+    sackWeight?: number;
+    sackPrice?: number;
+    lastUpdated?: string;
+    priceHistory?: PriceHistory[];
+  };
 }
 
 export interface FeedFormulation {
   id: string;
   name: string;
-  phase: 'Pré-inicial' | 'Inicial' | 'Crescimento' | 'Postura' | 'Engorda' | 'Outra';
+  phase: 'Pré-inicial' | 'Inicial' | 'Crescimento' | 'Pré-postura' | 'Postura' | 'Engorda' | 'Outra';
   ingredients: FeedIngredient[];
   totalWeight: number;
   totalCost: number;

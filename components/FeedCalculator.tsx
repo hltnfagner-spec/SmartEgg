@@ -2,13 +2,14 @@ import { useState, useEffect, useMemo, FC, useRef, Fragment } from 'react';
 import { EditIcon, TrashIcon, CalculatorIcon } from './icons';
 import StatCard from './StatCard';
 import NotificationBell from './NotificationBell';
+import IngredientPriceInput from './IngredientPriceInput';
 import { useFarm } from '../context/FarmContext';
 import { FeedIngredient, FeedFormulation } from '../types';
 
 // v1.1 - Added inline edit button for each ingredient
 const FeedCalculator: FC = () => {
   const { feedFormulations, addFeedFormulation, updateFeedFormulation, deleteFeedFormulation } = useFarm();
-  const [activeTab, setActiveTab] = useState<'list' | 'calculator'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'calculator' | 'prices'>('list');
   const [selectedFormulation, setSelectedFormulation] = useState<string>('');
   const [targetWeight, setTargetWeight] = useState<number>(0);
   const [batchResults, setBatchResults] = useState<any>(null);
@@ -74,17 +75,9 @@ const FeedCalculator: FC = () => {
   };
 
   const addIngredient = () => {
-    // Pega valores diretamente dos inputs do DOM
-    const quantityInput = quantityInputRef.current;
-    const priceInput = priceInputRef.current;
-    
-    if (!quantityInput || !priceInput) return;
-    
-    const quantity = parseFloat(quantityInput.value.replace(',', '.'));
-    const price = parseFloat(priceInput.value.replace(',', '.'));
-    
-    const nameInput = document.querySelector('input[placeholder="Ex: Milho"]') as HTMLInputElement;
-    const name = nameInput?.value || '';
+    const quantity = parseFloat(currentIngredient.quantity) || 0;
+    const price = parseFloat(currentIngredient.price) || 0;
+    const name = currentIngredient.name;
     
     if (name && !isNaN(price) && price > 0 && !isNaN(quantity) && quantity > 0) {
       setIngredients([...ingredients, {
@@ -94,14 +87,14 @@ const FeedCalculator: FC = () => {
         quantityKg: quantity
       }]);
       
-      // Limpa inputs diretamente no DOM
-      if (nameInput) nameInput.value = '';
-      if (quantityInput) quantityInput.value = '';
-      if (priceInput) priceInput.value = '';
-      
+      // Limpa inputs
       setCurrentIngredient({ name: '', price: '', quantity: '' });
       setQuantityInputValue('');
       setPriceInputValue('');
+      
+      // Limpa input de quantidade no DOM
+      const quantityInput = quantityInputRef.current;
+      if (quantityInput) quantityInput.value = '';
     }
   };
 
@@ -152,6 +145,158 @@ const FeedCalculator: FC = () => {
   const totalWeight = ingredients.reduce((sum, item) => sum + item.quantityKg, 0);
   const totalCost = ingredients.reduce((sum, item) => sum + (item.pricePerKg * item.quantityKg), 0);
   const costPerKg = totalWeight > 0 ? totalCost / totalWeight : 0;
+
+  // Componente interno para atualização em lote de preços
+  const PriceBulkUpdateTab = () => {
+    const [priceUpdates, setPriceUpdates] = useState<{[key: string]: {newPrice: number, purchaseInfo: any}}>({});
+
+    // Extrair ingredientes únicos de todas as formulações
+    const uniqueIngredients = useMemo(() => {
+      const ingredientsMap = new Map();
+      
+      feedFormulations.forEach(formulation => {
+        formulation.ingredients.forEach(ing => {
+          if (!ingredientsMap.has(ing.name)) {
+            ingredientsMap.set(ing.name, {
+              name: ing.name,
+              currentPrice: ing.pricePerKg,
+              usedInFormulations: [formulation.name]
+            });
+          } else {
+            const existing = ingredientsMap.get(ing.name);
+            if (!existing.usedInFormulations.includes(formulation.name)) {
+              existing.usedInFormulations.push(formulation.name);
+            }
+          }
+        });
+      });
+      
+      return Array.from(ingredientsMap.values());
+    }, [feedFormulations]);
+
+    const handleBulkUpdate = () => {
+      if (Object.keys(priceUpdates).length === 0) {
+        alert('Nenhum preço foi alterado.');
+        return;
+      }
+
+      let updatedCount = 0;
+      
+      feedFormulations.forEach(formulation => {
+        let hasChanges = false;
+        const updatedIngredients = formulation.ingredients.map(ing => {
+          if (priceUpdates[ing.name]) {
+            hasChanges = true;
+            return {
+              ...ing,
+              pricePerKg: priceUpdates[ing.name].newPrice,
+              purchaseInfo: {
+                ...priceUpdates[ing.name].purchaseInfo,
+                lastUpdated: new Date().toISOString()
+              }
+            };
+          }
+          return ing;
+        });
+        
+        if (hasChanges) {
+          const newTotalCost = updatedIngredients.reduce((sum, ing) => sum + (ing.pricePerKg * ing.quantityKg), 0);
+          const newTotalWeight = updatedIngredients.reduce((sum, ing) => sum + ing.quantityKg, 0);
+          
+          updateFeedFormulation(formulation.id, {
+            ...formulation,
+            ingredients: updatedIngredients,
+            totalCost: parseFloat(newTotalCost.toFixed(2)),
+            costPerKg: parseFloat((newTotalCost / newTotalWeight).toFixed(2))
+          });
+          updatedCount++;
+        }
+      });
+
+      alert(`✅ ${updatedCount} formulação(ões) atualizada(s) com sucesso!`);
+      setPriceUpdates({});
+      setActiveTab('list');
+    };
+
+    return (
+      <div className="space-y-4">
+        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200">
+          <div className="mb-6">
+            <h3 className="text-xl font-bold text-slate-800 mb-2">💰 Atualizar Preços de Insumos</h3>
+            <p className="text-sm text-slate-600">
+              Atualize os preços dos ingredientes. As alterações serão aplicadas a todas as formulações que usam cada ingrediente.
+            </p>
+          </div>
+          
+          {uniqueIngredients.length === 0 ? (
+            <div className="text-center py-10 text-slate-400">
+              <p>Nenhum ingrediente cadastrado ainda.</p>
+              <button onClick={() => setActiveTab('list')} className="text-orange-500 font-medium hover:underline mt-2">
+                Criar primeira fórmula
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {uniqueIngredients.map(ingredient => (
+                <div key={ingredient.name} className="border-b border-slate-200 pb-6 last:border-b-0">
+                  <div className="mb-3">
+                    <h4 className="font-bold text-lg text-slate-800">{ingredient.name}</h4>
+                    <p className="text-sm text-slate-600 mt-1">
+                      Preço atual: <span className="font-bold text-blue-600">R$ {ingredient.currentPrice.toFixed(2)}/kg</span>
+                    </p>
+                  </div>
+                  
+                  <IngredientPriceInput
+                    currentPrice={ingredient.currentPrice}
+                    ingredientName={ingredient.name}
+                    onPriceChange={(newPrice, purchaseInfo) => {
+                      setPriceUpdates(prev => ({
+                        ...prev,
+                        [ingredient.name]: { newPrice, purchaseInfo }
+                      }));
+                    }}
+                  />
+                  
+                  {priceUpdates[ingredient.name] && (
+                    <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-700">
+                        ✓ Novo preço: <span className="font-bold">R$ {priceUpdates[ingredient.name].newPrice.toFixed(2)}/kg</span>
+                        {ingredient.currentPrice !== priceUpdates[ingredient.name].newPrice && (
+                          <span className={`ml-2 ${priceUpdates[ingredient.name].newPrice > ingredient.currentPrice ? 'text-red-600' : 'text-green-600'}`}>
+                            ({priceUpdates[ingredient.name].newPrice > ingredient.currentPrice ? '↑' : '↓'} 
+                            {Math.abs(((priceUpdates[ingredient.name].newPrice - ingredient.currentPrice) / ingredient.currentPrice) * 100).toFixed(1)}%)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              <div className="flex gap-3 pt-4 border-t border-slate-200">
+                <button
+                  onClick={handleBulkUpdate}
+                  disabled={Object.keys(priceUpdates).length === 0}
+                  className="flex-1 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  ✅ Aplicar ({Object.keys(priceUpdates).length} ingrediente{Object.keys(priceUpdates).length !== 1 ? 's' : ''})
+                </button>
+                <button
+                  onClick={() => {
+                    setPriceUpdates({});
+                    setActiveTab('list');
+                  }}
+                  className="px-6 py-3 bg-slate-200 text-slate-700 rounded-lg font-medium hover:bg-slate-300 transition"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const calculateBatch = () => {
     const formulation = feedFormulations.find(f => f.id === selectedFormulation);
@@ -205,18 +350,24 @@ const FeedCalculator: FC = () => {
   return (
     <div className="space-y-6">
       {/* Botões de Navegação */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-1 sm:gap-2 mb-6">
         <button
           onClick={() => setActiveTab('list')}
-          className={`px-4 py-2 rounded-lg font-bold transition ${activeTab === 'list' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          className={`flex-1 px-2 sm:px-4 py-2 sm:py-3 rounded-lg font-bold transition text-sm sm:text-lg leading-tight ${activeTab === 'list' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
         >
-          📋 Formulações
+          Formulações
         </button>
         <button
           onClick={() => setActiveTab('calculator')}
-          className={`px-4 py-2 rounded-lg font-bold transition ${activeTab === 'calculator' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          className={`flex-1 px-2 sm:px-4 py-2 sm:py-3 rounded-lg font-bold transition text-sm sm:text-lg leading-tight ${activeTab === 'calculator' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
         >
-          🧮 Calculadora de Batidas
+          Calculadora
+        </button>
+        <button
+          onClick={() => setActiveTab('prices')}
+          className={`flex-1 px-2 sm:px-4 py-2 sm:py-3 rounded-lg font-bold transition text-sm sm:text-lg leading-tight ${activeTab === 'prices' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+        >
+          Preços
         </button>
       </div>
       <div className="flex justify-between items-center mb-8">
@@ -261,6 +412,7 @@ const FeedCalculator: FC = () => {
                                                   ${formula.phase === 'Pré-inicial' ? 'bg-indigo-100 text-indigo-700' :
                                                     formula.phase === 'Inicial' ? 'bg-blue-100 text-blue-700' :
                                                     formula.phase === 'Crescimento' ? 'bg-green-100 text-green-700' :
+                                                    formula.phase === 'Pré-postura' ? 'bg-purple-100 text-purple-700' :
                                                     formula.phase === 'Postura' ? 'bg-orange-100 text-orange-700' :
                                                     'bg-slate-100 text-slate-700'}`}>
                                                   {formula.phase}
@@ -319,6 +471,7 @@ const FeedCalculator: FC = () => {
                                           ${formula.phase === 'Pré-inicial' ? 'bg-indigo-100 text-indigo-700' :
                                             formula.phase === 'Inicial' ? 'bg-blue-100 text-blue-700' :
                                             formula.phase === 'Crescimento' ? 'bg-green-100 text-green-700' :
+                                            formula.phase === 'Pré-postura' ? 'bg-purple-100 text-purple-700' :
                                             formula.phase === 'Postura' ? 'bg-orange-100 text-orange-700' :
                                             'bg-slate-100 text-slate-700'}`}>
                                           {formula.phase}
@@ -370,7 +523,7 @@ const FeedCalculator: FC = () => {
                   </div>
               </div>
           </div>
-      ) : (
+      ) : activeTab === 'calculator' ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Coluna de Configuração */}
           <div className="bg-white p-4 sm:p-5 md:p-6 rounded-xl shadow-sm border border-slate-200">
@@ -494,6 +647,20 @@ const FeedCalculator: FC = () => {
                   <h4 className="text-base sm:text-lg font-semibold text-slate-800 mb-4">
                     Ingredientes para {batchResults.formulation}
                   </h4>
+                  
+                  {/* Cabeçalho Desktop */}
+                  <div className="hidden sm:grid grid-cols-12 gap-4 items-center mb-3 pb-2 border-b border-slate-200">
+                    <div className="col-span-6 font-semibold text-slate-600 text-sm uppercase tracking-wide">
+                      Ingrediente
+                    </div>
+                    <div className="col-span-3 text-right font-semibold text-slate-600 text-sm uppercase tracking-wide">
+                      Quantidade
+                    </div>
+                    <div className="col-span-3 text-right font-semibold text-slate-600 text-sm uppercase tracking-wide">
+                      Custo
+                    </div>
+                  </div>
+                  
                   <div className="space-y-3">
                     {batchResults.ingredients.map((ing: any) => (
                       <div key={ing.id} className="bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-100">
@@ -512,17 +679,28 @@ const FeedCalculator: FC = () => {
                         </div>
                         
                         {/* Layout Desktop */}
-                        <div className="hidden sm:flex sm:items-center sm:justify-between">
-                          <div className="flex items-center gap-6 flex-1">
-                            <div className="font-bold text-slate-700 min-w-[150px]">{ing.name}</div>
-                            <div className="text-3xl font-bold text-blue-600">
-                              {ing.calculatedWeight.toFixed(2)} <span className="text-lg">kg</span>
+                        <div className="hidden sm:block">
+                          <div className="grid grid-cols-12 gap-4 items-center">
+                            {/* Nome do Ingrediente */}
+                            <div className="col-span-6 font-bold text-slate-700">
+                              {ing.name}
                             </div>
-                          </div>
-                          <div className="flex items-center gap-6 text-sm text-slate-500">
-                            <div>R$ {ing.pricePerKg.toFixed(2)}/kg</div>
-                            <div className="font-semibold text-green-600 min-w-[100px] text-right">
-                              R$ {ing.calculatedCost.toFixed(2)}
+                            
+                            {/* Quantidade em KG - Alinhado à direita */}
+                            <div className="col-span-3 text-right">
+                              <div className="text-3xl font-bold text-blue-600">
+                                {ing.calculatedWeight.toFixed(2)} <span className="text-lg">kg</span>
+                              </div>
+                            </div>
+                            
+                            {/* Preço e Custo */}
+                            <div className="col-span-3 text-right space-y-1">
+                              <div className="text-sm text-slate-500">
+                                R$ {ing.pricePerKg.toFixed(2)}/kg
+                              </div>
+                              <div className="font-semibold text-green-600">
+                                R$ {ing.calculatedCost.toFixed(2)}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -541,6 +719,8 @@ const FeedCalculator: FC = () => {
             )}
           </div>
         </div>
+      ) : (
+        <PriceBulkUpdateTab />
       )}
 
       {/* Modal de Formulário */}
@@ -586,6 +766,7 @@ const FeedCalculator: FC = () => {
                           <option value="Pré-inicial">Pré-inicial</option>
                           <option value="Inicial">Inicial</option>
                           <option value="Crescimento">Crescimento</option>
+                          <option value="Pré-postura">Pré-postura</option>
                           <option value="Postura">Postura</option>
                           <option value="Engorda">Engorda</option>
                           <option value="Outra">Outra</option>
@@ -617,19 +798,19 @@ const FeedCalculator: FC = () => {
                           className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" 
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-3">
                         <div>
-                          <label className="block text-sm font-medium text-slate-600 mb-1">Preço/Kg (R$)</label>
-                          <input 
-                            type="text" 
-                            ref={priceInputRef}
-                            onChange={e => {
-                              let value = e.target.value;
-                              value = value.replace(/[^0-9.,]/g, '');
-                              e.target.value = value;
+                          <label className="block text-sm font-medium text-slate-600 mb-1">Preço do Ingrediente</label>
+                          <IngredientPriceInput
+                            currentPrice={parseFloat(currentIngredient.price) || 0}
+                            ingredientName={currentIngredient.name}
+                            onPriceChange={(price, purchaseInfo) => {
+                              setCurrentIngredient(prev => ({
+                                ...prev,
+                                price: price.toString(),
+                                purchaseInfo
+                              }));
                             }}
-                            placeholder="0.00" 
-                            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" 
                           />
                         </div>
                         <div>
@@ -637,12 +818,17 @@ const FeedCalculator: FC = () => {
                           <input 
                             type="text" 
                             ref={quantityInputRef}
+                            value={currentIngredient.quantity}
                             onChange={e => {
                               let value = e.target.value;
                               value = value.replace(/[^0-9.,]/g, '');
                               e.target.value = value;
+                              setCurrentIngredient(prev => ({
+                                ...prev,
+                                quantity: value
+                              }));
                             }}
-                            placeholder="0.0" 
+                            placeholder="0.00" 
                             className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" 
                           />
                         </div>
