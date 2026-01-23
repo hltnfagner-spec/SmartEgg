@@ -279,6 +279,48 @@ const AdminPanel = () => {
     }
   };
 
+  const extendTrialPeriod = async (userId: string, additionalDays: number = 15) => {
+    try {
+      setActionLoading(userId);
+
+      const user = users.find(u => u.user_id === userId);
+      
+      // Calcular nova data de trial
+      let trialEndDate: Date;
+      if (user?.subscription?.trial_end) {
+        trialEndDate = new Date(user.subscription.trial_end);
+      } else if (user?.subscription?.created_at) {
+        trialEndDate = new Date(user.subscription.created_at);
+        trialEndDate.setDate(trialEndDate.getDate() + 15); // Trial padrão de 15 dias
+      } else {
+        trialEndDate = new Date();
+        trialEndDate.setDate(trialEndDate.getDate() + 15);
+      }
+
+      // Adicionar dias extras
+      trialEndDate.setDate(trialEndDate.getDate() + additionalDays);
+
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({
+          status: 'trial',
+          trial_end: trialEndDate.toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      await loadUsers();
+      alert(`Período de teste estendido por ${additionalDays} dias! Novo vencimento: ${trialEndDate.toLocaleDateString('pt-BR')}`);
+    } catch (err: any) {
+      console.error('Erro ao estender período de teste:', err);
+      alert('Erro ao estender período de teste: ' + err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const styles = {
       active: 'bg-green-100 text-green-800 border-green-200',
@@ -494,6 +536,16 @@ const AdminPanel = () => {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end space-x-2">
+                        {user.subscription?.status === 'trial' && (
+                          <button
+                            onClick={() => extendTrialPeriod(user.user_id, 15)}
+                            disabled={actionLoading === user.user_id}
+                            className="px-3 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
+                            title="Estender período de teste em 15 dias"
+                          >
+                            +15d Trial
+                          </button>
+                        )}
                         {user.subscription?.status !== 'active' && (
                           <button
                             onClick={() => activateSubscription(user.user_id, 30)}
@@ -609,6 +661,15 @@ const AdminPanel = () => {
 
                   {/* Ações */}
                   <div className="flex flex-wrap gap-2">
+                    {user.subscription?.status === 'trial' && (
+                      <button
+                        onClick={() => extendTrialPeriod(user.user_id, 15)}
+                        disabled={actionLoading === user.user_id}
+                        className="flex-1 px-3 py-2 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 font-medium"
+                      >
+                        +15d Trial
+                      </button>
+                    )}
                     {user.subscription?.status !== 'active' && (
                       <button
                         onClick={() => activateSubscription(user.user_id, 30)}
