@@ -536,16 +536,14 @@ const AdminPanel = () => {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end space-x-2">
-                        {user.subscription?.status === 'trial' && (
-                          <button
-                            onClick={() => extendTrialPeriod(user.user_id, 15)}
-                            disabled={actionLoading === user.user_id}
-                            className="px-3 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
-                            title="Estender período de teste em 15 dias"
-                          >
-                            +15d Trial
-                          </button>
-                        )}
+                        <button
+                          onClick={() => extendTrialPeriod(user.user_id, 15)}
+                          disabled={actionLoading === user.user_id}
+                          className="px-3 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
+                          title="Estender período de teste em 15 dias"
+                        >
+                          +15d Trial
+                        </button>
                         {user.subscription?.status !== 'active' && (
                           <button
                             onClick={() => activateSubscription(user.user_id, 30)}
@@ -661,15 +659,13 @@ const AdminPanel = () => {
 
                   {/* Ações */}
                   <div className="flex flex-wrap gap-2">
-                    {user.subscription?.status === 'trial' && (
-                      <button
-                        onClick={() => extendTrialPeriod(user.user_id, 15)}
-                        disabled={actionLoading === user.user_id}
-                        className="flex-1 px-3 py-2 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 font-medium"
-                      >
-                        +15d Trial
-                      </button>
-                    )}
+                    <button
+                      onClick={() => extendTrialPeriod(user.user_id, 15)}
+                      disabled={actionLoading === user.user_id}
+                      className="flex-1 px-3 py-2 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 font-medium"
+                    >
+                      +15d Trial
+                    </button>
                     {user.subscription?.status !== 'active' && (
                       <button
                         onClick={() => activateSubscription(user.user_id, 30)}
