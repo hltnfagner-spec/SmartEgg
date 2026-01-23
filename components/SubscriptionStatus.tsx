@@ -19,6 +19,15 @@ export const SubscriptionStatus = () => {
     );
   }
 
+  // Debug: Log para verificar dados
+  console.log('[SubscriptionStatus] Dados da assinatura:', {
+    status: subscription?.status,
+    trialEnd: subscription?.trialEnd,
+    trialEndDate: subscription?.trialEnd ? new Date(subscription.trialEnd) : null,
+    now: new Date(),
+    isExpired: subscription?.trialEnd ? new Date(subscription.trialEnd) < new Date() : null
+  });
+
   const isTrialExpired = subscription?.status === 'trial' && 
     subscription.trialEnd && 
     new Date(subscription.trialEnd) < new Date();
