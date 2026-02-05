@@ -18,6 +18,7 @@ import AlertsPage from './components/AlertsPage';
 import Transactions from './components/Transactions';
 import Productivity from './components/Productivity';
 import AdminPanel from './components/AdminPanel';
+import FeedConsumption from './components/FeedConsumption';
 import LandingPage from './components/LandingPage';
 import Register from './components/Register';
 import Login from './components/Login';
@@ -280,6 +281,7 @@ function App() {
       case 'alerts': return <AlertsPage />;
       case 'transactions': return <Transactions />;
       case 'produtividade': return <Productivity />;
+      case 'feed-consumption': return <FeedConsumption />;
       case 'settings': return <Settings />;
       case 'admin': return <AdminPanel />;
       default: return <Dashboard />;

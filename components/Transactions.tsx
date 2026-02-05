@@ -3,7 +3,7 @@ import { useFarm } from '../context/FarmContext';
 import { ArrowUpIcon, ArrowDownIcon } from './icons';
 
 const Transactions: FC = () => {
-  const { expenses, sales } = useFarm();
+  const { expenses, sales, navigate } = useFarm();
 
   const allTransactions = useMemo(() => {
     const combined = [

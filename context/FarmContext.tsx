@@ -480,9 +480,21 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       if (!recordsData.error && recordsData.data && activeUserIdRef.current === currentUserId) {
 
         const mappedRecords: DailyRecord[] = recordsData.data.map((r: any) => ({
-          id: r.id, flockId: r.flock_id, date: r.date, eggsCollected: r.eggs_collected,
-          brokenEggs: r.broken_eggs, feedConsumedKg: parseFloat(r.feed_consumed_kg),
-          mortality: r.mortality, notes: r.notes ?? undefined, createdAt: r.created_at ?? undefined,
+          id: r.id, 
+          flockId: r.flock_id, 
+          date: r.date, 
+          eggsCollected: r.eggs_collected,
+          brokenEggs: r.broken_eggs, 
+          feedConsumedKg: parseFloat(r.feed_consumed_kg),
+          mortality: r.mortality, 
+          notes: r.notes ?? undefined, 
+          createdAt: r.created_at ?? undefined,
+          feedProvidedKg: r.feed_provided_kg ? parseFloat(r.feed_provided_kg) : undefined,
+          feedWastedKg: r.feed_wasted_kg ? parseFloat(r.feed_wasted_kg) : undefined,
+          feedCostPerKg: r.feed_cost_per_kg ? parseFloat(r.feed_cost_per_kg) : undefined,
+          feedType: r.feed_type ?? undefined,
+          averageWeight: r.average_weight ? parseFloat(r.average_weight) : undefined,
+          waterConsumptionLiters: r.water_consumption_liters ? parseFloat(r.water_consumption_liters) : undefined,
         }));
         setRecords(mappedRecords);
       }
@@ -759,7 +771,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       });
       
       // Lista de views válidas
-      const validViews: View[] = ['dashboard', 'data-entry', 'flocks', 'sheds', 'expenses', 'sales', 'reports', 'ai-assistant', 'calculator', 'clients', 'contacts', 'inventory', 'transactions', 'produtividade'];
+      const validViews: View[] = ['dashboard', 'data-entry', 'flocks', 'sheds', 'expenses', 'sales', 'reports', 'ai-assistant', 'calculator', 'clients', 'contacts', 'inventory', 'transactions', 'produtividade', 'feed-consumption'];
       
       // Navegar para a view correspondente
       if (view && validViews.includes(view as View)) {
@@ -1288,6 +1300,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             feed_provided_kg: recordData.feedProvidedKg ?? 0,
             feed_wasted_kg: recordData.feedWastedKg ?? 0,
             feed_cost_per_kg: recordData.feedCostPerKg ?? 0,
+            feed_type: recordData.feedType ?? null,
             average_weight: recordData.averageWeight ?? 0,
           })
           .select()
@@ -1311,6 +1324,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           feedProvidedKg: data.feed_provided_kg ? parseFloat(data.feed_provided_kg) : undefined,
           feedWastedKg: data.feed_wasted_kg ? parseFloat(data.feed_wasted_kg) : undefined,
           feedCostPerKg: data.feed_cost_per_kg ? parseFloat(data.feed_cost_per_kg) : undefined,
+          feedType: data.feed_type,
           averageWeight: data.average_weight ? parseFloat(data.average_weight) : undefined,
           waterConsumptionLiters: data.water_consumed_liters ? parseFloat(data.water_consumed_liters) : undefined,
         };
@@ -1338,7 +1352,13 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
               (i.name.toLowerCase().includes('ovos') || i.name.toLowerCase().includes('ovo'))
             );
             const feedPrice = feedItem ? parseFloat(feedItem.cost_per_unit) : 0;
-            const totalRecordCost = recordData.feedConsumedKg * feedPrice;
+            
+            // Lógica ajustada: usar feedProvidedKg quando feedConsumedKg for 0 (centralização)
+            const effectiveFeedConsumed = recordData.feedConsumedKg > 0 
+              ? recordData.feedConsumedKg 
+              : (recordData.feedProvidedKg ?? 0);
+            
+            const totalRecordCost = effectiveFeedConsumed * feedPrice;
             
             console.log('[addRecord] Estoque encontrado:', { 
               feedItem: feedItem?.name, 
@@ -1349,8 +1369,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             });
 
             // 1. Deduzir ração
-            if (feedItem && recordData.feedConsumedKg > 0) {
-              const newFeedQuantity = Math.max(0, parseFloat(feedItem.quantity) - recordData.feedConsumedKg);
+            if (feedItem && effectiveFeedConsumed > 0) {
+              const newFeedQuantity = Math.max(0, parseFloat(feedItem.quantity) - effectiveFeedConsumed);
               await supabase
                 .from('inventory')
                 .update({ quantity: newFeedQuantity })
@@ -1463,6 +1483,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             feed_provided_kg: data.feedProvidedKg ?? 0,
             feed_wasted_kg: data.feedWastedKg ?? 0,
             feed_cost_per_kg: data.feedCostPerKg ?? 0,
+            feed_type: data.feedType ?? null,
             average_weight: data.averageWeight ?? 0,
           })
           .eq('id', recordId)
@@ -1484,8 +1505,16 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
               const feedItem = newInventory.find(i => i.category === 'Ração');
               const feedPrice = feedItem ? feedItem.costPerUnit : 0;
               
+              // Lógica ajustada: usar feedProvidedKg quando feedConsumedKg for 0 (centralização)
+              const oldEffectiveFeed = oldRecord.feedConsumedKg > 0 
+                ? oldRecord.feedConsumedKg 
+                : (oldRecord.feedProvidedKg ?? 0);
+              const newEffectiveFeed = data.feedConsumedKg > 0 
+                ? data.feedConsumedKg 
+                : (data.feedProvidedKg ?? 0);
+              
               // Valores Diferenciais
-              const feedDiff = data.feedConsumedKg - oldRecord.feedConsumedKg;
+              const feedDiff = newEffectiveFeed - oldEffectiveFeed;
               const oldNetEggs = oldRecord.eggsCollected - (oldRecord.brokenEggs || 0);
               const newNetEggs = data.eggsCollected - (data.brokenEggs || 0);
               const eggDiff = newNetEggs - oldNetEggs;
@@ -1560,7 +1589,13 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           );
           
           const feedPrice = feedItem ? parseFloat(feedItem.cost_per_unit) : 0;
-          const recordValue = recordToDelete.feedConsumedKg * feedPrice;
+          
+          // Lógica ajustada: usar feedProvidedKg quando feedConsumedKg for 0 (centralização)
+          const effectiveFeedToDelete = recordToDelete.feedConsumedKg > 0 
+            ? recordToDelete.feedConsumedKg 
+            : (recordToDelete.feedProvidedKg ?? 0);
+          
+          const recordValue = effectiveFeedToDelete * feedPrice;
           const netEggs = recordToDelete.eggsCollected - (recordToDelete.brokenEggs || 0);
           
           console.log('[deleteRecord] Revertendo estoque:', {
@@ -1569,12 +1604,12 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
             eggItem: eggItem?.name,
             netEggs,
             recordValue,
-            feedToRestore: recordToDelete.feedConsumedKg
+            feedToRestore: effectiveFeedToDelete
           });
 
           // 1. Restaurar Ração no Supabase
-          if (feedItem && recordToDelete.feedConsumedKg > 0) {
-            const newFeedQty = parseFloat(feedItem.quantity) + recordToDelete.feedConsumedKg;
+          if (feedItem && effectiveFeedToDelete > 0) {
+            const newFeedQty = parseFloat(feedItem.quantity) + effectiveFeedToDelete;
             
             await supabase
               .from('inventory')

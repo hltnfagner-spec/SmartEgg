@@ -44,7 +44,6 @@ export const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord 
         flockId: '',
         eggsCollected: '',
         brokenEggs: 0,
-        feedConsumedKg: 0,
     });
     const [message, setMessage] = useState<{type: 'error', text: string} | null>(null);
 
@@ -63,7 +62,7 @@ export const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord 
         
         let val: string | number = value;
         // Campos numéricos que podem ser vazios durante a digitação ou zero
-        if (['eggsCollected', 'brokenEggs', 'feedConsumedKg'].includes(name)) {
+        if (['eggsCollected', 'brokenEggs'].includes(name)) {
             val = value === '' ? '' : parseFloat(value);
         }
 
@@ -122,7 +121,7 @@ export const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord 
             ...formData,
             eggsCollected: Number(formData.eggsCollected),
             brokenEggs: Number(formData.brokenEggs) || 0,
-            feedConsumedKg: Number(formData.feedConsumedKg) || 0,
+            feedConsumedKg: recordToEdit?.feedConsumedKg ?? 0,
             date: recordDate.toISOString(),
         };
 
@@ -191,16 +190,7 @@ export const AddRecordForm: FC<{onClose: () => void; recordToEdit?: DailyRecord 
                 </div>
             </div>
 
-            <div className="space-y-4">
-                 <h3 className="text-sm font-bold text-stone-500 uppercase tracking-wide border-b border-stone-200 pb-1">Consumo</h3>
-                <div className="grid grid-cols-1 gap-6">
-                    <div>
-                        <label htmlFor="feedConsumedKg" className="block text-sm font-medium text-stone-600">Ração Consumida (kg)</label>
-                        <input type="number" step="0.01" id="feedConsumedKg" name="feedConsumedKg" min="0" value={formData.feedConsumedKg} onChange={handleChange} onFocus={handleFocus} required className="mt-1 block w-full px-3 py-2 bg-white border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500" />
-                    </div>
-                </div>
-            </div>
-
+            
             <div className="flex justify-end space-x-3 pt-6 border-t border-stone-200 mt-4">
                  <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-stone-700 bg-stone-100 border border-stone-300 rounded-md hover:bg-stone-200">Cancelar</button>
                  <button type="submit" className="px-6 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 shadow-sm">{recordToEdit ? 'Salvar Alterações' : 'Salvar Registro'}</button>
@@ -482,14 +472,13 @@ const DataEntry: FC = () => {
                     <span className="text-sm text-stone-500 ml-auto">{sortedRecords.length} registros encontrados</span>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-stone-500 min-w-[800px] border-collapse">
+                    <table className="w-full text-sm text-left text-stone-500 min-w-[600px] border-collapse">
                         <thead className="text-xs text-stone-700 uppercase bg-stone-50">
                             <tr>
                                 <th scope="col" className="px-6 py-3">Data</th>
                                 <th scope="col" className="px-6 py-3">Lote</th>
                                 <th scope="col" className="px-6 py-3 text-right">Coletados</th>
                                 <th scope="col" className="px-6 py-3 text-right text-red-600">Perdas</th>
-                                <th scope="col" className="px-6 py-3 text-right">Ração (kg)</th>
                                 <th scope="col" className="px-6 py-3 text-center">Ações</th>
                             </tr>
                         </thead>
@@ -502,7 +491,6 @@ const DataEntry: FC = () => {
                                     <td className="px-6 py-4 font-medium text-stone-900">{getFlockById(record.flockId)?.name || 'N/A'}</td>
                                     <td className="px-6 py-4 text-right font-semibold">{record.eggsCollected}</td>
                                     <td className="px-6 py-4 text-right text-red-500 font-medium">{record.brokenEggs || 0}</td>
-                                    <td className="px-6 py-4 text-right">{record.feedConsumedKg.toFixed(2)}</td>
                                     <td className="px-6 py-4 text-center space-x-2">
                                         <button 
                                             type="button" 
@@ -527,7 +515,7 @@ const DataEntry: FC = () => {
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-10 text-stone-500">
+                                    <td colSpan={5} className="text-center py-10 text-stone-500">
                                         <div className="flex flex-col items-center">
                                             <span className="text-4xl mb-2">🥚</span>
                                             <p>Nenhuma coleta registrada no período.</p>

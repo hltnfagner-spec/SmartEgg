@@ -522,6 +522,12 @@ const Dashboard: FC = () => {
           >
             Produtividade
           </button>
+          <button
+            onClick={() => navigate('feed-consumption')}
+            className="px-6 py-3 text-sm font-medium transition-colors text-slate-600 hover:text-orange-600"
+          >
+            Consumo de Ração
+          </button>
         </div>
       </div>
 

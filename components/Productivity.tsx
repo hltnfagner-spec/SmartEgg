@@ -7,7 +7,7 @@ const toLocalDateString = (date: Date): string => {
 };
 
 const Productivity: FC = () => {
-  const { flocks, records, getHensCountOnDate } = useFarm();
+  const { flocks, records, getHensCountOnDate, navigate } = useFarm();
   
   // Date filter state
   const [dateFilter, setDateFilter] = useState({
@@ -136,6 +136,15 @@ const Productivity: FC = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-slate-800">Produtividade por Lote</h1>
+        <button
+          onClick={() => navigate('dashboard')}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Voltar
+        </button>
       </div>
 
       {/* Filtros */}

@@ -101,7 +101,14 @@ export const generateProductionReport = (
     const totalBroken = records.reduce((sum, r) => sum + (r.brokenEggs || 0), 0);
     const totalGood = totalEggs - totalBroken;
     const totalMortality = records.reduce((sum, r) => sum + r.mortality, 0);
-    const totalFeed = records.reduce((sum, r) => sum + r.feedConsumedKg, 0);
+    
+    // Lógica ajustada: usar feedProvidedKg quando feedConsumedKg for 0 (centralização)
+    const totalFeed = records.reduce((sum, r) => {
+        const effectiveFeed = r.feedConsumedKg > 0 
+            ? r.feedConsumedKg 
+            : (r.feedProvidedKg ?? 0);
+        return sum + effectiveFeed;
+    }, 0);
     
     // Cálculo das despesas totais do período
     const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -233,7 +240,12 @@ export const generateProductionReport = (
             flockAcc[record.flockId].totalEggs += record.eggsCollected;
             flockAcc[record.flockId].totalBroken += (record.brokenEggs || 0);
             flockAcc[record.flockId].totalMortality += record.mortality;
-            flockAcc[record.flockId].totalFeed += record.feedConsumedKg;
+            
+            // Lógica ajustada: usar feedProvidedKg quando feedConsumedKg for 0 (centralização)
+            const effectiveFeed = record.feedConsumedKg > 0 
+                ? record.feedConsumedKg 
+                : (record.feedProvidedKg ?? 0);
+            flockAcc[record.flockId].totalFeed += effectiveFeed;
             return flockAcc;
         }, {});
         

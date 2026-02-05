@@ -31,6 +31,7 @@ export interface DailyRecord {
   feedProvidedKg?: number;
   feedWastedKg?: number;
   feedCostPerKg?: number;
+  feedType?: string; // Tipo de ração (Inicial, Crescimento, Postura, etc)
   averageWeight?: number;
   waterConsumptionLiters?: number;
 }
@@ -215,7 +216,7 @@ export interface InventoryItem {
   lastUpdated: string;
 }
 
-export type View = 'dashboard' | 'data-entry' | 'flocks' | 'sheds' | 'expenses' | 'sales' | 'reports' | 'ai-assistant' | 'calculator' | 'clients' | 'contacts' | 'inventory' | 'mortality' | 'alerts' | 'transactions' | 'produtividade' | 'settings' | 'admin';
+export type View = 'dashboard' | 'data-entry' | 'flocks' | 'sheds' | 'expenses' | 'sales' | 'reports' | 'ai-assistant' | 'calculator' | 'clients' | 'contacts' | 'inventory' | 'mortality' | 'alerts' | 'transactions' | 'produtividade' | 'feed-consumption' | 'settings' | 'admin';
 
 // Configurações da Empresa/Granja
 export interface CompanySettings {
