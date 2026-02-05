@@ -38,6 +38,12 @@ const Transactions: FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-slate-800">Últimas Transações</h1>
+        <button 
+          onClick={() => navigate('dashboard')}
+          className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 shadow-sm transition-colors flex items-center"
+        >
+          Voltar
+        </button>
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">

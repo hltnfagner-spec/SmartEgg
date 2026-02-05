@@ -669,15 +669,18 @@ const Dashboard: FC = () => {
                 <span className="font-semibold text-sm">Nova Despesa</span>
             </button>
 
-            {/* Registrar Descarte - Red */}
+            {/* Registrar Consumo de Ração - Orange */}
             <button
-                onClick={() => setActiveModal('mortality')}
-                className="flex flex-col sm:flex-row items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg transition-all shadow-sm hover:shadow-md group"
+                onClick={() => navigate('feed-consumption')}
+                className="flex flex-col sm:flex-row items-center justify-center gap-2 text-white py-3 px-4 rounded-lg transition-all shadow-sm hover:shadow-md group"
+                style={{ backgroundColor: '#FFA500' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E59400'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FFA500'}
             >
                 <div className="bg-white/20 p-1.5 rounded-md group-hover:scale-110 transition-transform">
-                    <TrendDownIcon className="h-4 w-4 text-white" />
+                    <ChickenIcon className="h-4 w-4 text-white" />
                 </div>
-                <span className="font-semibold text-sm">Registrar Descarte</span>
+                <span className="font-semibold text-sm">Registrar Consumo de Ração</span>
             </button>
 
         </div>
