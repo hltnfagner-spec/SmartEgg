@@ -97,13 +97,13 @@ const FeedConsumption: FC = () => {
             addExpense({
                 flockId: flockId,
                 date: date,
-                description: `${feedType} - ${quantityKg} kg`,
+                description: `${feedType} - ${Math.round(quantityKg)} kg`,
                 category: 'Ração',
                 amount: totalCost,
                 supplierId: undefined
             });
 
-            console.log(`[FeedConsumption] Despesa criada: ${feedType} - ${quantityKg} kg - R$ ${totalCost.toFixed(2)}`);
+            console.log(`[FeedConsumption] Despesa criada: ${feedType} - ${Math.round(quantityKg)} kg - R$ ${totalCost.toFixed(2)}`);
             return totalCost;
         }
         
@@ -112,7 +112,7 @@ const FeedConsumption: FC = () => {
 
     // Função para buscar despesa relacionada a um registro de ração
     const findRelatedExpense = (recordId: string, feedType: string, quantityKg: number, date: string, flockId: string) => {
-        const expectedDescription = `${feedType} - ${quantityKg} kg`;
+        const expectedDescription = `${feedType} - ${Math.round(quantityKg)} kg`;
         
         return expenses.find(exp => 
             exp.flockId === flockId &&
@@ -140,11 +140,11 @@ const FeedConsumption: FC = () => {
                     
                     updateExpense(oldExpense.id, {
                         ...oldExpense,
-                        description: `${newFeedType} - ${newQuantityKg} kg`,
+                        description: `${newFeedType} - ${Math.round(newQuantityKg)} kg`,
                         amount: newTotalCost
                     });
                     
-                    console.log(`[FeedConsumption] Despesa atualizada: ${newFeedType} - ${newQuantityKg} kg - R$ ${newTotalCost.toFixed(2)}`);
+                    console.log(`[FeedConsumption] Despesa atualizada: ${newFeedType} - ${Math.round(newQuantityKg)} kg - R$ ${newTotalCost.toFixed(2)}`);
                 }
             }
         }
