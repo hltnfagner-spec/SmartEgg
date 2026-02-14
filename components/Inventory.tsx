@@ -6,6 +6,10 @@ import NotificationBell from './NotificationBell';
 import { ConfirmationModal } from './ConfirmationModal';
 
 const CATEGORIES: InventoryCategory[] = ['Ração', 'Medicamento', 'Embalagem', 'Produto Final', 'Ovos', 'Outro'];
+
+// Categorias disponíveis para seleção manual (excluindo "Produto Final" que é usado apenas pelo sistema)
+// Isso evita que usuários criem manualmente itens de ovos, mantendo a integridade do sistema
+const SELECTABLE_CATEGORIES: InventoryCategory[] = ['Ração', 'Medicamento', 'Embalagem', 'Outro'];
 const UNITS: UnitType[] = ['kg', 'g', 'L', 'ml', 'unidade', 'saco'];
 
 const toLocalDateString = (date: Date) => {
@@ -25,7 +29,7 @@ const REASON_LABELS: Record<EggMovementReason, string> = {
 };
 
 const Inventory: FC = () => {
-    const { inventory, addInventoryItem, updateInventoryItem, deleteInventoryItem, eggMovements, addEggMovement, records, sales, flocks, getFlockById, contacts } = useFarm();
+    const { inventory, addInventoryItem, updateInventoryItem, deleteInventoryItem, eggMovements, addEggMovement, records, sales, flocks, getFlockById, contacts, deleteRecord, deleteSale } = useFarm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEggOutputModalOpen, setIsEggOutputModalOpen] = useState(false);
     const [itemToEdit, setItemToEdit] = useState<InventoryItem | null>(null);
@@ -223,6 +227,42 @@ const Inventory: FC = () => {
         }
     };
 
+    const handleEditMovement = (mov: EggMovement) => {
+        // Verificar se é uma coleta (registro diário) ou venda
+        if (mov.referenceId && mov.referenceId.startsWith('coleta_')) {
+            const recordId = mov.referenceId.replace('coleta_', '');
+            const record = records.find(r => r.id === recordId);
+            if (record) {
+                // Redirecionar para página de coleta com o registro para editar
+                // Por enquanto, vamos abrir um modal simples
+                alert(`Editar coleta do dia ${new Date(mov.date).toLocaleDateString('pt-BR')} - Lote: ${mov.notes}`);
+            }
+        } else if (mov.referenceId && mov.referenceId.startsWith('venda_')) {
+            const saleId = mov.referenceId.replace('venda_', '');
+            const sale = sales.find(s => s.id === saleId);
+            if (sale) {
+                // Redirecionar para página de vendas com a venda para editar
+                alert(`Editar venda #${sale.saleNumber} - ${sale.productType}`);
+            }
+        }
+    };
+
+    const handleDeleteMovement = (mov: EggMovement) => {
+        const confirmMessage = mov.reason === 'coleta' 
+            ? `Tem certeza que deseja excluir esta coleta de ${mov.quantity} ovos?\n\nData: ${new Date(mov.date).toLocaleDateString('pt-BR')}\nLote: ${mov.notes}\n\nEsta ação não poderá ser desfeita e afetará o estoque.`
+            : `Tem certeza que deseja excluir esta venda de ${mov.quantity} ovos?\n\nData: ${new Date(mov.date).toLocaleDateString('pt-BR')}\n\nEsta ação não poderá ser desfeita e afetará o estoque.`;
+            
+        if (window.confirm(confirmMessage)) {
+            if (mov.referenceId && mov.referenceId.startsWith('coleta_')) {
+                const recordId = mov.referenceId.replace('coleta_', '');
+                deleteRecord(recordId);
+            } else if (mov.referenceId && mov.referenceId.startsWith('venda_')) {
+                const saleId = mov.referenceId.replace('venda_', '');
+                deleteSale(saleId);
+            }
+        }
+    };
+
     const handleEggOutputSubmit = (e: FormEvent) => {
         e.preventDefault();
         addEggMovement({
@@ -242,35 +282,44 @@ const Inventory: FC = () => {
     };
 
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-slate-800">Controle de Estoque</h1>
-                <NotificationBell />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
+            {/* Header */}
+            <div className="flex flex-col gap-4">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-stone-800">Controle de Estoque</h1>
+                        <p className="text-stone-600 mt-1 text-sm sm:text-base">Gerencie ovos e insumos da granja</p>
+                    </div>
+                    <NotificationBell />
+                </div>
             </div>
 
-            <div className="border-b border-slate-200 mb-6">
-                <nav className="-mb-px flex space-x-8">
-                    <button
-                        onClick={() => setActiveTab('ovos')}
-                        className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                            activeTab === 'ovos'
-                                ? 'border-amber-500 text-amber-600'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-                        }`}
-                    >
-                        🥚 Ovos
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('insumos')}
-                        className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                            activeTab === 'insumos'
-                                ? 'border-amber-500 text-amber-600'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-                        }`}
-                    >
-                        📦 Estoque de Insumos
-                    </button>
-                </nav>
+            {/* Tabs */}
+            <div className="bg-white rounded-xl shadow-sm border border-stone-200">
+                <div className="border-b border-stone-200">
+                    <nav className="-mb-px flex space-x-8 px-4 sm:px-6">
+                        <button
+                            onClick={() => setActiveTab('ovos')}
+                            className={`py-3 px-1 border-b-2 font-medium text-sm ${
+                                activeTab === 'ovos'
+                                    ? 'border-amber-500 text-amber-600'
+                                    : 'border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300'
+                            }`}
+                        >
+                            🥚 Ovos
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('insumos')}
+                            className={`py-3 px-1 border-b-2 font-medium text-sm ${
+                                activeTab === 'insumos'
+                                    ? 'border-amber-500 text-amber-600'
+                                    : 'border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300'
+                            }`}
+                        >
+                            📦 Estoque de Insumos
+                        </button>
+                    </nav>
+                </div>
             </div>
 
             {activeTab === 'ovos' && (
@@ -294,12 +343,12 @@ const Inventory: FC = () => {
                     </div>
 
                     {eggStockItem && (
-                        <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-100">
+                        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-stone-200">
                             <div>
-                                <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide">Custo de Produção (baseado no consumo de ração)</h3>
-                                <p className="text-3xl font-bold text-slate-800 mt-1">
+                                <h3 className="text-sm font-medium text-stone-500 uppercase tracking-wide">Custo de Produção (baseado no consumo de ração)</h3>
+                                <p className="text-3xl font-bold text-stone-800 mt-1">
                                     {eggStockItem.costPerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                    <span className="text-sm font-normal text-slate-500"> / ovo</span>
+                                    <span className="text-sm font-normal text-stone-500"> / ovo</span>
                                 </p>
                             </div>
                         </div>
@@ -314,8 +363,8 @@ const Inventory: FC = () => {
                         </button>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-                        <h3 className="text-sm font-bold text-slate-700 uppercase mb-4">Filtros</h3>
+                    <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-4 sm:p-6">
+                        <h3 className="text-sm font-bold text-stone-700 uppercase mb-4">Filtros</h3>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Período</label>
@@ -390,13 +439,13 @@ const Inventory: FC = () => {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                        <div className="px-6 py-4 border-b border-slate-100">
-                            <h2 className="text-lg font-semibold text-slate-800">Histórico de Movimentações</h2>
+                    <div className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden">
+                        <div className="px-4 sm:px-6 py-4 border-b border-stone-200">
+                            <h2 className="text-lg font-semibold text-stone-800">Histórico de Movimentações</h2>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead className="text-xs text-slate-700 uppercase bg-slate-50">
+                                <thead className="text-xs text-stone-700 uppercase bg-stone-50">
                                     <tr>
                                         <th className="px-6 py-3 text-center">Data</th>
                                         <th className="px-6 py-3 text-center">Tipo</th>
@@ -404,11 +453,12 @@ const Inventory: FC = () => {
                                         <th className="px-6 py-3 text-center">Quantidade</th>
                                         <th className="px-6 py-3 text-center">Saldo</th>
                                         <th className="px-6 py-3 text-center">Observação</th>
+                                        <th className="px-6 py-3 text-center">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filteredMovements.length > 0 ? filteredMovements.map(mov => (
-                                        <tr key={mov.id} className="border-b border-slate-50 hover:bg-slate-50">
+                                        <tr key={mov.id} className="border-b border-stone-100 hover:bg-stone-50">
                                             <td className="px-6 py-3 text-center">
                                                 {(() => {
                                                     const dateStr = mov.date.includes('T') ? mov.date.split('T')[0] : mov.date;
@@ -431,14 +481,34 @@ const Inventory: FC = () => {
                                             }`}>
                                                 {mov.type === 'entrada' ? '+' : ''}{mov.quantity.toLocaleString()}
                                             </td>
-                                            <td className="px-6 py-3 text-center font-medium text-slate-700">
+                                            <td className="px-6 py-3 text-center font-medium text-stone-700">
                                                 {mov.balance.toLocaleString()}
                                             </td>
-                                            <td className="px-6 py-3 text-center text-slate-500">{mov.notes || '-'}</td>
+                                            <td className="px-6 py-3 text-center text-stone-500">{mov.notes || '-'}</td>
+                                            <td className="px-6 py-3 text-center">
+                                                <div className="flex items-center justify-center space-x-1">
+                                                    <button 
+                                                        onClick={() => handleEditMovement(mov)}
+                                                        className="p-2 text-stone-500 hover:text-amber-600 transition-colors" 
+                                                        title="Editar"
+                                                        aria-label="Editar Movimentação"
+                                                    >
+                                                        <EditIcon />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleDeleteMovement(mov)}
+                                                        className="p-2 text-stone-500 hover:text-red-600 transition-colors" 
+                                                        title="Excluir"
+                                                        aria-label="Excluir Movimentação"
+                                                    >
+                                                        <TrashIcon />
+                                                    </button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     )) : (
                                         <tr>
-                                            <td colSpan={6} className="text-center py-8 text-slate-500">
+                                            <td colSpan={7} className="text-center py-8 text-slate-500">
                                                 Nenhuma movimentação encontrada no período selecionado.
                                             </td>
                                         </tr>
@@ -452,38 +522,38 @@ const Inventory: FC = () => {
 
             {activeTab === 'insumos' && (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-center">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-stone-200 flex items-center">
                             <div className="p-4 rounded-lg bg-blue-100 text-blue-600 mr-4">
                                 <InventoryIcon className="h-6 w-6" />
                             </div>
                             <div>
-                                <p className="text-sm text-slate-500 font-medium">Itens Cadastrados</p>
-                                <p className="text-2xl font-bold text-slate-800">{insumosItems.length}</p>
+                                <p className="text-sm text-stone-500 font-medium">Itens Cadastrados</p>
+                                <p className="text-2xl font-bold text-stone-800">{insumosItems.length}</p>
                             </div>
                         </div>
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-center">
+                        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-stone-200 flex items-center">
                             <div className="p-4 rounded-lg bg-green-100 text-green-600 mr-4">
                                 <span className="text-xl font-bold">R$</span>
                             </div>
                             <div>
-                                <p className="text-sm text-slate-500 font-medium">Valor Total Estoque</p>
-                                <p className="text-2xl font-bold text-slate-800">{totalInsumosValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                <p className="text-sm text-stone-500 font-medium">Valor Total Estoque</p>
+                                <p className="text-2xl font-bold text-stone-800">{totalInsumosValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                             </div>
                         </div>
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-center">
-                            <div className={`p-4 rounded-lg mr-4 ${lowStockItems.length > 0 ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-600'}`}>
+                        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-stone-200 flex items-center">
+                            <div className={`p-4 rounded-lg mr-4 ${lowStockItems.length > 0 ? 'bg-red-100 text-red-600' : 'bg-stone-100 text-stone-600'}`}>
                                 <span className="text-xl font-bold">!</span>
                             </div>
                             <div>
-                                <p className="text-sm text-slate-500 font-medium">Alertas de Estoque</p>
-                                <p className={`text-2xl font-bold ${lowStockItems.length > 0 ? 'text-red-600' : 'text-slate-800'}`}>{lowStockItems.length}</p>
+                                <p className="text-sm text-stone-500 font-medium">Alertas de Estoque</p>
+                                <p className={`text-2xl font-bold ${lowStockItems.length > 0 ? 'text-red-600' : 'text-stone-800'}`}>{lowStockItems.length}</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex justify-between items-center mt-4">
-                        <h2 className="text-lg font-semibold text-slate-800">Itens em Estoque</h2>
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-lg font-semibold text-stone-800">Itens em Estoque</h2>
                         <button 
                             onClick={handleOpenAddModal}
                             className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 shadow-sm transition-colors flex items-center"
@@ -492,10 +562,10 @@ const Inventory: FC = () => {
                         </button>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left text-stone-500 min-w-[800px]">
-                                <thead className="text-xs text-slate-700 uppercase bg-slate-50">
+                                <thead className="text-xs text-stone-700 uppercase bg-stone-50">
                                     <tr>
                                         <th className="px-6 py-3">Nome</th>
                                         <th className="px-6 py-3">Categoria</th>
@@ -508,24 +578,24 @@ const Inventory: FC = () => {
                                 </thead>
                                 <tbody>
                                     {insumosItems.length > 0 ? insumosItems.map(item => (
-                                        <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors group">
-                                            <td className="px-6 py-4 font-medium text-slate-900">{item.name}</td>
+                                        <tr key={item.id} className="border-b border-stone-100 hover:bg-stone-50 transition-colors group">
+                                            <td className="px-6 py-4 font-medium text-stone-900">{item.name}</td>
                                             <td className="px-6 py-4">
-                                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-stone-100 text-stone-600">
                                                     {item.category}
                                                 </span>
                                             </td>
-                                            <td className={`px-6 py-4 text-right font-bold ${item.quantity <= item.minThreshold ? 'text-red-600' : 'text-slate-700'}`}>
+                                            <td className={`px-6 py-4 text-right font-bold ${item.quantity <= item.minThreshold ? 'text-red-600' : 'text-stone-700'}`}>
                                                 {item.quantity.toLocaleString('pt-BR')} {item.unit}
                                             </td>
-                                            <td className="px-6 py-4 text-right text-slate-400">{item.minThreshold} {item.unit}</td>
-                                            <td className="px-6 py-4 text-right">{item.costPerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                            <td className="px-6 py-4 text-right text-stone-400">{item.minThreshold} {item.unit}</td>
+                                            <td className="px-6 py-4 text-right text-stone-700">{item.costPerUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                                             <td className="px-6 py-4 text-right text-green-600 font-medium">{(item.quantity * item.costPerUnit).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                                             <td className="px-6 py-4 text-center space-x-2">
                                                 <button 
                                                     type="button"
                                                     onClick={(e) => {e.preventDefault(); e.stopPropagation(); handleOpenEditModal(item); }}
-                                                    className="p-2 text-slate-400 hover:text-amber-600 transition-colors relative z-30"
+                                                    className="p-2 text-stone-400 hover:text-amber-600 transition-colors relative z-30"
                                                     title="Editar"
                                                 >
                                                     <EditIcon />
@@ -546,7 +616,7 @@ const Inventory: FC = () => {
                                         </tr>
                                     )) : (
                                         <tr>
-                                            <td colSpan={7} className="text-center py-8 text-slate-500">Nenhum item cadastrado no estoque.</td>
+                                            <td colSpan={7} className="text-center py-8 text-stone-500">Nenhum item cadastrado no estoque.</td>
                                         </tr>
                                     )}
                                 </tbody>
@@ -568,29 +638,29 @@ const Inventory: FC = () => {
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
-                        <h2 className="text-xl font-bold text-slate-800 mb-6">{itemToEdit ? 'Editar Item' : 'Novo Item de Estoque'}</h2>
+                        <h2 className="text-xl font-bold text-stone-800 mb-6">{itemToEdit ? 'Editar Item' : 'Novo Item de Estoque'}</h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Nome do Item</label>
-                                <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                                <label className="block text-sm font-medium text-stone-700 mb-1">Nome do Item</label>
+                                <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Categoria</label>
-                                    <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as InventoryCategory})} className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500">
-                                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                    <label className="block text-sm font-medium text-stone-700 mb-1">Categoria</label>
+                                    <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as InventoryCategory})} className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                        {SELECTABLE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Unidade</label>
-                                    <select value={formData.unit} onChange={e => setFormData({...formData, unit: e.target.value as UnitType})} className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                    <label className="block text-sm font-medium text-stone-700 mb-1">Unidade</label>
+                                    <select value={formData.unit} onChange={e => setFormData({...formData, unit: e.target.value as UnitType})} className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500">
                                         {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                                     </select>
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Quantidade Atual</label>
+                                    <label className="block text-sm font-medium text-stone-700 mb-1">Quantidade Atual</label>
                                     <input 
                                         type="number" 
                                         step="0.01" 
@@ -603,11 +673,11 @@ const Inventory: FC = () => {
                                                 e.target.select();
                                             }
                                         }}
-                                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" 
+                                        className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" 
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Estoque Mínimo (Alerta)</label>
+                                    <label className="block text-sm font-medium text-stone-700 mb-1">Estoque Mínimo (Alerta)</label>
                                     <input 
                                         type="number" 
                                         step="0.01" 

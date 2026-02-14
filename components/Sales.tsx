@@ -1,7 +1,7 @@
 import { useState, useEffect, FC, ChangeEvent, FormEvent, FocusEvent, useRef, useMemo } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { Sale, SaleType, PaymentMethod, PaymentStatus, ProductType, DeliveryStatus, CompanySettings } from '../types';
-import { EditIcon, PrinterIcon, DownloadIcon } from './icons';
+import { EditIcon, PrinterIcon, DownloadIcon, TrashIcon } from './icons';
 import html2pdf from 'html2pdf.js';
 
 const SALE_TYPES: SaleType[] = ['Cliente Final', 'Atacado'];
@@ -601,7 +601,7 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
 };
 
 const Sales: FC = () => {
-    const { sales, getFlockById, getClientById, companySettings, loadCompanySettings } = useFarm();
+    const { sales, getFlockById, getClientById, companySettings, loadCompanySettings, deleteSale } = useFarm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [saleToEdit, setSaleToEdit] = useState<Sale | null>(null);
     const [receiptSale, setReceiptSale] = useState<Sale | null>(null);
@@ -720,6 +720,12 @@ const Sales: FC = () => {
 
     const handleCloseReceipt = () => {
         setReceiptSale(null);
+    };
+
+    const handleDeleteSale = (sale: Sale) => {
+        if (window.confirm(`Tem certeza que deseja apagar a venda #${String(sale.saleNumber || 0).padStart(6, '0')} - ${sale.productType} (${sale.quantity} unidades)?\n\nEsta ação não poderá ser desfeita e o estoque será ajustado.`)) {
+            deleteSale(sale.id);
+        }
     };
 
     const getDeliveryBadge = (status?: DeliveryStatus) => {
@@ -935,6 +941,9 @@ const Sales: FC = () => {
                                             </button>
                                             <button onClick={() => handleOpenEditModal(sale)} className="p-2 text-stone-500 hover:text-amber-600 transition-colors" aria-label="Editar Venda" title="Editar Venda">
                                                 <EditIcon />
+                                            </button>
+                                            <button onClick={() => handleDeleteSale(sale)} className="p-2 text-stone-500 hover:text-red-600 transition-colors" aria-label="Apagar Venda" title="Apagar Venda">
+                                                <TrashIcon />
                                             </button>
                                         </div>
                                     </td>

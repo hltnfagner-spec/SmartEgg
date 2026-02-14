@@ -211,9 +211,12 @@ const DataEntry: FC = () => {
     const [selectedFlock, setSelectedFlock] = useState('');
     const [periodType, setPeriodType] = useState<'diario' | 'semanal' | 'mensal' | 'personalizado'>('diario');
     
-    // Filtrar registros baseado nos filtros
+    // Filtrar registros baseado nos filtros - APENAS COLETAS REAIS DE OVOS
     const filteredRecords = useMemo(() => {
         let filtered = [...records];
+        
+        // FILTRO PRINCIPAL: Apenas registros com coleta de ovos > 0
+        filtered = filtered.filter(r => r.eggsCollected > 0);
         
         // Filtro por data
         if (dateFilter.start) {
@@ -322,19 +325,19 @@ const DataEntry: FC = () => {
     return (
         <div className="space-y-6">
             {/* Header com botão */}
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
                         <span className="text-2xl">🥚</span>
                     </div>
                     <div>
-                        <h1 className="text-3xl font-bold text-stone-800">Coleta de Ovos</h1>
-                        <p className="text-sm text-stone-500">Controle de produção e qualidade</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">Coleta de Ovos</h1>
+                        <p className="text-sm sm:text-base text-slate-600">Controle de produção e qualidade</p>
                     </div>
                 </div>
                 <button 
                     onClick={handleOpenAddModal} 
-                    className="px-6 py-3 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 shadow-lg transition-all hover:scale-105 flex items-center gap-2"
+                    className="px-6 py-3 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 shadow-sm transition-colors flex items-center gap-2"
                 >
                     <span className="text-lg">+</span>
                     Nova Coleta
@@ -342,10 +345,10 @@ const DataEntry: FC = () => {
             </div>
 
             {/* Filtros */}
-            <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                 <div className="flex items-center gap-2 mb-4">
                     <span className="text-lg">📅</span>
-                    <h3 className="text-lg font-semibold text-stone-800">Filtros e Período</h3>
+                    <h3 className="text-lg font-semibold text-slate-800">Filtros e Período</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>

@@ -1,6 +1,6 @@
 import { useState, useMemo, FC } from 'react';
 import { useFarm } from '../context/FarmContext';
-import { DailyRecord } from '../types';
+import { DailyRecord, FeedFormulation } from '../types';
 import { EditIcon, TrashIcon } from './icons';
 
 const toLocalDateString = (date: Date) => {
@@ -17,7 +17,7 @@ const getLocalYMD = (date: Date | string) => {
 };
 
 const FeedConsumption: FC = () => {
-    const { flocks, records, addRecord, updateRecord, deleteRecord, getHensCountOnDate, getFlockById, navigate } = useFarm();
+    const { flocks, records, addRecord, updateRecord, deleteRecord, getHensCountOnDate, getFlockById, navigate, feedFormulations, addExpense, updateExpense, deleteExpense, expenses } = useFarm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [recordToEdit, setRecordToEdit] = useState<DailyRecord | null>(null);
     const [periodFilter, setPeriodFilter] = useState<'7days' | '30days' | 'all'>('30days');
@@ -69,6 +69,97 @@ const FeedConsumption: FC = () => {
         setRecordToEdit(null);
     };
 
+    // Função para buscar formulação pela fase da ração
+    const getFormulationByPhase = (feedType: string) => {
+        const phaseMapping: Record<string, FeedFormulation['phase']> = {
+            'Pré-inicial': 'Pré-inicial',
+            'Inicial': 'Inicial',
+            'Crescimento I': 'Crescimento',
+            'Crescimento II': 'Crescimento',
+            'Pré-postura': 'Pré-postura',
+            'Postura I': 'Postura',
+            'Postura II': 'Postura'
+        };
+
+        const phase = phaseMapping[feedType] || 'Postura';
+        return feedFormulations.find(f => f.phase === phase);
+    };
+
+    // Função para criar despesa automática de ração
+    const createFeedExpense = (feedType: string, quantityKg: number, date: string, flockId: string) => {
+        const formulation = getFormulationByPhase(feedType);
+        
+        if (formulation && formulation.costPerKg > 0) {
+            const totalCost = quantityKg * formulation.costPerKg;
+            const flock = getFlockById(flockId);
+            
+            // Criar despesa
+            addExpense({
+                flockId: flockId,
+                date: date,
+                description: `${feedType} - ${quantityKg} kg`,
+                category: 'Ração',
+                amount: totalCost,
+                supplierId: undefined
+            });
+
+            console.log(`[FeedConsumption] Despesa criada: ${feedType} - ${quantityKg} kg - R$ ${totalCost.toFixed(2)}`);
+            return totalCost;
+        }
+        
+        return 0;
+    };
+
+    // Função para buscar despesa relacionada a um registro de ração
+    const findRelatedExpense = (recordId: string, feedType: string, quantityKg: number, date: string, flockId: string) => {
+        const expectedDescription = `${feedType} - ${quantityKg} kg`;
+        
+        return expenses.find(exp => 
+            exp.flockId === flockId &&
+            exp.date === date &&
+            exp.description === expectedDescription &&
+            exp.category === 'Ração'
+        );
+    };
+
+    // Função para atualizar despesa quando edita registro
+    const updateFeedExpense = (oldFeedType: string, oldQuantityKg: number, newFeedType: string, newQuantityKg: number, date: string, flockId: string) => {
+        // Buscar despesa antiga
+        const oldExpense = findRelatedExpense('', oldFeedType, oldQuantityKg, date, flockId);
+        
+        if (oldExpense) {
+            if (newQuantityKg === 0) {
+                // Se quantidade é 0, excluir a despesa
+                deleteExpense(oldExpense.id);
+                console.log(`[FeedConsumption] Despesa excluída: ${oldExpense.description}`);
+            } else {
+                // Atualizar despesa com novos valores
+                const formulation = getFormulationByPhase(newFeedType);
+                if (formulation && formulation.costPerKg > 0) {
+                    const newTotalCost = newQuantityKg * formulation.costPerKg;
+                    
+                    updateExpense(oldExpense.id, {
+                        ...oldExpense,
+                        description: `${newFeedType} - ${newQuantityKg} kg`,
+                        amount: newTotalCost
+                    });
+                    
+                    console.log(`[FeedConsumption] Despesa atualizada: ${newFeedType} - ${newQuantityKg} kg - R$ ${newTotalCost.toFixed(2)}`);
+                }
+            }
+        }
+    };
+
+    // Função para excluir despesa quando exclui registro
+    const deleteFeedExpense = (feedType: string, quantityKg: number, date: string, flockId: string) => {
+        const expense = findRelatedExpense('', feedType, quantityKg, date, flockId);
+        
+        if (expense) {
+            deleteExpense(expense.id);
+            console.log(`[FeedConsumption] Despesa excluída: ${expense.description}`);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -90,13 +181,28 @@ const FeedConsumption: FC = () => {
         
         if (recordToEdit) {
             // Atualizar registro existente
+            const oldFeedProvided = recordToEdit.feedProvidedKg || 0;
+            const oldFeedType = recordToEdit.feedType || 'Postura I';
+            const newFeedProvided = Number(formData.feedProvidedKg);
+            const newFeedType = formData.feedType;
+            
             updateRecord(recordToEdit.id, {
                 ...recordToEdit,
                 date: dateStr, // Incluir a data atualizada
-                feedProvidedKg: Number(formData.feedProvidedKg),
-                feedType: formData.feedType,
+                feedProvidedKg: newFeedProvided,
+                feedType: newFeedType,
                 notes: formData.notes
             });
+
+            // Atualizar despesa relacionada
+            updateFeedExpense(
+                oldFeedType,
+                oldFeedProvided,
+                newFeedType,
+                newFeedProvided,
+                dateStr,
+                formData.flockId
+            );
         } else {
             // Criar novo registro
             // Verificar se já existe registro para essa data e lote
@@ -107,12 +213,28 @@ const FeedConsumption: FC = () => {
 
             if (existingRecord) {
                 // Atualizar registro existente
+                const oldFeedProvided = existingRecord.feedProvidedKg || 0;
+                const oldFeedType = existingRecord.feedType || 'Postura I';
+                const newFeedProvided = Number(formData.feedProvidedKg);
+                const newFeedType = formData.feedType;
+                
                 updateRecord(existingRecord.id, {
                     ...existingRecord,
-                    feedProvidedKg: Number(formData.feedProvidedKg),
-                    feedType: formData.feedType,
+                    date: dateStr, // Incluir a data atualizada
+                    feedProvidedKg: newFeedProvided,
+                    feedType: newFeedType,
                     notes: formData.notes
                 });
+
+                // Atualizar despesa relacionada
+                updateFeedExpense(
+                    oldFeedType,
+                    oldFeedProvided,
+                    newFeedType,
+                    newFeedProvided,
+                    dateStr,
+                    formData.flockId
+                );
             } else {
                 // Criar novo registro apenas com consumo de ração
                 addRecord({
@@ -126,14 +248,36 @@ const FeedConsumption: FC = () => {
                     mortality: 0,
                     notes: formData.notes
                 });
+
+                // Criar despesa automática de ração
+                createFeedExpense(
+                    formData.feedType,
+                    Number(formData.feedProvidedKg),
+                    dateStr,
+                    formData.flockId
+                );
             }
         }
 
         handleCloseModal();
     };
 
-    const handleDelete = (id: string) => {
-        deleteRecord(id);
+    const handleDelete = (record: DailyRecord) => {
+        // Excluir despesa relacionada antes de excluir o registro
+        if (record.feedProvidedKg && record.feedProvidedKg > 0) {
+            const feedType = record.feedType || 'Postura I';
+            const date = getLocalYMD(record.date);
+            
+            deleteFeedExpense(
+                feedType,
+                record.feedProvidedKg,
+                date,
+                record.flockId
+            );
+        }
+        
+        // Excluir o registro
+        deleteRecord(record.id);
     };
 
     // Filtrar registros por período
@@ -407,7 +551,7 @@ const FeedConsumption: FC = () => {
                                                         <EditIcon />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDelete(record.id)}
+                                                        onClick={() => handleDelete(record)}
                                                         className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
                                                         title="Excluir"
                                                     >

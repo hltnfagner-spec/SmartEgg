@@ -37,6 +37,7 @@ interface FarmContextType {
   deleteExpense: (expenseId: string) => void;
   addSale: (sale: Omit<Sale, 'id' | 'totalAmount' | 'saleNumber'>) => void;
   updateSale: (saleId: string, data: Omit<Sale, 'id' | 'totalAmount'>) => void;
+  deleteSale: (saleId: string) => void;
   addTask: (task: Omit<FlockTask, 'id'>) => void;
   toggleTaskCompletion: (taskId: string) => void;
   deleteTask: (taskId: string) => void;
@@ -1285,6 +1286,15 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
     (async () => {
       try {
+        console.log('[addRecord] Tentando inserir registro:', {
+          user_id: userId,
+          flock_id: recordData.flockId,
+          date: recordData.date,
+          eggs_collected: recordData.eggsCollected,
+          mortality: recordData.mortality,
+          feed_consumed_kg: recordData.feedConsumedKg
+        });
+
         const { data, error } = await supabase
           .from('daily_records')
           .insert({
@@ -1308,8 +1318,11 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
         if (error || !data) {
           console.error('[FarmContext] Erro ao adicionar registro diário no Supabase:', error);
+          console.error('[FarmContext] Dados que tentaram ser inseridos:', recordData);
           return;
         }
+
+        console.log('[addRecord] Registro inserido com sucesso:', data);
 
         const newRecord: DailyRecord = {
           id: data.id,
@@ -1467,6 +1480,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const updateRecord = (recordId: string, data: Omit<DailyRecord, 'id'>) => {
     if (!userId) return;
 
+    console.log('[updateRecord] Tentando atualizar registro:', recordId, data);
+
     (async () => {
       try {
         const { error } = await supabase
@@ -1493,6 +1508,8 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
           console.error('[FarmContext] Erro ao atualizar registro diário no Supabase:', error);
           return;
         }
+
+        console.log('[updateRecord] Registro atualizado com sucesso no Supabase');
 
         // Atualizar estado local e estoque (mantido do código original)
         setRecords(prev => {
@@ -1925,6 +1942,37 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
     })();
   };
   
+  const deleteSale = (saleId: string) => {
+    if (!userId) return;
+
+    (async () => {
+      try {
+        // Buscar venda para ajustar estoque
+        const saleToDelete = sales.find(s => s.id === saleId);
+        
+        if (saleToDelete && (saleToDelete.productType === 'Ovos' || !saleToDelete.productType)) {
+          // Devolver quantidade ao estoque
+          adjustEggStock(saleToDelete.quantity);
+        }
+
+        const { error } = await supabase
+          .from('sales')
+          .delete()
+          .eq('id', saleId)
+          .eq('user_id', userId);
+
+        if (error) {
+          console.error('[FarmContext] Erro ao deletar venda no Supabase:', error);
+          return;
+        }
+
+        setSales(prev => prev.filter(sale => sale.id !== saleId));
+      } catch (err) {
+        console.error('[FarmContext] Erro inesperado ao deletar venda:', err);
+      }
+    })();
+  };
+
   const addTask = (taskData: Omit<FlockTask, 'id'>) => {
     if (!userId) return;
 
@@ -2594,7 +2642,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         currentView, viewParams, navigate,
         addShed, updateShed, deleteShed, addFlock, updateFlock, disposeFlock, deleteFlock, 
         addRecord, updateRecord, deleteRecord, 
-        addExpense, updateExpense, deleteExpense, addSale, updateSale, 
+        addExpense, updateExpense, deleteExpense, addSale, updateSale, deleteSale, 
         addTask, toggleTaskCompletion, deleteTask, 
         addClient, updateClient, deleteClient, 
         addContact, updateContact, deleteContact, getContactById,
