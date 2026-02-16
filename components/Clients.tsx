@@ -78,6 +78,10 @@ const Clients: FC = () => {
     };
 
     const handleUpdateDeliveryStatus = (saleId: string, newStatus: DeliveryStatus) => {
+        // Se for "Pendente", vai direto para "Entregue"
+        // Se for "Em Rota", vai para "Entregue"
+        const finalStatus = newStatus === 'Pendente' ? 'Entregue' : newStatus;
+        
         // Precisamos manter os outros dados da venda e apenas atualizar o status
         const sale = sales.find(s => s.id === saleId);
         if (sale) {
@@ -85,7 +89,7 @@ const Clients: FC = () => {
             // Porem para ser seguro com o Typescript, passamos o objeto.
             // Nota: updateSale espera Omit<Sale, 'id' | 'totalAmount'>
             const { id, totalAmount, ...saleData } = sale;
-            updateSale(saleId, { ...saleData, deliveryStatus: newStatus });
+            updateSale(saleId, { ...saleData, deliveryStatus: finalStatus });
         }
     };
 
@@ -429,7 +433,7 @@ const Clients: FC = () => {
                                                     onClick={() => handleUpdateDeliveryStatus(item.id, nextStatus)}
                                                     className="px-4 py-3 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
                                                 >
-                                                    {item.deliveryStatus === 'Pendente' ? 'Iniciar Rota' : 'Confirmar Entrega'}
+                                                    {item.deliveryStatus === 'Pendente' ? 'Marcar como Entregue' : 'Confirmar Entrega'}
                                                 </button>
                                             )}
                                         </div>

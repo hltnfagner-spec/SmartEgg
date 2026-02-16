@@ -60,7 +60,7 @@ const Dashboard: FC = () => {
     const today = new Date();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const total = sales
-      .filter(s => new Date(s.date) >= firstDayOfMonth)
+      .filter(s => new Date(s.date) >= firstDayOfMonth && s.paymentStatus === 'Pago')
       .reduce((sum, s) => sum + s.totalAmount, 0);
     return total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }, [sales]);
@@ -69,7 +69,7 @@ const Dashboard: FC = () => {
     const today = new Date();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const totalRevenue = sales
-      .filter(s => new Date(s.date) >= firstDayOfMonth)
+      .filter(s => new Date(s.date) >= firstDayOfMonth && s.paymentStatus === 'Pago')
       .reduce((sum, s) => sum + s.totalAmount, 0);
     const totalExpenses = expenses
       .filter(e => new Date(e.date) >= firstDayOfMonth)
