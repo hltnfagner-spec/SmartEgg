@@ -1,10 +1,8 @@
 
 import { useMemo, useRef, useEffect, FC, useState } from 'react';
 import { useFarm } from '../context/FarmContext';
-import { useAlerts } from '../context/AlertContext';
 import StatCard from './StatCard';
 import SubscriptionCard from './SubscriptionCard';
-import AlertsDashboard from './AlertsDashboard';
 import { EggIcon, FlockIcon, ExpenseIcon, SalesIcon, ArrowUpIcon, ArrowDownIcon, InventoryIcon, TrendUpIcon, TrendDownIcon, ChickenIcon } from './icons';
 import NotificationBell from './NotificationBell';
 import { AddRecordForm } from './DataEntry';
@@ -25,7 +23,6 @@ const getLocalYMD = (date: Date | string) => {
 
 const Dashboard: FC = () => {
   const { flocks, records, expenses, sales, tasks, toggleTaskCompletion, getHensCountOnDate, getFlockById, inventory, navigate } = useFarm();
-  const { addAlert } = useAlerts();
   
   const [activeModal, setActiveModal] = useState<'collection' | 'expense' | 'sale' | 'mortality' | null>(null);
   const [performanceFilter, setPerformanceFilter] = useState<'this-month' | 'last-month' | 'all-time'>('this-month');
@@ -88,71 +85,6 @@ const Dashboard: FC = () => {
       const item = inventory.find(i => i.category === 'Produto Final' && i.name.toLowerCase().includes('ovos'));
       return item ? item.quantity : 0;
   }, [inventory]);
-
-  // ALERT LOGIC: Production Trends - restaurado
-  useEffect(() => {
-    if (typeof addAlert !== 'function') return;
-
-    const activeFlocks = flocks.filter(f => f.status === 'Ativo');
-
-    activeFlocks.forEach(flock => {
-      // Group records by day to handle multiple entries
-      const dayMap = new Map<string, number>();
-      records
-          .filter(r => r.flockId === flock.id)
-          .forEach(r => {
-              const day = getLocalYMD(new Date(r.date));
-              const current = dayMap.get(day) || 0;
-              dayMap.set(day, current + r.eggsCollected);
-          });
-
-      // Sort days descending
-      const sortedDays = Array.from(dayMap.entries())
-          .sort((a, b) => b[0].localeCompare(a[0]));
-
-      if (sortedDays.length >= 4) {
-          // Get last 4 days of production
-          const dailyTotals = sortedDays.slice(0, 4).map(d => ({ date: d[0], total: d[1] }));
-          
-          const last2Days = dailyTotals.slice(0, 2);
-          const prev2Days = dailyTotals.slice(2, 4);
-
-          const avgLast2 = last2Days.reduce((acc, d) => acc + d.total, 0) / 2;
-          const avgPrev2 = prev2Days.reduce((acc, d) => acc + d.total, 0) / 2;
-
-          if (avgPrev2 > 0) {
-              const change = ((avgLast2 - avgPrev2) / avgPrev2) * 100;
-              
-              // Generate fingerprint sem data para evitar duplicatas
-              const fingerprint = `prod_trend_${flock.id}`;
-
-              if (Math.abs(change) >= 10) { // 10% threshold
-                  // Verificar se a mudança é persistente (não um pico de um dia)
-                  const isPersistentChange = 
-                    (change > 0 && last2Days.every(d => d.total >= avgPrev2 * 0.9)) || // Aumento persistente
-                    (change < 0 && last2Days.every(d => d.total <= avgPrev2 * 1.1));    // Queda persistente
-                  
-                  if (isPersistentChange) {
-                      const type = change > 0 ? 'production_up' : 'production_down';
-                      const title = change > 0 ? 'Aumento de Produção' : 'Queda de Produção';
-                      const message = `O lote ${flock.name} teve uma ${change > 0 ? 'alta' : 'queda'} de ${Math.abs(change).toFixed(1)}% na produção média recente.`;
-                      
-                      addAlert({
-                          type,
-                          title,
-                          message,
-                          flockName: flock.name,
-                          metadata: {
-                              flockId: flock.id,
-                              value: Math.abs(change)
-                          }
-                      });
-                  }
-              }
-          }
-      }
-    });
-  }, [flocks, records, addAlert]);
 
   const productionData = useMemo(() => {
     // ... existing logic ...
@@ -531,9 +463,6 @@ const Dashboard: FC = () => {
         </div>
       </div>
 
-      {/* ALERT SECTION - usando novo sistema de alertas */}
-      <AlertsDashboard />
-      
       {/* Card de assinatura - apenas durante trial */}
       {isTrial && (
         <div className="mb-6">

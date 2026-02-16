@@ -14,7 +14,6 @@ import Contacts from './components/Contacts';
 import Inventory from './components/Inventory';
 import Mortality from './components/Mortality';
 import Settings from './components/Settings';
-import AlertsPage from './components/AlertsPage';
 import Transactions from './components/Transactions';
 import Productivity from './components/Productivity';
 import AdminPanel from './components/AdminPanel';
@@ -28,7 +27,6 @@ import EmailConfirm from './components/EmailConfirm';
 import RecoveryRedirect from './components/RecoveryRedirect';
 import { SubscriptionStatus } from './components/SubscriptionStatus';
 import { useFarm } from './context/FarmContext';
-import { AlertProvider } from './context/AlertContext';
 import { supabase } from './services/supabaseClient';
 
 type AuthState = 'landing' | 'login' | 'register' | 'forgot-password' | 'reset-password' | 'app';
@@ -278,7 +276,6 @@ function App() {
       case 'contacts': return <Contacts />;
       case 'inventory': return <Inventory />;
       case 'mortality': return <Mortality />;
-      case 'alerts': return <AlertsPage />;
       case 'transactions': return <Transactions />;
       case 'produtividade': return <Productivity />;
       case 'feed-consumption': return <FeedConsumption />;
@@ -394,18 +391,16 @@ function App() {
   }
 
   return (
-    <AlertProvider>
-      <div className="flex h-screen bg-gray-50 text-slate-800 font-sans overflow-hidden">
-        <Sidebar 
-          onLogout={handleLogout}
-        />
-        <main className="flex-1 overflow-y-auto w-full">
-          <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 pt-[88px] md:pt-8">
-              {renderView()}
-          </div>
-        </main>
-      </div>
-    </AlertProvider>
+    <div className="flex h-screen bg-gray-50 text-slate-800 font-sans overflow-hidden">
+      <Sidebar 
+        onLogout={handleLogout}
+      />
+      <main className="flex-1 overflow-y-auto w-full">
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 pt-[88px] md:pt-8">
+            {renderView()}
+        </div>
+      </main>
+    </div>
   );
 };
 

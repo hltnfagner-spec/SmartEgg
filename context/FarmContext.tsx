@@ -906,7 +906,7 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
            if (eggItem) {
              // Atualizar item existente
              const currentQty = parseFloat(eggItem.quantity);
-             const newQuantity = Math.max(0, currentQty + amount);
+             const newQuantity = currentQty + amount;
              console.log('📊 Atualizando estoque:', { currentQty, amount, newQuantity });
              
              const { error: updateError } = await supabase
@@ -1894,17 +1894,23 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
     (async () => {
       try {
-        // Calcular diff para ajustar estoque
         const oldSale = sales.find(s => s.id === saleId);
         
-        if (oldSale && (oldSale.productType === 'Ovos' || !oldSale.productType)) {
-          // Reverter quantidade antiga (adicionar de volta)
-          adjustEggStock(oldSale.quantity);
-        }
+        // Só ajusta estoque se a quantidade ou o produto mudou
+        const quantityChanged = oldSale && oldSale.quantity !== data.quantity;
+        const productChanged = oldSale && oldSale.productType !== data.productType;
         
-        if (data.productType === 'Ovos' || !data.productType) {
-          // Aplicar nova quantidade (deduzir)
-          adjustEggStock(-data.quantity);
+        // Se apenas o status de entrega mudou, não mexe no estoque
+        if (quantityChanged || productChanged) {
+          if (oldSale && (oldSale.productType === 'Ovos' || !oldSale.productType)) {
+            // Reverter quantidade antiga (adicionar de volta)
+            adjustEggStock(oldSale.quantity);
+          }
+          
+          if (data.productType === 'Ovos' || !data.productType) {
+            // Aplicar nova quantidade (deduzir)
+            adjustEggStock(-data.quantity);
+          }
         }
 
         const totalAmount = data.quantity * data.pricePerUnit;

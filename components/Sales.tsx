@@ -53,7 +53,7 @@ export const AddSaleForm: FC<{onClose: () => void; saleToEdit?: Sale | null}> = 
         // Campos de entrega
         hasDelivery: false,
         deliveryDate: formatDateForInput(new Date()),
-        deliveryStatus: 'Entregue',
+        deliveryStatus: 'Pendente',
         deliveryAddress: '',
         deliveryNotes: ''
     });
@@ -689,7 +689,9 @@ const Sales: FC = () => {
 
     // Calcular Estatísticas
     const stats = useMemo(() => {
-        const totalRevenue = filteredSales.reduce((acc, sale) => acc + sale.totalAmount, 0);
+        const totalRevenue = filteredSales
+            .filter(s => s.paymentStatus === 'Pago')
+            .reduce((acc, sale) => acc + sale.totalAmount, 0);
         const totalCount = filteredSales.length;
         const pendingRevenue = filteredSales
             .filter(s => s.paymentStatus === 'Pendente')
