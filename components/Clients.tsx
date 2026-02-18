@@ -433,7 +433,7 @@ const Clients: FC = () => {
                                                     onClick={() => handleUpdateDeliveryStatus(item.id, nextStatus)}
                                                     className="px-4 py-3 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
                                                 >
-                                                    {item.deliveryStatus === 'Pendente' ? 'Marcar como Entregue' : 'Confirmar Entrega'}
+                                                    {item.deliveryStatus === 'Pendente' || item.deliveryStatus === 'Em Rota' ? 'Marcar como Entregue' : ''}
                                                 </button>
                                             )}
                                         </div>
