@@ -1902,14 +1902,22 @@ export const FarmProvider: FC<{ children: ReactNode }> = ({ children }) => {
         
         // Se apenas o status de entrega mudou, não mexe no estoque
         if (quantityChanged || productChanged) {
+          // Calcular o ajuste líquido para evitar race condition
+          let stockAdjustment = 0;
+          
           if (oldSale && (oldSale.productType === 'Ovos' || !oldSale.productType)) {
             // Reverter quantidade antiga (adicionar de volta)
-            adjustEggStock(oldSale.quantity);
+            stockAdjustment += oldSale.quantity;
           }
           
           if (data.productType === 'Ovos' || !data.productType) {
             // Aplicar nova quantidade (deduzir)
-            adjustEggStock(-data.quantity);
+            stockAdjustment -= data.quantity;
+          }
+          
+          // Fazer um único ajuste com o valor líquido
+          if (stockAdjustment !== 0) {
+            adjustEggStock(stockAdjustment);
           }
         }
 

@@ -80,7 +80,7 @@ const NotificationBell: FC = () => {
 
         // 2. Entregas / Vendas Pendentes (Agora com 7 dias de antecedência)
         sales.forEach(sale => {
-            const isPending = !sale.deliveryStatus || sale.deliveryStatus === 'Pendente' || sale.deliveryStatus === 'Em Rota';
+            const isPending = !sale.deliveryStatus || sale.deliveryStatus === 'Pendente';
             if (!isPending) return;
 
             // Usa data de entrega se houver, senão data da venda
@@ -135,10 +135,14 @@ const NotificationBell: FC = () => {
     const handleNotificationClick = (notif: any) => {
         setIsOpen(false);
         if (notif.type === 'delivery') {
-            // Redireciona para o módulo de clientes com a aba de entregas ativa
-            navigate('clients', { tab: 'deliveries' });
+            // Extrai o ID da venda do notif.id (formato: 'sale-123')
+            const saleId = notif.id.replace('sale-', '');
+            // Navega para vendas e abre o modal da venda específica
+            navigate('sales', { saleId });
+        } else if (notif.type === 'task') {
+            // Para tarefas, navega para o dashboard
+            navigate('dashboard');
         }
-        // Para tarefas, se necessário, poderia redirecionar para flocks ou dashboard
     };
 
     const hasNotifications = notifications.length > 0;

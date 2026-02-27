@@ -149,8 +149,7 @@ const Clients: FC = () => {
 
     const getNextStatus = (currentStatus: DeliveryStatus): DeliveryStatus => {
         switch (currentStatus) {
-            case 'Pendente': return 'Em Rota';
-            case 'Em Rota': return 'Entregue';
+            case 'Pendente': return 'Entregue';
             default: return currentStatus;
         }
     };
@@ -381,63 +380,63 @@ const Clients: FC = () => {
                             const canUpdate = item.deliveryStatus !== 'Entregue' && item.deliveryStatus !== 'Cancelada';
                             
                             return (
-                                <div key={item.id} className="bg-white rounded-xl shadow-sm border border-stone-200 p-6 sm:p-8 hover:shadow-lg transition-shadow">
-                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-6">
-                                        <div className="flex-1">
-                                            <div className="flex items-start gap-4">
-                                                <div className="p-4 rounded-lg bg-amber-50 text-amber-600">
-                                                    <span className="text-2xl">📦</span>
+                                <div key={item.id} className="bg-white rounded-lg shadow-sm border border-stone-200 hover:shadow-md transition-shadow">
+                                    <div 
+                                        className="p-4 cursor-pointer" 
+                                        onClick={() => setExpandedClient(expandedClient === item.id ? null : item.id)}
+                                    >
+                                        <div className="flex justify-between items-center gap-4">
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <div className="p-2 rounded-lg bg-amber-50 text-amber-600 flex-shrink-0">
+                                                    <span className="text-xl">📦</span>
                                                 </div>
-                                                <div className="flex-1">
-                                                    <h3 className="font-semibold text-stone-900 text-lg sm:text-xl mb-4 truncate">{item.clientName}</h3>
-                                                    <div className="space-y-3">
-                                                        <p className="text-base text-stone-600 flex items-center gap-3">
-                                                            <span className="text-lg">📦</span> <span className="font-medium">{item.quantity} {item.productType}</span>
-                                                        </p>
-                                                        <p className="text-base text-stone-600 flex items-center gap-3">
-                                                            <span className="text-lg">📱</span> {item.clientPhone}
-                                                        </p>
-                                                        <p className="text-base text-stone-600 flex items-center gap-3">
-                                                            <span className="text-lg">🏠</span> {item.address}
-                                                        </p>
-                                                        <p className="text-base text-stone-600 flex items-center gap-3">
-                                                            <span className="text-lg">📅</span> {new Date(item.deliveryDate).toLocaleDateString('pt-BR')}
-                                                        </p>
-                                                        {item.deliveryNotes && (
-                                                            <p className="text-base text-amber-600 italic flex items-start gap-3">
-                                                                <span className="text-lg">💬</span> <span>{item.deliveryNotes}</span>
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                    <div className="mt-4 flex flex-wrap gap-3">
-                                                        <span className={`px-3 py-2 rounded-full text-sm font-medium ${
-                                                            item.deliveryStatus === 'Entregue' ? 'bg-green-100 text-green-800' : 
-                                                            item.deliveryStatus === 'Em Rota' ? 'bg-blue-100 text-blue-800' :
-                                                            item.deliveryStatus === 'Cancelada' ? 'bg-red-100 text-red-800' :
-                                                            'bg-amber-100 text-amber-800'
-                                                        }`}>
-                                                            {item.deliveryStatus}
-                                                        </span>
-                                                        <span className={`px-3 py-2 rounded-full text-sm font-medium ${
-                                                            item.paymentStatus === 'Pago' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                                                        }`}>
-                                                            {item.paymentStatus}
-                                                        </span>
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className="font-medium text-stone-900 truncate">{item.clientName}</h3>
+                                                    <div className="flex items-center gap-2 text-sm text-stone-500">
+                                                        <span>{item.quantity} {item.productType}</span>
+                                                        <span>•</span>
+                                                        <span>{new Date(item.deliveryDate).toLocaleDateString('pt-BR')}</span>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div className="flex gap-3">
-                                            {canUpdate && (
-                                                <button
-                                                    onClick={() => handleUpdateDeliveryStatus(item.id, nextStatus)}
-                                                    className="px-4 py-3 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
-                                                >
-                                                    {item.deliveryStatus === 'Pendente' || item.deliveryStatus === 'Em Rota' ? 'Marcar como Entregue' : ''}
-                                                </button>
-                                            )}
+                                            <div className="flex items-center gap-2">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.deliveryStatus === 'Entregue' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                    {item.deliveryStatus === 'Entregue' ? '✓ Entregue' : '• Pendente'}
+                                                </span>
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.paymentStatus === 'Pago' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                    {item.paymentStatus === 'Pago' ? '✓ Pago' : '• Pendente'}
+                                                </span>
+                                                {canUpdate && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleUpdateDeliveryStatus(item.id, nextStatus);
+                                                        }}
+                                                        className="px-3 py-1 text-sm font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex-shrink-0 ml-2"
+                                                    >
+                                                        Entregar
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
+                                    {expandedClient === item.id && (
+                                        <div className="px-4 pb-4 pt-2 border-t border-stone-100 space-y-2 text-sm text-stone-600">
+                                            {item.clientPhone !== '-' && (
+                                                <p className="flex items-center gap-2">
+                                                    <span className="text-base">📱</span> {item.clientPhone}
+                                                </p>
+                                            )}
+                                            <p className="flex items-center gap-2">
+                                                <span className="text-base">🏠</span> {item.address}
+                                            </p>
+                                            {item.deliveryNotes && (
+                                                <p className="flex items-center gap-2 text-amber-600 italic">
+                                                    <span className="text-base">💬</span> {item.deliveryNotes}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })

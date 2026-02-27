@@ -8,7 +8,7 @@ const SALE_TYPES: SaleType[] = ['Cliente Final', 'Atacado'];
 const PRODUCT_TYPES: ProductType[] = ['Ovos', 'Aves', 'Cama'];
 const PAYMENT_METHODS: PaymentMethod[] = ['Dinheiro', 'Pix', 'Cartão Crédito', 'Cartão Débito', 'Transferência', 'Boleto'];
 const PAYMENT_STATUSES: PaymentStatus[] = ['Pago', 'Pendente'];
-const DELIVERY_STATUSES: DeliveryStatus[] = ['Pendente', 'Em Rota', 'Entregue', 'Cancelada'];
+const DELIVERY_STATUSES: DeliveryStatus[] = ['Pendente', 'Entregue', 'Cancelada'];
 
 export const AddSaleForm: FC<{onClose: () => void; saleToEdit?: Sale | null}> = ({ onClose, saleToEdit }) => {
     const { addSale, updateSale, flocks, clients } = useFarm();
@@ -601,7 +601,7 @@ const SaleReceipt: FC<{ sale: Sale; client?: any; settings: CompanySettings | nu
 };
 
 const Sales: FC = () => {
-    const { sales, getFlockById, getClientById, companySettings, loadCompanySettings, deleteSale } = useFarm();
+    const { sales, getFlockById, getClientById, companySettings, loadCompanySettings, deleteSale, updateSale } = useFarm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [saleToEdit, setSaleToEdit] = useState<Sale | null>(null);
     const [receiptSale, setReceiptSale] = useState<Sale | null>(null);
@@ -730,10 +730,19 @@ const Sales: FC = () => {
         }
     };
 
+    const handleQuickStatusUpdate = (sale: Sale, type: 'delivery' | 'payment') => {
+        if (!confirm(`Marcar como ${type === 'delivery' ? 'Entregue' : 'Pago'}?`)) return;
+
+        const { id, totalAmount, ...saleData } = sale;
+        updateSale(sale.id, {
+            ...saleData,
+            ...(type === 'delivery' ? { deliveryStatus: 'Entregue' } : { paymentStatus: 'Pago' })
+        });
+    };
+
     const getDeliveryBadge = (status?: DeliveryStatus) => {
         switch(status) {
-            case 'Pendente': return 'bg-yellow-100 text-yellow-800';
-            case 'Em Rota': return 'bg-blue-100 text-blue-800';
+            case 'Pendente': return 'bg-red-100 text-red-800';
             case 'Entregue': return 'bg-green-100 text-green-800';
             case 'Cancelada': return 'bg-red-100 text-red-800';
             default: return 'bg-gray-100 text-gray-800';
@@ -918,9 +927,12 @@ const Sales: FC = () => {
                                         {sale.clientId ? (getClientById(sale.clientId)?.name || 'Cliente Excluído') : 'Venda Avulsa'}
                                     </td>
                                     <td className="px-4 py-4">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDeliveryBadge(sale.deliveryStatus)}`}>
-                                            {sale.deliveryStatus || 'Entregue'}
-                                        </span>
+                                        <button
+                                            onClick={() => handleQuickStatusUpdate(sale, 'delivery')}
+                                            className={`px-2 py-1 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${sale.deliveryStatus === 'Entregue' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
+                                        >
+                                            {sale.deliveryStatus === 'Entregue' ? '✅ Entregue' : '❌ Pendente'}
+                                        </button>
                                         {sale.deliveryStatus === 'Pendente' && sale.deliveryDate && (
                                             <div className="text-[10px] text-stone-500 mt-1">
                                                 Prev: {new Date(sale.deliveryDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}
@@ -928,9 +940,12 @@ const Sales: FC = () => {
                                         )}
                                     </td>
                                     <td className="px-4 py-4">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${sale.paymentStatus === 'Pago' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                            {sale.paymentStatus || 'Pago'}
-                                        </span>
+                                        <button
+                                            onClick={() => handleQuickStatusUpdate(sale, 'payment')}
+                                            className={`px-2 py-1 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${sale.paymentStatus === 'Pago' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
+                                        >
+                                            {sale.paymentStatus === 'Pago' ? '✅ Pago' : '❌ Pendente'}
+                                        </button>
                                     </td>
                                     <td className="px-4 py-4 text-right">{sale.quantity}</td>
                                     <td className="px-4 py-4 text-right font-medium text-green-600">

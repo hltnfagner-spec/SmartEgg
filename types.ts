@@ -87,7 +87,7 @@ export type SaleType = 'Atacado' | 'Cliente Final';
 export type ProductType = 'Ovos' | 'Aves' | 'Cama';
 export type PaymentMethod = 'Dinheiro' | 'Pix' | 'Cartão Crédito' | 'Cartão Débito' | 'Transferência' | 'Boleto';
 export type PaymentStatus = 'Pago' | 'Pendente';
-export type DeliveryStatus = 'Pendente' | 'Em Rota' | 'Entregue' | 'Cancelada';
+export type DeliveryStatus = 'Pendente' | 'Entregue' | 'Cancelada';
 
 export interface Sale {
   id: string;
