@@ -17,7 +17,7 @@ const getLocalYMD = (date: Date | string) => {
 };
 
 const FeedConsumption: FC = () => {
-    const { flocks, records, addRecord, updateRecord, deleteRecord, getHensCountOnDate, getFlockById, navigate, feedFormulations, addExpense, updateExpense, deleteExpense, expenses } = useFarm();
+    const { flocks, records, addRecord, updateRecord, deleteRecord, getHensCountOnDate, getFlockById, navigate, feedFormulations, addExpense, updateExpense, deleteExpense, expenses, inventory, updateInventoryItem } = useFarm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [recordToEdit, setRecordToEdit] = useState<DailyRecord | null>(null);
     const [periodFilter, setPeriodFilter] = useState<'7days' | '30days' | 'all'>('30days');
@@ -37,8 +37,9 @@ const FeedConsumption: FC = () => {
         date: toLocalDateString(new Date()),
         flockId: '',
         feedProvidedKg: '',
-        feedType: 'Postura I',
-        notes: ''
+        feedType: '',
+        notes: '',
+        alreadyPurchased: false
     });
 
     const handleOpenModal = (record?: DailyRecord) => {
@@ -48,8 +49,9 @@ const FeedConsumption: FC = () => {
                 date: toLocalDateString(new Date(record.date)),
                 flockId: record.flockId,
                 feedProvidedKg: String(record.feedProvidedKg || 0),
-                feedType: record.feedType || 'Postura I',
-                notes: record.notes || ''
+                feedType: record.feedType || '',
+                notes: record.notes || '',
+                alreadyPurchased: false
             });
         } else {
             setRecordToEdit(null);
@@ -57,8 +59,9 @@ const FeedConsumption: FC = () => {
                 date: toLocalDateString(new Date()),
                 flockId: '',
                 feedProvidedKg: '',
-                feedType: 'Postura I',
-                notes: ''
+                feedType: feedFormulations.length > 0 ? feedFormulations[0].name : '',
+                notes: '',
+                alreadyPurchased: false
             });
         }
         setIsModalOpen(true);
@@ -69,25 +72,59 @@ const FeedConsumption: FC = () => {
         setRecordToEdit(null);
     };
 
-    // Função para buscar formulação pela fase da ração
-    const getFormulationByPhase = (feedType: string) => {
-        const phaseMapping: Record<string, FeedFormulation['phase']> = {
-            'Pré-inicial': 'Pré-inicial',
-            'Inicial': 'Inicial',
-            'Crescimento I': 'Crescimento',
-            'Crescimento II': 'Crescimento',
-            'Pré-postura': 'Pré-postura',
-            'Postura I': 'Postura',
-            'Postura II': 'Postura'
-        };
+    // Função para buscar formulação pelo nome exato
+    const getFormulationByName = (feedName: string) => {
+        return feedFormulations.find(f => f.name === feedName);
+    };
 
-        const phase = phaseMapping[feedType] || 'Postura';
-        return feedFormulations.find(f => f.phase === phase);
+    // Função para dar baixa no estoque de ração pronta
+    const deductFeedStock = (feedName: string, quantityKg: number) => {
+        const feedItem = inventory.find(i => 
+            i.name.toLowerCase() === feedName.toLowerCase() && 
+            i.category === 'Ração'
+        );
+
+        if (feedItem) {
+            const newQuantity = feedItem.quantity - quantityKg;
+            updateInventoryItem(feedItem.id, { quantity: newQuantity });
+            return true;
+        }
+        return false;
+    };
+
+    // Função para dar baixa nos insumos da formulação
+    const deductIngredients = (feedName: string, quantityKg: number) => {
+        const formulation = getFormulationByName(feedName);
+        
+        if (!formulation) {
+            console.warn(`Formulação "${feedName}" não encontrada`);
+            return false;
+        }
+
+        // Calcular proporção baseada na quantidade total da formulação
+        const proportion = quantityKg / formulation.totalWeight;
+
+        // Dar baixa em cada ingrediente
+        formulation.ingredients.forEach(ingredient => {
+            const ingredientItem = inventory.find(i => 
+                i.name.toLowerCase() === ingredient.name.toLowerCase()
+            );
+
+            if (ingredientItem) {
+                const quantityToDeduct = ingredient.quantityKg * proportion;
+                const newQuantity = ingredientItem.quantity - quantityToDeduct;
+                updateInventoryItem(ingredientItem.id, { quantity: newQuantity });
+            } else {
+                console.warn(`Ingrediente "${ingredient.name}" não encontrado no estoque`);
+            }
+        });
+
+        return true;
     };
 
     // Função para criar despesa automática de ração
     const createFeedExpense = (feedType: string, quantityKg: number, date: string, flockId: string) => {
-        const formulation = getFormulationByPhase(feedType);
+        const formulation = getFormulationByName(feedType);
         
         if (formulation && formulation.costPerKg > 0) {
             const totalCost = quantityKg * formulation.costPerKg;
@@ -134,7 +171,7 @@ const FeedConsumption: FC = () => {
                 console.log(`[FeedConsumption] Despesa excluída: ${oldExpense.description}`);
             } else {
                 // Atualizar despesa com novos valores
-                const formulation = getFormulationByPhase(newFeedType);
+                const formulation = getFormulationByName(newFeedType);
                 if (formulation && formulation.costPerKg > 0) {
                     const newTotalCost = newQuantityKg * formulation.costPerKg;
                     
@@ -173,90 +210,50 @@ const FeedConsumption: FC = () => {
             return;
         }
 
+        if (!formData.feedType) {
+            alert('Selecione o tipo de ração');
+            return;
+        }
+
         // Criar data ajustando timezone para evitar mudança de dia
-        // Adiciona 12h para garantir que mesmo com conversão UTC fique no mesmo dia
         const [year, month, day] = formData.date.split('-').map(Number);
         const dateObj = new Date(year, month - 1, day, 12, 0, 0);
         const dateStr = dateObj.toISOString();
         
-        if (recordToEdit) {
-            // Atualizar registro existente
-            const oldFeedProvided = recordToEdit.feedProvidedKg || 0;
-            const oldFeedType = recordToEdit.feedType || 'Postura I';
-            const newFeedProvided = Number(formData.feedProvidedKg);
-            const newFeedType = formData.feedType;
-            
-            updateRecord(recordToEdit.id, {
-                ...recordToEdit,
-                date: dateStr, // Incluir a data atualizada
-                feedProvidedKg: newFeedProvided,
-                feedType: newFeedType,
-                notes: formData.notes
-            });
+        const quantityKg = Number(formData.feedProvidedKg);
 
-            // Atualizar despesa relacionada
-            updateFeedExpense(
-                oldFeedType,
-                oldFeedProvided,
-                newFeedType,
-                newFeedProvided,
+        // Criar novo registro apenas com consumo de ração
+        addRecord({
+            date: dateStr,
+            flockId: formData.flockId,
+            eggsCollected: 0,
+            brokenEggs: 0,
+            feedConsumedKg: 0,
+            feedProvidedKg: quantityKg,
+            feedType: formData.feedType,
+            mortality: 0,
+            notes: formData.notes
+        });
+
+        // Lógica baseada no checkbox
+        if (formData.alreadyPurchased) {
+            // Ração já foi comprada - dar baixa no estoque
+            const stockDeducted = deductFeedStock(formData.feedType, quantityKg);
+            
+            if (!stockDeducted) {
+                // Se não encontrou no estoque, dar baixa nos insumos da formulação
+                deductIngredients(formData.feedType, quantityKg);
+            }
+            // NÃO gera despesa
+        } else {
+            // Ração não foi comprada - gerar despesa
+            createFeedExpense(
+                formData.feedType,
+                quantityKg,
                 dateStr,
                 formData.flockId
             );
-        } else {
-            // Criar novo registro
-            // Verificar se já existe registro para essa data e lote
-            const existingRecord = records.find(
-                r => r.flockId === formData.flockId && 
-                getLocalYMD(r.date) === formData.date
-            );
-
-            if (existingRecord) {
-                // Atualizar registro existente
-                const oldFeedProvided = existingRecord.feedProvidedKg || 0;
-                const oldFeedType = existingRecord.feedType || 'Postura I';
-                const newFeedProvided = Number(formData.feedProvidedKg);
-                const newFeedType = formData.feedType;
-                
-                updateRecord(existingRecord.id, {
-                    ...existingRecord,
-                    date: dateStr, // Incluir a data atualizada
-                    feedProvidedKg: newFeedProvided,
-                    feedType: newFeedType,
-                    notes: formData.notes
-                });
-
-                // Atualizar despesa relacionada
-                updateFeedExpense(
-                    oldFeedType,
-                    oldFeedProvided,
-                    newFeedType,
-                    newFeedProvided,
-                    dateStr,
-                    formData.flockId
-                );
-            } else {
-                // Criar novo registro apenas com consumo de ração
-                addRecord({
-                    date: dateStr,
-                    flockId: formData.flockId,
-                    eggsCollected: 0, // Não é coleta de ovos
-                    brokenEggs: 0,
-                    feedConsumedKg: 0, // Será preenchido depois
-                    feedProvidedKg: Number(formData.feedProvidedKg),
-                    feedType: formData.feedType,
-                    mortality: 0,
-                    notes: formData.notes
-                });
-
-                // Criar despesa automática de ração
-                createFeedExpense(
-                    formData.feedType,
-                    Number(formData.feedProvidedKg),
-                    dateStr,
-                    formData.flockId
-                );
-            }
+            // NÃO mexe no estoque
         }
 
         handleCloseModal();
@@ -620,9 +617,10 @@ const FeedConsumption: FC = () => {
                                         required
                                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                                     >
-                                        {FEED_TYPES.map(type => (
-                                            <option key={type} value={type}>
-                                                {type}
+                                        <option value="">Selecione uma ração</option>
+                                        {feedFormulations.map(formulation => (
+                                            <option key={formulation.id} value={formulation.name}>
+                                                {formulation.name}
                                             </option>
                                         ))}
                                     </select>
@@ -642,6 +640,27 @@ const FeedConsumption: FC = () => {
                                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                                         placeholder="Ex: 50.5"
                                     />
+                                </div>
+
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                    <label className="flex items-start gap-3 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.alreadyPurchased}
+                                            onChange={(e) => setFormData({ ...formData, alreadyPurchased: e.target.checked })}
+                                            className="mt-0.5 h-4 w-4 text-orange-600 border-slate-300 rounded focus:ring-orange-500"
+                                        />
+                                        <div className="flex-1">
+                                            <span className="text-sm font-medium text-slate-800">
+                                                Esta ração já foi comprada e está cadastrada no estoque
+                                            </span>
+                                            <p className="text-xs text-slate-600 mt-1">
+                                                {formData.alreadyPurchased 
+                                                    ? '✓ Será dado baixa no estoque (sem gerar despesa)'
+                                                    : '✗ Será gerada uma despesa baseada na formulação'}
+                                            </p>
+                                        </div>
+                                    </label>
                                 </div>
 
                                 <div>
