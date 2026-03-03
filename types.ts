@@ -139,7 +139,7 @@ export interface FlockTask {
   isCompleted: boolean;
 }
 
-export type InventoryCategory = 'Ração' | 'Medicamento' | 'Embalagem' | 'Produto Final' | 'Ovos' | 'Outro';
+export type InventoryCategory = 'Ração' | 'Ingredientes' | 'Medicamento' | 'Embalagem' | 'Produto Final' | 'Ovos' | 'Outro';
 export type UnitType = 'kg' | 'g' | 'L' | 'ml' | 'unidade' | 'saco';
 
 export interface FlockPerformance {

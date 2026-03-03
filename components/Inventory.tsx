@@ -5,11 +5,11 @@ import { EditIcon, TrashIcon, InventoryIcon, EggIcon } from './icons';
 import NotificationBell from './NotificationBell';
 import { ConfirmationModal } from './ConfirmationModal';
 
-const CATEGORIES: InventoryCategory[] = ['Ração', 'Medicamento', 'Embalagem', 'Produto Final', 'Ovos', 'Outro'];
+const CATEGORIES: InventoryCategory[] = ['Ração', 'Ingredientes', 'Medicamento', 'Embalagem', 'Produto Final', 'Ovos', 'Outro'];
 
 // Categorias disponíveis para seleção manual (excluindo "Produto Final" que é usado apenas pelo sistema)
 // Isso evita que usuários criem manualmente itens de ovos, mantendo a integridade do sistema
-const SELECTABLE_CATEGORIES: InventoryCategory[] = ['Ração', 'Medicamento', 'Embalagem', 'Outro'];
+const SELECTABLE_CATEGORIES: InventoryCategory[] = ['Ração', 'Ingredientes', 'Medicamento', 'Embalagem', 'Outro'];
 const UNITS: UnitType[] = ['kg', 'g', 'L', 'ml', 'unidade', 'saco'];
 
 const toLocalDateString = (date: Date) => {
@@ -29,7 +29,7 @@ const REASON_LABELS: Record<EggMovementReason, string> = {
 };
 
 const Inventory: FC = () => {
-    const { inventory, addInventoryItem, updateInventoryItem, deleteInventoryItem, eggMovements, addEggMovement, records, sales, flocks, getFlockById, contacts, deleteRecord, deleteSale } = useFarm();
+    const { inventory, addInventoryItem, updateInventoryItem, deleteInventoryItem, eggMovements, addEggMovement, records, sales, flocks, getFlockById, contacts, deleteRecord, deleteSale, feedFormulations, addExpense, expenses, deleteExpense } = useFarm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEggOutputModalOpen, setIsEggOutputModalOpen] = useState(false);
     const [itemToEdit, setItemToEdit] = useState<InventoryItem | null>(null);
@@ -49,6 +49,33 @@ const Inventory: FC = () => {
         costPerUnit: 0,
         supplierId: ''
     });
+
+    const [selectedFormulation, setSelectedFormulation] = useState<string>('');
+    const [selectedIngredient, setSelectedIngredient] = useState<string>('');
+
+    // Extrair todos os ingredientes únicos das formulações com seus custos
+    const uniqueIngredients = useMemo(() => {
+        const ingredientsMap = new Map<string, number>();
+        
+        feedFormulations.forEach(formulation => {
+            formulation.ingredients.forEach(ingredient => {
+                // Usar o preço cadastrado do ingrediente (pricePerKg)
+                const ingredientCostPerKg = ingredient.pricePerKg;
+                
+                // Se o ingrediente já existe, usar o preço mais recente (último encontrado)
+                if (!ingredientsMap.has(ingredient.name)) {
+                    ingredientsMap.set(ingredient.name, ingredientCostPerKg);
+                }
+                // Se já existe, mantém o primeiro preço encontrado
+                // (assumindo que os preços são consistentes entre formulações)
+            });
+        });
+        
+        return Array.from(ingredientsMap.entries()).map(([name, cost]) => ({
+            name,
+            costPerKg: cost
+        })).sort((a, b) => a.name.localeCompare(b.name)); // Ordenar alfabeticamente
+    }, [feedFormulations]);
 
     const [eggOutputForm, setEggOutputForm] = useState({
         date: toLocalDateString(new Date()),
@@ -170,6 +197,8 @@ const Inventory: FC = () => {
 
     const handleOpenAddModal = () => {
         setItemToEdit(null);
+        setSelectedFormulation('');
+        setSelectedIngredient('');
         setFormData({
             name: '',
             category: 'Ração',
@@ -184,6 +213,8 @@ const Inventory: FC = () => {
 
     const handleOpenEditModal = (item: InventoryItem) => {
         setItemToEdit(item);
+        setSelectedFormulation('');
+        setSelectedIngredient('');
         setFormData({
             name: item.name,
             category: item.category,
@@ -211,7 +242,21 @@ const Inventory: FC = () => {
         if (itemToEdit) {
             updateInventoryItem(itemToEdit.id, payload);
         } else {
+            // Adicionar item ao estoque
             addInventoryItem(payload);
+            
+            // Gerar despesa automática
+            const totalCost = Number(formData.quantity) * Number(formData.costPerUnit);
+            const expenseCategory = formData.category === 'Ração' ? 'Ração' : 
+                                   formData.category === 'Medicamento' ? 'Medicamentos' : 
+                                   formData.category === 'Ingredientes' ? 'Ração' : 'Outros';
+            
+            addExpense({
+                date: new Date().toISOString(),
+                category: expenseCategory,
+                description: `${formData.name} - ${formData.quantity} ${formData.unit}`,
+                amount: totalCost
+            });
         }
         setIsModalOpen(false);
     };
@@ -222,6 +267,22 @@ const Inventory: FC = () => {
 
     const confirmDelete = () => {
         if (deleteId) {
+            // Buscar o item que será excluído
+            const itemToDelete = inventory.find(i => i.id === deleteId);
+            
+            if (itemToDelete) {
+                // Buscar e excluir a despesa relacionada
+                // A despesa tem descrição: "[Nome] - [Quantidade] [Unidade]"
+                const relatedExpense = expenses.find(expense => 
+                    expense.description === `${itemToDelete.name} - ${itemToDelete.quantity} ${itemToDelete.unit}`
+                );
+                
+                if (relatedExpense) {
+                    deleteExpense(relatedExpense.id);
+                }
+            }
+            
+            // Excluir o item do estoque
             deleteInventoryItem(deleteId);
             setDeleteId(null);
         }
@@ -640,14 +701,22 @@ const Inventory: FC = () => {
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
                         <h2 className="text-xl font-bold text-stone-800 mb-6">{itemToEdit ? 'Editar Item' : 'Novo Item de Estoque'}</h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-stone-700 mb-1">Nome do Item</label>
-                                <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500" />
-                            </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-stone-700 mb-1">Categoria</label>
-                                    <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as InventoryCategory})} className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                    <select 
+                                        value={formData.category} 
+                                        onChange={e => {
+                                            const newCategory = e.target.value as InventoryCategory;
+                                            setFormData({...formData, category: newCategory});
+                                            // Limpar formulação e nome ao mudar categoria
+                                            if (newCategory !== 'Ração') {
+                                                setSelectedFormulation('');
+                                                setFormData(prev => ({...prev, name: ''}));
+                                            }
+                                        }} 
+                                        className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                    >
                                         {SELECTABLE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
@@ -658,6 +727,116 @@ const Inventory: FC = () => {
                                     </select>
                                 </div>
                             </div>
+
+                            {/* Campo condicional: Tipo de Ração */}
+                            {formData.category === 'Ração' && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                    <label className="block text-sm font-medium text-stone-700 mb-2">
+                                        📦 Tipo de Ração {feedFormulations.length > 0 && '(obrigatório)'}
+                                    </label>
+                                    {feedFormulations.length > 0 ? (
+                                        <select
+                                            value={selectedFormulation}
+                                            onChange={e => {
+                                                const formulationName = e.target.value;
+                                                setSelectedFormulation(formulationName);
+                                                
+                                                // Buscar formulação completa para pegar o custo
+                                                const formulation = feedFormulations.find(f => f.name === formulationName);
+                                                
+                                                // Auto-preencher nome (bloqueado) e custo
+                                                setFormData(prev => ({
+                                                    ...prev, 
+                                                    name: formulationName,
+                                                    costPerUnit: formulation?.costPerKg || 0
+                                                }));
+                                            }}
+                                            required
+                                            className="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                        >
+                                            <option value="">Selecione uma formulação</option>
+                                            {feedFormulations.map(formulation => (
+                                                <option key={formulation.id} value={formulation.name}>
+                                                    {formulation.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <div className="text-sm text-amber-700">
+                                            ⚠️ Nenhuma formulação cadastrada. Digite o nome da ração manualmente abaixo.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Campo condicional: Ingredientes */}
+                            {formData.category === 'Ingredientes' && (
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                    <label className="block text-sm font-medium text-stone-700 mb-2">
+                                        🌾 Selecione o Ingrediente {uniqueIngredients.length > 0 && '(obrigatório)'}
+                                    </label>
+                                    {uniqueIngredients.length > 0 ? (
+                                        <select
+                                            value={selectedIngredient}
+                                            onChange={e => {
+                                                const ingredientName = e.target.value;
+                                                setSelectedIngredient(ingredientName);
+                                                
+                                                // Buscar ingrediente completo para pegar o custo
+                                                const ingredient = uniqueIngredients.find(i => i.name === ingredientName);
+                                                
+                                                // Auto-preencher nome (bloqueado) e custo
+                                                setFormData(prev => ({
+                                                    ...prev, 
+                                                    name: ingredientName,
+                                                    costPerUnit: ingredient?.costPerKg || 0
+                                                }));
+                                            }}
+                                            required
+                                            className="w-full px-3 py-2 bg-white border border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                                        >
+                                            <option value="">Selecione um ingrediente</option>
+                                            {uniqueIngredients.map(ingredient => (
+                                                <option key={ingredient.name} value={ingredient.name}>
+                                                    {ingredient.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <div className="text-sm text-green-700">
+                                            ⚠️ Nenhum ingrediente encontrado nas formulações. Digite o nome manualmente abaixo.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-sm font-medium text-stone-700 mb-1">Nome do Item</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    value={formData.name} 
+                                    onChange={e => setFormData({...formData, name: e.target.value})} 
+                                    disabled={(formData.category === 'Ração' && selectedFormulation !== '') || (formData.category === 'Ingredientes' && selectedIngredient !== '')}
+                                    className={`w-full px-3 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                                        ((formData.category === 'Ração' && selectedFormulation !== '') || (formData.category === 'Ingredientes' && selectedIngredient !== ''))
+                                            ? 'bg-stone-100 cursor-not-allowed' 
+                                            : 'bg-white'
+                                    }`}
+                                    placeholder={
+                                        formData.category === 'Ração' && feedFormulations.length > 0 ? 'Selecione uma formulação acima' : 
+                                        formData.category === 'Ingredientes' && uniqueIngredients.length > 0 ? 'Selecione um ingrediente acima' :
+                                        'Digite o nome do item'
+                                    }
+                                />
+                                {formData.category === 'Ração' && selectedFormulation !== '' && (
+                                    <p className="text-xs text-stone-500 mt-1">✓ Nome preenchido automaticamente pela formulação selecionada</p>
+                                )}
+                                {formData.category === 'Ingredientes' && selectedIngredient !== '' && (
+                                    <p className="text-xs text-stone-500 mt-1">✓ Nome e custo preenchidos automaticamente pelo ingrediente selecionado</p>
+                                )}
+                            </div>
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-stone-700 mb-1">Quantidade Atual</label>
